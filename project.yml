@@ -1,0 +1,61 @@
+name: MakerMargins
+
+# XcodeGen project spec — generates MakerMargins.xcodeproj
+# Run: xcodegen generate
+# The .xcodeproj is NOT committed to git. Generate it locally or via CI.
+
+options:
+  bundleIdPrefix: com.makermargins
+  deploymentTarget:
+    iOS: "26.0"
+  generateEmptyDirectories: true
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+    ENABLE_PREVIEWS: YES
+
+targets:
+
+  MakerMargins:
+    type: application
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - MakerMargins
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.makermargins.app
+        GENERATE_INFOPLIST_FILE: YES
+        CURRENT_PROJECT_VERSION: 1
+        MARKETING_VERSION: 0.1.0
+    scheme:
+      testTargets:
+        - MakerMarginsTests
+      gatherCoverageData: true
+
+  MakerMarginsTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - MakerMarginsTests
+    dependencies:
+      - target: MakerMargins
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.makermargins.tests
+
+  MakerMarginsUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - MakerMarginsUITests
+    dependencies:
+      - target: MakerMargins
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.makermargins.uitests

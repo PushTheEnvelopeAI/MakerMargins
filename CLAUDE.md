@@ -256,6 +256,44 @@ TabView {
 
 ---
 
+## Build & Development Workflow
+
+**Development machine:** Windows 11. No local Mac. Xcode is not available locally.
+
+### How to develop on Windows
+1. Write Swift code in **VS Code** with the `Swift` extension (swiftlang)
+2. Swift for Windows provides SourceKit-LSP: syntax highlighting, IntelliSense, and error squiggles in `.swift` files
+3. Pure Swift (non-UI) code can be compiled and run locally. SwiftUI and SwiftData require Apple SDKs and cannot run on Windows.
+4. Push to GitHub — CI handles the full build and test run on a real macOS machine
+
+### How the Xcode project is managed (XcodeGen)
+- The `.xcodeproj` file is **not committed to git** (it is in `.gitignore`)
+- Instead, `project.yml` in the repo root defines the full project structure
+- To regenerate the project: `xcodegen generate` (requires macOS)
+- GitHub Actions runs `xcodegen generate` automatically before every build
+- When using MacInCloud for an interactive session, run `xcodegen generate` first to recreate the `.xcodeproj`
+
+### GitHub Actions CI (`.github/workflows/ci.yml`)
+Runs on every push. Steps:
+1. `brew install xcodegen`
+2. `xcodegen generate` — creates the `.xcodeproj` from `project.yml`
+3. `xcodebuild build` — builds the app targeting iPhone 16 simulator
+4. `xcodebuild test` — runs `MakerMarginsTests` suite
+5. Uploads `.xcresult` artifact for inspection
+
+### Adding a new model or file to the project
+No Xcode needed. Just create the `.swift` file in the correct directory. XcodeGen picks up all `.swift` files in the `MakerMargins/`, `MakerMarginsTests/`, and `MakerMarginsUITests/` directories automatically on the next `xcodegen generate` run. No need to manually add files to any project file.
+
+### Interactive Mac sessions (MacInCloud)
+- Use for: checking Simulator output, debugging visual layout, App Store submission steps
+- Cost: ~$1/hour pay-per-use at macincloud.com
+- First step in any MacInCloud session: `git pull && xcodegen generate`
+
+### Registering a new SwiftData model
+When a new `@Model` class is implemented, add it to the `Schema([...])` array in `MakerMarginsApp.swift`. The CI build will catch any registration errors.
+
+---
+
 ## Architecture Conventions
 
 - **SwiftData** models live in `Models/` and use `@Model` macro.
