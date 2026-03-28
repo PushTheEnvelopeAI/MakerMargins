@@ -6,9 +6,8 @@
 // All fields are held in local @State — never bound directly to the model —
 // so changes only persist when the user taps Save.
 //
-// Buffer fields display as percentages (e.g. "10" for 10%).
-// Values are divided by 100 on save and multiplied by 100 on load,
-// so the stored Decimal fraction (0.10) never leaks into the UI.
+// Cost fields (shipping, buffers) are intentionally omitted — they are
+// edited from ProductDetailView after the product is created.
 
 import SwiftUI
 import SwiftData
@@ -26,9 +25,6 @@ struct ProductFormView: View {
 
     @State private var title: String
     @State private var summary: String
-    @State private var shippingCostText: String
-    @State private var materialBufferText: String  // displayed as %, stored as fraction
-    @State private var laborBufferText: String      // displayed as %, stored as fraction
     @State private var selectedCategory: Category?
 
     // Image
@@ -41,10 +37,6 @@ struct ProductFormView: View {
         self.product = product
         _title = State(initialValue: product?.title ?? "")
         _summary = State(initialValue: product?.summary ?? "")
-        _shippingCostText = State(initialValue: product.map { "\($0.shippingCost)" } ?? "0")
-        // Convert stored fraction → percentage for display
-        _materialBufferText = State(initialValue: product.map { "\($0.materialBuffer * 100)" } ?? "0")
-        _laborBufferText    = State(initialValue: product.map { "\($0.laborBuffer * 100)" } ?? "0")
         _selectedCategory = State(initialValue: product?.category)
         _imageData = State(initialValue: product?.image)
     }
@@ -60,10 +52,9 @@ struct ProductFormView: View {
     var body: some View {
         NavigationStack {
             Form {
-                basicInfoSection
                 imageSection
+                basicInfoSection
                 categorySection
-                costSection
             }
             .navigationTitle(product == nil ? "New Product" : "Edit Product")
             .navigationBarTitleDisplayMode(.inline)
@@ -84,38 +75,52 @@ struct ProductFormView: View {
 
     // MARK: - Sections
 
+    private var imageSection: some View {
+        // Hoist to Sendable values before the PhotosPicker closure —
+        // PhotosUI's label ViewBuilder is @Sendable in the iOS 18 SDK.
+        let hasImage = imageData != nil
+        return Section {
+            PhotosPicker(selection: $photoItem, matching: .images) {
+                VStack(spacing: 10) {
+                    if let data = imageData, let uiImage = UIImage(data: data) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 100, height: 100)
+                            .clipShape(Circle())
+                    } else {
+                        Circle()
+                            .fill(Color(.secondarySystemFill))
+                            .frame(width: 100, height: 100)
+                            .overlay {
+                                Image(systemName: "camera")
+                                    .font(.title2)
+                                    .foregroundStyle(.secondary)
+                            }
+                    }
+                    Text(hasImage ? "Change Photo" : "Add Photo")
+                        .font(.subheadline)
+                        .foregroundStyle(.tint)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+            }
+            .buttonStyle(.plain)
+
+            if imageData != nil {
+                Button("Remove Photo", role: .destructive) {
+                    imageData = nil
+                    photoItem = nil
+                }
+            }
+        }
+    }
+
     private var basicInfoSection: some View {
         Section("Details") {
             TextField("Title", text: $title)
             TextField("Description", text: $summary, axis: .vertical)
                 .lineLimit(3...6)
-        }
-    }
-
-    private var imageSection: some View {
-        // Hoist to a Sendable String before the PhotosPicker closure —
-        // PhotosUI's label ViewBuilder is @Sendable in the iOS 18 SDK, so
-        // Swift 6 rejects accessing @MainActor @State from inside it directly.
-        let pickerLabel = imageData == nil ? "Choose Image" : "Change Image"
-        return Section("Image") {
-            if let data = imageData, let uiImage = UIImage(data: data) {
-                HStack {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 80, height: 80)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                    Spacer()
-                    Button("Remove", role: .destructive) {
-                        imageData = nil
-                        photoItem = nil
-                    }
-                    .buttonStyle(.borderless)
-                }
-            }
-            PhotosPicker(selection: $photoItem, matching: .images) {
-                Label(pickerLabel, systemImage: "photo")
-            }
         }
     }
 
@@ -130,50 +135,15 @@ struct ProductFormView: View {
         }
     }
 
-    private var costSection: some View {
-        Section("Cost Inputs") {
-            LabeledContent("Shipping Cost") {
-                TextField("0.00", text: $shippingCostText)
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.trailing)
-            }
-            LabeledContent("Material Buffer") {
-                HStack(spacing: 4) {
-                    TextField("0", text: $materialBufferText)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                    Text("%")
-                        .foregroundStyle(.secondary)
-                }
-            }
-            LabeledContent("Labor Buffer") {
-                HStack(spacing: 4) {
-                    TextField("0", text: $laborBufferText)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                    Text("%")
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-    }
-
     // MARK: - Actions
 
     private func save() {
-        let shipping = Decimal(string: shippingCostText) ?? 0
-        // Convert percentage input back to fraction for storage
-        let materialBuf = (Decimal(string: materialBufferText) ?? 0) / 100
-        let laborBuf    = (Decimal(string: laborBufferText) ?? 0) / 100
         let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
         let trimmedSummary = summary.trimmingCharacters(in: .whitespaces)
 
         if let product {
             product.title = trimmedTitle
             product.summary = trimmedSummary
-            product.shippingCost = shipping
-            product.materialBuffer = materialBuf
-            product.laborBuffer = laborBuf
             product.category = selectedCategory
             product.image = imageData
         } else {
@@ -181,9 +151,6 @@ struct ProductFormView: View {
                 title: trimmedTitle,
                 summary: trimmedSummary,
                 image: imageData,
-                shippingCost: shipping,
-                materialBuffer: materialBuf,
-                laborBuffer: laborBuf,
                 category: selectedCategory
             )
             modelContext.insert(newProduct)
