@@ -29,6 +29,7 @@ enum Currency: String, CaseIterable, Identifiable {
 
 // MARK: - CurrencyFormatter
 
+@MainActor
 @Observable
 final class CurrencyFormatter {
     var selected: Currency = .usd {
@@ -56,7 +57,7 @@ final class CurrencyFormatter {
 // MARK: - Environment
 
 private struct CurrencyFormatterKey: EnvironmentKey {
-    static let defaultValue = CurrencyFormatter()
+    nonisolated(unsafe) static let defaultValue = CurrencyFormatter()
 }
 
 extension EnvironmentValues {

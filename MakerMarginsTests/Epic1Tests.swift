@@ -12,6 +12,7 @@ import Testing
 import SwiftData
 @testable import MakerMargins
 
+@MainActor
 struct Epic1Tests {
 
     // MARK: - Helpers
