@@ -11,17 +11,17 @@ This file is the source of truth for Claude Code across all sessions. Update it 
 **Purpose:** iOS app for makers (woodworkers, crafters, small-scale manufacturers) to track SKU-level labor and material costs, calculate true cost of goods sold, and generate data-driven retail pricing.
 
 **Tech Stack**
-- Language: Swift
+- Language: Swift 6.0
 - Framework: SwiftUI (Liquid Glass design system — iOS 26 native)
 - Database: SwiftData
-- Testing: XCTest / Swift Testing (E2E regression per Epic)
+- Testing: Swift Testing framework (`import Testing`, `@Test` macros) — NOT XCTest/XCTestCase
 - Target Platform: iOS
 - Minimum Deployment Target: **iOS 26**
 - Distribution: Single-user, local SwiftData only (no CloudKit sync)
 - Currency: USD by default; EUR available via user setting. Format all monetary `Decimal` values through a shared `CurrencyFormatter` that respects the user's selection.
 
 **Deployment Target Rationale**
-iOS 26 is the minimum. The Liquid Glass design language is a first-class iOS 26 system behavior (materials, specular layering, adaptive chrome) — backporting it to earlier OS versions would require significant custom work that has no business value for a greenfield app. As of March 2026, iOS 26 adoption among active iPhone users is sufficient for a new App Store release. SwiftData's most stable relationship APIs also require iOS 17+, and iOS 26 gives us the full modern stack without workarounds.
+iOS 26 is the minimum. The Liquid Glass design language is a first-class iOS 26 system behavior (materials, specular layering, adaptive chrome) — backporting it to earlier OS versions would require significant custom work that has no business value for a greenfield app. SwiftData's most stable relationship APIs also require iOS 17+, and iOS 26 gives us the full modern stack without workarounds.
 
 ---
 
@@ -29,7 +29,7 @@ iOS 26 is the minimum. The Liquid Glass design language is a first-class iOS 26 
 
 | Epic | Scope | Status |
 |------|-------|--------|
-| 0 | Infrastructure — Repo, SwiftData models, Navigation shell, Design Sprint, CLAUDE.md | In Progress |
+| 0 | Infrastructure — Repo, SwiftData models, Navigation shell, Design Sprint, CI pipeline | **Complete** |
 | 1 | Product & Category Management + E2E Tests | Pending |
 | 2 | Labor Engine & Stopwatch + E2E Tests | Pending |
 | 3 | Material Ledger & Costing + E2E Tests | Pending |
@@ -41,77 +41,75 @@ iOS 26 is the minimum. The Liquid Glass design language is a first-class iOS 26 
 
 ## Core Schema (Source of Truth)
 
+> **Important:** SwiftData auto-manages the primary key via `persistentModelID`. There is NO explicit `id: UUID` property on any model — do not add one.
+> The `description` field from the original spec is named **`summary`** in Swift to avoid shadowing `NSObject.description`. Use `summary` in all code.
+
 ### Product
-| Field | Type | Notes |
-|-------|------|-------|
-| id | UUID | Primary key |
+| Swift Property | Type | Notes |
+|----------------|------|-------|
 | title | String | |
-| description | String | |
+| summary | String | Conceptual field name is "description" |
 | image | Data? | Optional image blob |
 | shippingCost | Decimal | Per-unit shipping cost |
-| materialBuffer | Decimal | % buffer (e.g. 0.10 = 10%) |
-| laborBuffer | Decimal | % buffer (e.g. 0.05 = 5%) |
-| category | Category? | Many-to-one |
-| workSteps | [WorkStep] | One-to-many |
-| materials | [Material] | One-to-many |
+| materialBuffer | Decimal | Fraction e.g. 0.10 = 10% |
+| laborBuffer | Decimal | Fraction e.g. 0.05 = 5% |
+| category | Category? | Many-to-one, optional |
+| workSteps | [WorkStep] | One-to-many, cascade delete |
+| materials | [Material] | One-to-many, cascade delete |
 
 ### Category
-| Field | Type | Notes |
-|-------|------|-------|
-| id | UUID | Primary key |
+| Swift Property | Type | Notes |
+|----------------|------|-------|
 | name | String | |
-| products | [Product] | One-to-many (inverse) |
+| products | [Product] | One-to-many inverse; delete rule: nullify (products are NOT deleted) |
 
 ### WorkStep
-| Field | Type | Notes |
-|-------|------|-------|
-| id | UUID | Primary key |
+| Swift Property | Type | Notes |
+|----------------|------|-------|
 | title | String | |
-| description | String | |
+| summary | String | Conceptual field name is "description" |
 | image | Data? | Optional |
 | laborRate | Decimal | $/hour |
-| recordedTime | TimeInterval | Seconds — time to complete batch |
-| batchUnitsCompleted | Decimal | How many units made in that recording |
-| unitName | String | e.g. "piece", "board", "item" |
-| unitsRequiredPerProduct | Decimal | How many of this step per finished product |
-| product | Product | Many-to-one (inverse) |
+| recordedTime | TimeInterval | Seconds — total time for the batch run |
+| batchUnitsCompleted | Decimal | Units produced in that batch. **Default: 1** (guards against division by zero) |
+| unitName | String | e.g. "piece", "board". **Default: "unit"** |
+| unitsRequiredPerProduct | Decimal | Steps per finished product. **Default: 1** |
+| product | Product? | Many-to-one inverse, optional |
 
 ### Material
-| Field | Type | Notes |
-|-------|------|-------|
-| id | UUID | Primary key |
+| Swift Property | Type | Notes |
+|----------------|------|-------|
 | title | String | |
-| description | String | |
-| bulkCost | Decimal | Total cost of bulk purchase |
-| bulkQuantity | Decimal | Number of units in bulk purchase |
-| unitName | String | e.g. "oz", "board-foot", "sheet" |
-| unitsRequiredPerProduct | Decimal | How many units consumed per product |
-| product | Product | Many-to-one (inverse) |
+| summary | String | Conceptual field name is "description" |
+| bulkCost | Decimal | Total cost of the bulk purchase |
+| bulkQuantity | Decimal | Units in the bulk purchase. **Default: 1** (guards against division by zero) |
+| unitName | String | e.g. "oz", "board-foot". **Default: "unit"** |
+| unitsRequiredPerProduct | Decimal | Units consumed per product. **Default: 1** |
+| product | Product? | Many-to-one inverse, optional |
 
 ### PlatformFeeProfile
-| Field | Type | Notes |
-|-------|------|-------|
-| id | UUID | Primary key |
-| name | String | User-facing label (e.g. "My Etsy Shop") |
-| platformType | Enum | General / Etsy / Shopify / Amazon |
-| feePercentage | Decimal | Platform transaction + listing fee % |
-| marginGoal | Decimal | Target profit margin % |
+| Swift Property | Type | Notes |
+|----------------|------|-------|
+| name | String | User-facing label e.g. "My Etsy Shop" |
+| platformType | PlatformType | Enum: `.general` `.etsy` `.shopify` `.amazon` |
+| feePercentage | Decimal | Platform fee as a fraction e.g. 0.065 = 6.5% |
+| marginGoal | Decimal | Target profit margin as a fraction. **Default: 0.30** |
 
-> Fee structure details (default rates per platform, whether fees are editable) will be defined in Epic 4.
+> `PlatformType` is a `String`-backed `Codable` enum defined in `PlatformFeeProfile.swift`. Fee structure defaults per platform to be defined in Epic 4.
 
 ---
 
 ## Calculation Logic (The Math)
 
-All calculations should be implemented as computed properties on their respective models or in a dedicated `CostingEngine` handler.
+All calculations are implemented in `Engine/CostingEngine.swift` — **not** as computed properties on the models. Models are pure data; CostingEngine is pure logic. `CostingEngine.swift` is currently a stub — implementation begins in Epic 2.
 
 ```
 // WorkStep level
-unitTime = recordedTime / batchUnitsCompleted           // seconds per unit
-unitTimeHours = unitTime / 3600                         // convert to hours for rate multiplication
+unitTime      = recordedTime / batchUnitsCompleted      // seconds per unit
+unitTimeHours = unitTime / 3600                          // convert to hours
 
 // Product Labor (per WorkStep)
-// laborRate is $/hour — MUST divide seconds by 3600 before multiplying
+// laborRate is $/hour — MUST use unitTimeHours, never raw seconds
 stepLaborCost = (unitTimeHours * unitsRequiredPerProduct) * laborRate
 
 // Product total labor
@@ -134,6 +132,8 @@ totalProductionCost = (totalLaborCost + totalMaterialCost + shippingCost)
 targetRetailPrice = totalProductionCost / (1 - (feePercentage + marginGoal))
 ```
 
+**Division-by-zero guards:** `batchUnitsCompleted` and `bulkQuantity` both default to 1. CostingEngine must still guard against zero before dividing.
+
 ---
 
 ## Directory Layout
@@ -141,59 +141,64 @@ targetRetailPrice = totalProductionCost / (1 - (feePercentage + marginGoal))
 ```
 MakerMargins/                              ← repo root
 ├── CLAUDE.md                              ← this file
+├── project.yml                            ← XcodeGen spec (generates .xcodeproj)
+├── .gitignore                             ← excludes .xcodeproj, DerivedData, build/
+├── .github/
+│   └── workflows/
+│       └── ci.yml                         ← GitHub Actions: XcodeGen → build → test
 │
 ├── MakerMargins/                          ← main app target
-│   ├── MakerMarginsApp.swift              ← @main entry point, ModelContainer setup
-│   ├── ContentView.swift                  ← 3-tab TabView shell (Products | Workshop | Settings)
+│   ├── MakerMarginsApp.swift              ← @main entry point, ModelContainer with all 5 models
+│   ├── ContentView.swift                  ← 3-tab TabView shell (placeholder Text per tab)
 │   │
-│   ├── Models/                            ← SwiftData @Model types
+│   ├── Models/                            ← SwiftData @Model types (all implemented)
 │   │   ├── Product.swift
 │   │   ├── Category.swift
 │   │   ├── WorkStep.swift
 │   │   ├── Material.swift
-│   │   └── PlatformFeeProfile.swift
+│   │   └── PlatformFeeProfile.swift       ← also contains PlatformType enum
 │   │
 │   ├── Engine/                            ← calculation & formatting logic
-│   │   ├── CostingEngine.swift            ← all costing/pricing computed logic
-│   │   └── CurrencyFormatter.swift        ← shared USD/EUR display formatter
+│   │   ├── CostingEngine.swift            ← STUB — implemented Epic 2+
+│   │   └── CurrencyFormatter.swift        ← STUB — implemented Epic 1
 │   │
 │   └── Views/                             ← SwiftUI views, grouped by feature
 │       ├── Products/                      ← Tab 1 root + all product-owned views
-│       │   ├── ProductListView.swift      ← Tab 1 root (NavigationStack)
-│       │   ├── ProductDetailView.swift    ← scrollable hub: cost summary + inline sections
-│       │   ├── ProductFormView.swift      ← create/edit sheet
-│       │   ├── ProductCostSummaryCard.swift ← reusable cost breakdown card
-│       │   ├── PricingCalculatorView.swift  ← inline section in ProductDetailView
-│       │   └── BatchForecastView.swift      ← inline section in ProductDetailView
+│       │   ├── ProductListView.swift      ← Tab 1 root (NavigationStack) — STUB
+│       │   ├── ProductDetailView.swift    ← scrollable hub with DisclosureGroup sections — STUB
+│       │   ├── ProductFormView.swift      ← create/edit sheet — STUB
+│       │   ├── ProductCostSummaryCard.swift ← reusable cost card — STUB
+│       │   ├── PricingCalculatorView.swift  ← inline section in ProductDetailView — STUB
+│       │   └── BatchForecastView.swift      ← inline section in ProductDetailView — STUB
 │       ├── Workshop/                      ← Tab 2: active production
-│       │   └── WorkshopView.swift         ← flat cross-product WorkStep list → stopwatch
+│       │   └── WorkshopView.swift         ← flat cross-product WorkStep list — STUB
 │       ├── Labor/
-│       │   ├── WorkStepListView.swift     ← inline content in ProductDetailView
-│       │   ├── WorkStepDetailView.swift   ← pushed from Products tab or Workshop tab
-│       │   ├── WorkStepFormView.swift     ← create/edit sheet
-│       │   └── StopwatchView.swift        ← fullScreenCover from WorkStepDetailView
+│       │   ├── WorkStepListView.swift     ← inline content in ProductDetailView — STUB
+│       │   ├── WorkStepDetailView.swift   ← pushed from Products or Workshop tab — STUB
+│       │   ├── WorkStepFormView.swift     ← create/edit sheet — STUB
+│       │   └── StopwatchView.swift        ← fullScreenCover from WorkStepDetailView — STUB
 │       ├── Materials/
-│       │   ├── MaterialListView.swift     ← inline content in ProductDetailView
-│       │   ├── MaterialDetailView.swift   ← pushed from ProductDetailView
-│       │   └── MaterialFormView.swift     ← create/edit sheet
+│       │   ├── MaterialListView.swift     ← inline content in ProductDetailView — STUB
+│       │   ├── MaterialDetailView.swift   ← pushed from ProductDetailView — STUB
+│       │   └── MaterialFormView.swift     ← create/edit sheet — STUB
 │       ├── Categories/
-│       │   ├── CategoryListView.swift     ← pushed from SettingsView
-│       │   └── CategoryFormView.swift     ← create/edit sheet
+│       │   ├── CategoryListView.swift     ← pushed from SettingsView — STUB
+│       │   └── CategoryFormView.swift     ← create/edit sheet — STUB
 │       └── Settings/                      ← Tab 3 root + config views
-│           ├── SettingsView.swift         ← Tab 3 root: currency toggle + nav rows
-│           ├── PlatformFeeProfileListView.swift ← pushed from SettingsView
-│           └── PlatformFeeProfileFormView.swift ← create/edit sheet
+│           ├── SettingsView.swift         ← Tab 3 root: currency toggle + nav rows — STUB
+│           ├── PlatformFeeProfileListView.swift ← pushed from SettingsView — STUB
+│           └── PlatformFeeProfileFormView.swift ← create/edit sheet — STUB
 │
-├── MakerMarginsTests/                     ← unit & integration tests (XCTest / Swift Testing)
-│   ├── Epic0Tests.swift
-│   ├── Epic1Tests.swift
-│   ├── Epic2Tests.swift
-│   ├── Epic3Tests.swift
-│   ├── Epic4Tests.swift
-│   └── Epic5Tests.swift
+├── MakerMarginsTests/                     ← Swift Testing suite (import Testing, @Test)
+│   ├── Epic0Tests.swift                   ← Complete: test harness smoke test
+│   ├── Epic1Tests.swift                   ← STUB
+│   ├── Epic2Tests.swift                   ← STUB
+│   ├── Epic3Tests.swift                   ← STUB
+│   ├── Epic4Tests.swift                   ← STUB
+│   └── Epic5Tests.swift                   ← STUB
 │
 └── MakerMarginsUITests/                   ← UI automation (XCUITest)
-    └── MakerMarginsUITests.swift
+    └── MakerMarginsUITests.swift          ← STUB
 ```
 
 ---
@@ -231,28 +236,46 @@ WorkshopView                              [ROOT — flat list of all steps acros
 └── [push] WorkStepDetailView             [Level 1]
     └── [fullScreenCover] StopwatchView   [Level 2]
 ```
-**Stopwatch tap count:** 2 taps from Workshop tab (tap step row → tap Start). This is the fastest path for a maker mid-production.
+**Stopwatch tap count:** 2 taps from Workshop tab. Fastest path for a maker mid-production.
 
 ### Tab 3 — Settings (one-time config)
 ```
 SettingsView                              [ROOT — currency toggle inline]
 ├── [push] PlatformFeeProfileListView     [Level 1]
-│   ├── [sheet] PlatformFeeProfileFormView  [create / edit]
+│   └── [sheet] PlatformFeeProfileFormView  [create / edit]
 └── [push] CategoryListView               [Level 1]
     └── [sheet] CategoryFormView          [create / edit]
 ```
 
-### ContentView skeleton
-```swift
-TabView {
-    NavigationStack { ProductListView() }
-        .tabItem { Label("Products", systemImage: "square.grid.2x2") }
-    NavigationStack { WorkshopView() }
-        .tabItem { Label("Workshop", systemImage: "timer") }
-    NavigationStack { SettingsView() }
-        .tabItem { Label("Settings", systemImage: "gearshape") }
-}
-```
+---
+
+## Epic 1 — Acceptance Criteria
+
+Epic 1 is complete when ALL of the following pass:
+
+**Product CRUD**
+- [ ] User can create a Product (title, summary, shippingCost, materialBuffer, laborBuffer, optional category)
+- [ ] User can view a list of all Products on `ProductListView`
+- [ ] User can tap a Product to open `ProductDetailView` (cost sections show $0.00 placeholders — no labor/material yet)
+- [ ] User can edit a Product via `ProductFormView`
+- [ ] User can delete a Product (with confirmation); its WorkSteps and Materials are cascade-deleted
+
+**Category CRUD**
+- [ ] User can create, edit, and delete Categories from `SettingsView → CategoryListView`
+- [ ] User can assign a Category when creating/editing a Product
+- [ ] Deleting a Category does NOT delete its Products (products become uncategorised)
+
+**Currency Setting**
+- [ ] `SettingsView` has a USD / EUR toggle
+- [ ] `CurrencyFormatter` is implemented and used by all monetary display fields
+- [ ] Switching currency re-renders all visible monetary values
+
+**E2E Tests (Epic1Tests.swift)**
+- [ ] Test: create a Product and fetch it back via SwiftData
+- [ ] Test: create a Category, assign it to a Product, verify the relationship
+- [ ] Test: delete a Category, verify the Product's category becomes nil
+- [ ] Test: delete a Product, verify its WorkSteps and Materials are also deleted
+- [ ] Test: CurrencyFormatter formats Decimal correctly for USD and EUR
 
 ---
 
@@ -271,48 +294,50 @@ TabView {
 - Instead, `project.yml` in the repo root defines the full project structure
 - To regenerate the project: `xcodegen generate` (requires macOS)
 - GitHub Actions runs `xcodegen generate` automatically before every build
-- When using MacInCloud for an interactive session, run `xcodegen generate` first to recreate the `.xcodeproj`
+- When using MacInCloud for an interactive session: `git pull && xcodegen generate`
 
-### GitHub Actions CI (`.github/workflows/ci.yml`)
-Runs on every push. Steps:
-1. `brew install xcodegen`
-2. `xcodegen generate` — creates the `.xcodeproj` from `project.yml`
-3. `xcodebuild build` — builds the app targeting iPhone 16 simulator
-4. `xcodebuild test` — runs `MakerMarginsTests` suite
-5. Uploads `.xcresult` artifact for inspection
-
-### Adding a new model or file to the project
-No Xcode needed. Just create the `.swift` file in the correct directory. XcodeGen picks up all `.swift` files in the `MakerMargins/`, `MakerMarginsTests/`, and `MakerMarginsUITests/` directories automatically on the next `xcodegen generate` run. No need to manually add files to any project file.
-
-### Interactive Mac sessions (MacInCloud)
-- Use for: checking Simulator output, debugging visual layout, App Store submission steps
-- Cost: ~$1/hour pay-per-use at macincloud.com
-- First step in any MacInCloud session: `git pull && xcodegen generate`
+### Adding a new Swift file to the project
+No Xcode needed. Create the `.swift` file in the correct directory. XcodeGen automatically picks up all `.swift` files on the next `xcodegen generate` run.
 
 ### Registering a new SwiftData model
-When a new `@Model` class is implemented, add it to the `Schema([...])` array in `MakerMarginsApp.swift`. The CI build will catch any registration errors.
+Add it to the `Schema([...])` array in `MakerMarginsApp.swift`. The CI build will catch schema registration errors immediately.
+
+### GitHub Actions CI (`.github/workflows/ci.yml`)
+Runs on every push:
+1. `brew install xcodegen`
+2. `xcodegen generate`
+3. `xcodebuild build` — iPhone 16 simulator, `CODE_SIGNING_ALLOWED=NO`
+4. `xcodebuild test` — runs `MakerMarginsTests` only
+5. Uploads `.xcresult` artifact
+
+### Interactive Mac sessions (MacInCloud)
+- Use for: Simulator output, visual layout debugging, App Store steps
+- Cost: ~$1/hour at macincloud.com
+- First step every session: `git pull && xcodegen generate`
 
 ---
 
 ## Architecture Conventions
 
-- **SwiftData** models live in `Models/` and use `@Model` macro.
-- **Views** live in `Views/` organized by feature (e.g. `Views/Products/`, `Views/Labor/`).
-- **Logic/Engines** live in `Engine/` (e.g. `CostingEngine.swift`).
-- **Tests** live in `MakerMarginsTests/` — one test file per Epic, named `EpicNTests.swift`.
+- **SwiftData** models live in `Models/`, use `@Model final class`, no explicit `id` property.
+- **Views** live in `Views/` organised by feature subdirectory.
+- **All calculation logic** lives in `Engine/CostingEngine.swift` — never in model computed properties.
+- **All currency formatting** routes through `Engine/CurrencyFormatter.swift` — never inline.
+- **Tests** use `import Testing` and `@Test` macros (Swift Testing framework). One file per Epic: `EpicNTests.swift`. Do NOT use `XCTestCase`.
 - All monetary values use `Decimal` (never `Double`) to avoid floating-point drift.
-- `TimeInterval` (seconds as `Double`) is acceptable for time tracking. The `/ 3600` hours conversion is part of the `CostingEngine` formula — it is NOT done at the model layer. This prevents silent unit errors.
-- Buffers are stored as decimal fractions (0.10 = 10%) not percentages.
+- `TimeInterval` (seconds as `Double`) is acceptable for time tracking. The `/ 3600` conversion is done in `CostingEngine` only — never at the model layer.
+- Buffers and percentages are stored as decimal fractions (0.10 = 10%), never as whole numbers.
 
 ---
 
 ## Key Decisions & Notes
 
-- Labor rate is stored on the **WorkStep**, not the Product, to support mixed-skill workflows (e.g. machining at $25/hr vs. finishing at $15/hr).
-- `batchUnitsCompleted` on WorkStep allows a single timed session to cover multiple units, which is the core "batch tracking" feature.
-- PlatformFeeProfiles are global (not per-product) so the user can quickly compare prices across platforms on the Pricing Calculator screen. Each profile has a `name` field to allow multiple profiles of the same platform type.
-- Image storage uses `Data?` blobs in SwiftData for simplicity in Epic 0; migrate to file-system URLs in Epic 6 if performance requires it.
-- Currency is USD by default. A user-level setting switches to EUR. All display formatting goes through `CurrencyFormatter`; stored `Decimal` values are always in the user's chosen currency (no conversion logic needed for v1).
-- Navigation structure decided in Epic 0 design sprint: 3-tab TabView (Products | Workshop | Settings). See Navigation Structure section above.
-- Single-user app. No CloudKit, no authentication, no sync in scope.
-- The `description` field from the schema spec is implemented as `summary` in Swift (`Product.summary`, `WorkStep.summary`, `Material.summary`) to avoid shadowing `NSObject.description`. The conceptual field name remains "description" in all documentation.
+- **`summary` not `description`:** The schema's "description" field is `summary` in all Swift models to avoid shadowing `NSObject.description`. This applies to `Product.summary`, `WorkStep.summary`, `Material.summary`.
+- **Labor rate on WorkStep, not Product:** Supports mixed-skill workflows (e.g. machining at $25/hr vs. finishing at $15/hr).
+- **`batchUnitsCompleted` defaults to 1:** Prevents division-by-zero in `CostingEngine`. Never allow 0. Validate in forms.
+- **`bulkQuantity` defaults to 1:** Same reason.
+- **PlatformFeeProfiles are global:** Not per-product. One profile can be reused across all products.
+- **Cascade deletes:** Deleting a Product deletes its WorkSteps and Materials. Deleting a Category does NOT delete its Products (nullify rule).
+- **Image storage:** `Data?` blob in SwiftData for Epic 0–5. Migrate to file-system URLs in Epic 6 if performance requires it.
+- **Currency:** USD default, EUR option. Stored `Decimal` values are always in the user's chosen currency. No conversion logic — user picks one currency and sticks with it.
+- **No CloudKit, no authentication, no sync.** Single-user, local-only.
