@@ -93,7 +93,11 @@ struct ProductFormView: View {
     }
 
     private var imageSection: some View {
-        Section("Image") {
+        // Hoist to a Sendable String before the PhotosPicker closure —
+        // PhotosUI's label ViewBuilder is @Sendable in the iOS 18 SDK, so
+        // Swift 6 rejects accessing @MainActor @State from inside it directly.
+        let pickerLabel = imageData == nil ? "Choose Image" : "Change Image"
+        return Section("Image") {
             if let data = imageData, let uiImage = UIImage(data: data) {
                 HStack {
                     Image(uiImage: uiImage)
@@ -110,8 +114,7 @@ struct ProductFormView: View {
                 }
             }
             PhotosPicker(selection: $photoItem, matching: .images) {
-                Label(imageData == nil ? "Choose Image" : "Change Image",
-                      systemImage: "photo")
+                Label(pickerLabel, systemImage: "photo")
             }
         }
     }
