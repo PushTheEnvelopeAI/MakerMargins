@@ -32,6 +32,12 @@ enum Currency: String, CaseIterable, Identifiable {
 @MainActor
 @Observable
 final class CurrencyFormatter {
+
+    /// Explicitly nonisolated so the type can be instantiated from any context
+    /// (e.g. EnvironmentKey.defaultValue). All stored properties have inline
+    /// defaults, so the body is empty.
+    nonisolated init() {}
+
     var selected: Currency = .usd {
         didSet {
             if oldValue != selected {
@@ -57,7 +63,7 @@ final class CurrencyFormatter {
 // MARK: - Environment
 
 private struct CurrencyFormatterKey: EnvironmentKey {
-    nonisolated(unsafe) static let defaultValue = CurrencyFormatter()
+    static let defaultValue = CurrencyFormatter()
 }
 
 extension EnvironmentValues {
