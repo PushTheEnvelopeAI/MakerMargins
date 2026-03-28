@@ -26,9 +26,12 @@ struct MakerMarginsApp: App {
         }
     }()
 
+    @State private var currencyFormatter = CurrencyFormatter()
+
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(\.currencyFormatter, currencyFormatter)
         }
         .modelContainer(container)
     }
