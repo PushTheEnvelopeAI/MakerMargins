@@ -54,17 +54,17 @@ struct Epic1Tests {
         let container = try makeContainer()
         let ctx = ModelContext(container)
 
-        let product = Product(title: "Oak Box", shippingCost: Decimal("3.00")!)
+        let product = Product(title: "Oak Box", shippingCost: Decimal(string: "3.00")!)
         ctx.insert(product)
         try ctx.save()
 
         product.title = "Cherry Box"
-        product.shippingCost = Decimal("4.50")!
+        product.shippingCost = Decimal(string: "4.50")!
         try ctx.save()
 
         let results = try ctx.fetch(FetchDescriptor<Product>())
         #expect(results[0].title == "Cherry Box")
-        #expect(results[0].shippingCost == Decimal("4.50")!)
+        #expect(results[0].shippingCost == Decimal(string: "4.50")!)
     }
 
     @Test("Delete a product and verify it is removed")
@@ -126,7 +126,7 @@ struct Epic1Tests {
         ctx.insert(category)
         try ctx.save()
 
-        let results = try ctx.fetch(FetchDescriptor<Category>())
+        let results = try ctx.fetch(FetchDescriptor<MakerMargins.Category>())
         #expect(results.count == 1)
         #expect(results[0].name == "Cutting Boards")
     }
@@ -175,7 +175,7 @@ struct Epic1Tests {
         #expect(products[0].category == nil)
 
         // Category must be gone
-        let categories = try ctx.fetch(FetchDescriptor<Category>())
+        let categories = try ctx.fetch(FetchDescriptor<MakerMargins.Category>())
         #expect(categories.isEmpty)
     }
 
