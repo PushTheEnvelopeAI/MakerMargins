@@ -315,3 +315,4 @@ When a new `@Model` class is implemented, add it to the `Schema([...])` array in
 - Currency is USD by default. A user-level setting switches to EUR. All display formatting goes through `CurrencyFormatter`; stored `Decimal` values are always in the user's chosen currency (no conversion logic needed for v1).
 - Navigation structure decided in Epic 0 design sprint: 3-tab TabView (Products | Workshop | Settings). See Navigation Structure section above.
 - Single-user app. No CloudKit, no authentication, no sync in scope.
+- The `description` field from the schema spec is implemented as `summary` in Swift (`Product.summary`, `WorkStep.summary`, `Material.summary`) to avoid shadowing `NSObject.description`. The conceptual field name remains "description" in all documentation.
