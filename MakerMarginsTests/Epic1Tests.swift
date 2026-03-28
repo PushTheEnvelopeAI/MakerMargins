@@ -9,6 +9,7 @@
 // never share state. Uses Swift Testing (import Testing, @Test, #expect).
 
 import Testing
+import Foundation
 import SwiftData
 @testable import MakerMargins
 
