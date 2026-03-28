@@ -190,12 +190,8 @@ struct ProductFormView: View {
 
     private func loadPhoto(from item: PhotosPickerItem?) {
         guard let item else { return }
-        item.loadTransferable(type: Data.self) { result in
-            DispatchQueue.main.async {
-                if case .success(let data) = result {
-                    imageData = data
-                }
-            }
+        Task { @MainActor in
+            imageData = try? await item.loadTransferable(type: Data.self)
         }
     }
 }

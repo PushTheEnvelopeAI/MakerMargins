@@ -30,8 +30,9 @@ jobs:
           set -o pipefail
           xcodebuild build \
             -scheme MakerMargins \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
-            CODE_SIGNING_ALLOWED=NO
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            CODE_SIGNING_ALLOWED=NO \
+            IPHONEOS_DEPLOYMENT_TARGET=18.0
 
       - name: Run Unit Tests
         run: |
@@ -39,8 +40,9 @@ jobs:
           xcodebuild test \
             -scheme MakerMargins \
             -only-testing MakerMarginsTests \
-            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
             CODE_SIGNING_ALLOWED=NO \
+            IPHONEOS_DEPLOYMENT_TARGET=18.0 \
             -resultBundlePath TestResults
 
       - name: Upload Test Results
