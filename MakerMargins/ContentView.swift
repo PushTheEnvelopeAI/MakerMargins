@@ -18,8 +18,7 @@ struct ContentView: View {
     var body: some View {
         TabView {
             NavigationStack {
-                Text("Products coming in Epic 1")
-                    .navigationTitle("Products")
+                ProductListView()
             }
             .tabItem {
                 Label("Products", systemImage: "square.grid.2x2")
@@ -34,8 +33,7 @@ struct ContentView: View {
             }
 
             NavigationStack {
-                Text("Settings coming in Epic 1")
-                    .navigationTitle("Settings")
+                SettingsView()
             }
             .tabItem {
                 Label("Settings", systemImage: "gearshape")
