@@ -76,13 +76,15 @@ struct ProductFormView: View {
     // MARK: - Sections
 
     private var imageSection: some View {
-        // Hoist to Sendable values before the PhotosPicker closure —
-        // PhotosUI's label ViewBuilder is @Sendable in the iOS 18 SDK.
-        let hasImage = imageData != nil
+        // Hoist all imageData reads to Sendable locals before the PhotosPicker
+        // closure — PhotosUI's @ViewBuilder label is @Sendable in the iOS 18 SDK,
+        // so accessing @MainActor @State directly inside it is a Swift 6 error.
+        let currentImage: UIImage? = imageData.flatMap { UIImage(data: $0) }
+        let hasImage = currentImage != nil
         return Section {
             PhotosPicker(selection: $photoItem, matching: .images) {
                 VStack(spacing: 10) {
-                    if let data = imageData, let uiImage = UIImage(data: data) {
+                    if let uiImage = currentImage {
                         Image(uiImage: uiImage)
                             .resizable()
                             .scaledToFill()
@@ -107,7 +109,7 @@ struct ProductFormView: View {
             }
             .buttonStyle(.plain)
 
-            if imageData != nil {
+            if hasImage {
                 Button("Remove Photo", role: .destructive) {
                     imageData = nil
                     photoItem = nil
