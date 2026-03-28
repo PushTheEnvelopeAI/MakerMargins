@@ -1,6 +1,22 @@
 // Category.swift
 // MakerMargins
 //
-// SwiftData model for a product category.
-// Relationships: has many Products.
-// Epic 0 — placeholder. Full implementation in Epic 1.
+// Organises products into named groups (e.g. "Cutting Boards", "Jewelry").
+// One Category → many Products. Deleting a Category nullifies the category
+// on its products — it does NOT delete the products themselves.
+
+import Foundation
+import SwiftData
+
+@Model
+final class Category {
+    var name: String
+
+    // Inverse of Product.category. Delete rule: .nullify (default) —
+    // orphaned products keep their data, their category becomes nil.
+    var products: [Product] = []
+
+    init(name: String) {
+        self.name = name
+    }
+}

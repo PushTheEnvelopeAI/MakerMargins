@@ -1,7 +1,64 @@
 // WorkStep.swift
 // MakerMargins
 //
-// SwiftData model for a single labor step in a product's production process.
-// Holds recordedTime (seconds), batchUnitsCompleted, and laborRate ($/hr).
-// Relationships: belongs to one Product.
-// Epic 0 — placeholder. Full implementation in Epic 2.
+// A single labour step in a product's production process.
+//
+// Core batch-tracking fields:
+//   recordedTime          — total seconds elapsed for the timed batch
+//   batchUnitsCompleted   — how many finished units came out of that batch
+//
+// CostingEngine derives:
+//   unitTimeHours  = (recordedTime / batchUnitsCompleted) / 3600
+//   stepLaborCost  = unitTimeHours * unitsRequiredPerProduct * laborRate
+
+import Foundation
+import SwiftData
+
+@Model
+final class WorkStep {
+    var title: String
+    var summary: String         // named 'summary' to avoid conflict with NSObject.description
+    var image: Data?
+
+    /// Hourly labour rate for this step in the user's chosen currency ($/hr or €/hr).
+    var laborRate: Decimal
+
+    /// Total elapsed seconds for the recorded batch run. Set by StopwatchView.
+    var recordedTime: TimeInterval
+
+    /// Number of finished units produced during the recorded batch run.
+    var batchUnitsCompleted: Decimal
+
+    /// Display label for the unit of work (e.g. "piece", "board", "item").
+    var unitName: String
+
+    /// How many times this step is performed per finished product.
+    var unitsRequiredPerProduct: Decimal
+
+    // MARK: Relationship
+
+    /// The product this step belongs to. Nil if the product has been deleted.
+    var product: Product?
+
+    init(
+        title: String,
+        summary: String = "",
+        image: Data? = nil,
+        laborRate: Decimal = 0,
+        recordedTime: TimeInterval = 0,
+        batchUnitsCompleted: Decimal = 1,
+        unitName: String = "unit",
+        unitsRequiredPerProduct: Decimal = 1,
+        product: Product? = nil
+    ) {
+        self.title = title
+        self.summary = summary
+        self.image = image
+        self.laborRate = laborRate
+        self.recordedTime = recordedTime
+        self.batchUnitsCompleted = batchUnitsCompleted
+        self.unitName = unitName
+        self.unitsRequiredPerProduct = unitsRequiredPerProduct
+        self.product = product
+    }
+}
