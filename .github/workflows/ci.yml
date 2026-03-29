@@ -25,12 +25,21 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
+      - name: Download iOS Simulator Runtime
+        run: xcodebuild -downloadPlatform iOS
+
+      - name: Prepare Simulator
+        run: |
+          DEVICE_UDID=$(xcrun simctl create "CI iPhone" "iPhone 16")
+          xcrun simctl boot "$DEVICE_UDID"
+          echo "DEVICE_UDID=$DEVICE_UDID" >> "$GITHUB_ENV"
+
       - name: Build
         run: |
           set -o pipefail
           xcodebuild build \
             -scheme MakerMargins \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -destination "platform=iOS Simulator,id=$DEVICE_UDID" \
             CODE_SIGNING_ALLOWED=NO \
             IPHONEOS_DEPLOYMENT_TARGET=18.0
 
@@ -40,7 +49,7 @@ jobs:
           xcodebuild test \
             -scheme MakerMargins \
             -only-testing MakerMarginsTests \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -destination "platform=iOS Simulator,id=$DEVICE_UDID" \
             CODE_SIGNING_ALLOWED=NO \
             IPHONEOS_DEPLOYMENT_TARGET=18.0 \
             -resultBundlePath TestResults

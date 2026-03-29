@@ -29,12 +29,21 @@ enum AppTheme {
             }
         )
 
+        /// Page-level background — subtle warm tint so cards pop.
+        static let surface = Color(
+            UIColor { traits in
+                traits.userInterfaceStyle == .dark
+                    ? UIColor(red: 0.078, green: 0.075, blue: 0.067, alpha: 1) // #141311
+                    : UIColor(red: 0.984, green: 0.973, blue: 0.957, alpha: 1) // #FBF8F4
+            }
+        )
+
         /// Elevated surface — grid cells, cards. Warm tinted.
         static let surfaceElevated = Color(
             UIColor { traits in
                 traits.userInterfaceStyle == .dark
                     ? UIColor(red: 0.11, green: 0.10, blue: 0.09, alpha: 1)   // #1C1A17
-                    : UIColor(red: 1.00, green: 0.98, blue: 0.96, alpha: 1)   // #FFFBF5
+                    : UIColor(red: 1.00, green: 0.969, blue: 0.933, alpha: 1)  // #FFF7EE
             }
         )
 

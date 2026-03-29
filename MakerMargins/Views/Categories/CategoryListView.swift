@@ -47,6 +47,8 @@ struct CategoryListView: View {
                 )
             }
         }
+        .scrollContentBackground(.hidden)
+        .appBackground()
         .navigationTitle("Categories")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {

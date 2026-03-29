@@ -1,7 +1,9 @@
 // WorkStep.swift
 // MakerMargins
 //
-// A single labour step in a product's production process.
+// A single labour step that can be shared across multiple products.
+// WorkSteps are independent entities — they are NOT owned by a single product.
+// The ProductWorkStep join model links steps to products with per-product ordering.
 //
 // Core batch-tracking fields:
 //   recordedTime          — total seconds elapsed for the timed batch
@@ -37,8 +39,9 @@ final class WorkStep {
 
     // MARK: Relationship
 
-    /// The product this step belongs to. Nil if the product has been deleted.
-    var product: Product?
+    /// Join entries linking this step to products. Cascade-deleted when the step is deleted.
+    @Relationship(deleteRule: .cascade)
+    var productWorkSteps: [ProductWorkStep] = []
 
     init(
         title: String,
@@ -48,8 +51,7 @@ final class WorkStep {
         recordedTime: TimeInterval = 0,
         batchUnitsCompleted: Decimal = 1,
         unitName: String = "unit",
-        unitsRequiredPerProduct: Decimal = 1,
-        product: Product? = nil
+        unitsRequiredPerProduct: Decimal = 1
     ) {
         self.title = title
         self.summary = summary
@@ -59,6 +61,5 @@ final class WorkStep {
         self.batchUnitsCompleted = batchUnitsCompleted
         self.unitName = unitName
         self.unitsRequiredPerProduct = unitsRequiredPerProduct
-        self.product = product
     }
 }

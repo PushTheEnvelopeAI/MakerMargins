@@ -2,8 +2,8 @@
 // MakerMargins
 //
 // Reusable card showing the cost breakdown for a Product.
-// Epic 1: shipping cost is live; all other lines show $0.00 until
-// CostingEngine is implemented in Epic 2.
+// Labor and total production cost use CostingEngine (Epic 2).
+// Materials stub remains until Epic 3.
 
 import SwiftUI
 
@@ -14,13 +14,13 @@ struct ProductCostSummaryCard: View {
     var body: some View {
         GroupBox("Cost Summary") {
             VStack(spacing: 0) {
-                costRow(label: "Labor", value: 0, note: "Available in Epic 2")
+                costRow(label: "Labor", value: CostingEngine.totalLaborCost(product: product))
                 Divider()
                 costRow(label: "Materials", value: 0, note: "Available in Epic 3")
                 Divider()
                 costRow(label: "Shipping", value: product.shippingCost)
                 Divider()
-                costRow(label: "Total Production Cost", value: product.shippingCost, bold: true)
+                costRow(label: "Total Production Cost", value: CostingEngine.totalProductionCost(product: product), bold: true)
             }
         }
     }

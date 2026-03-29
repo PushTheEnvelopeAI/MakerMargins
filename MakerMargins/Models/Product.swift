@@ -2,8 +2,9 @@
 // MakerMargins
 //
 // A maker's SKU — the central entity of the app.
-// Owns WorkSteps (labor) and Materials (inputs). All costing rolls up here.
-// Deleting a Product cascades to its WorkSteps and Materials.
+// Owns Materials (inputs) and links to shared WorkSteps via ProductWorkStep.
+// Deleting a Product cascades to its ProductWorkStep associations and Materials.
+// WorkSteps themselves are shared and survive product deletion.
 
 import Foundation
 import SwiftData
@@ -28,9 +29,10 @@ final class Product {
     /// The category this product belongs to. Optional — products can be uncategorised.
     var category: Category?
 
-    /// All labour steps for this product. Cascade-deleted with the product.
+    /// Join entries linking shared WorkSteps to this product. Cascade-deleted with the product
+    /// (removes associations only — the WorkSteps themselves survive in the step library).
     @Relationship(deleteRule: .cascade)
-    var workSteps: [WorkStep] = []
+    var productWorkSteps: [ProductWorkStep] = []
 
     /// All raw materials for this product. Cascade-deleted with the product.
     @Relationship(deleteRule: .cascade)

@@ -114,6 +114,8 @@ struct ProductListView: View {
             }
         }
         .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .appBackground()
     }
 
     // MARK: - Grid
@@ -148,6 +150,7 @@ struct ProductListView: View {
                 .padding(.bottom)
             }
         }
+        .appBackground()
     }
 
     // MARK: - Category chips
