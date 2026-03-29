@@ -5,21 +5,14 @@
 // Provides semantic colors, spacing, corner radii, and shadow properties
 // with automatic light/dark mode support.
 //
-// Injected once at the app root and accessed via @Environment(\.theme).
+// Injected via EnvironmentKey and accessed via @Environment(\.theme).
 // All views must use theme tokens — never hardcode colors inline.
 
 import SwiftUI
-import Observation
 
 // MARK: - Theme
 
-@MainActor
-@Observable
-final class Theme {
-
-    /// Explicitly nonisolated so the type can be instantiated from any context
-    /// (e.g. EnvironmentKey.defaultValue).
-    nonisolated init() {}
+struct Theme {
 
     // MARK: - Brand / Accent
 
