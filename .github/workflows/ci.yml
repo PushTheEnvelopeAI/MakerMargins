@@ -39,8 +39,8 @@ jobs:
 
       - name: Prepare Simulator
         run: |
-          # Use the latest available iPhone device type
-          RUNTIME=$(xcrun simctl list runtimes | grep iOS | tail -1 | awk -F'[()]' '{print $2}' | awk '{print $NF}')
+          # Extract the full runtime identifier (e.g. com.apple.CoreSimulator.SimRuntime.iOS-18-2)
+          RUNTIME=$(xcrun simctl list runtimes | grep "com.apple.CoreSimulator.SimRuntime.iOS" | tail -1 | awk '{print $NF}')
           echo "Using runtime: $RUNTIME"
           DEVICE_UDID=$(xcrun simctl create "CI iPhone" "com.apple.CoreSimulator.SimDeviceType.iPhone-16" "$RUNTIME")
           xcrun simctl boot "$DEVICE_UDID"
