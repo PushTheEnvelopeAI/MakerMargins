@@ -12,6 +12,7 @@ struct ProductListView: View {
     @Query(sort: \Product.title) private var products: [Product]
     @Query(sort: \Category.name) private var categories: [Category]
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.theme) private var theme
 
     @State private var searchText = ""
     @State private var selectedCategory: Category? = nil
@@ -175,10 +176,10 @@ struct ProductListView: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 7)
                 .background(
-                    isSelected ? Color.accentColor : Color(.secondarySystemFill),
+                    isSelected ? theme.chipSelected : theme.chipDefault,
                     in: Capsule()
                 )
-                .foregroundStyle(isSelected ? .white : .primary)
+                .foregroundStyle(isSelected ? theme.surface : theme.textPrimary)
         }
         .buttonStyle(.plain)
     }
@@ -205,6 +206,7 @@ private struct ProductThumbnailView: View {
     let imageData: Data?
     let size: CGSize
     let cornerRadius: CGFloat
+    @Environment(\.theme) private var theme
 
     var body: some View {
         if let data = imageData, let uiImage = UIImage(data: data) {
@@ -215,11 +217,11 @@ private struct ProductThumbnailView: View {
                 .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
         } else {
             RoundedRectangle(cornerRadius: cornerRadius)
-                .fill(Color(.secondarySystemFill))
+                .fill(theme.fill)
                 .frame(width: size.width, height: size.height)
                 .overlay {
                     Image(systemName: "photo")
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(theme.textTertiary)
                 }
         }
     }
@@ -229,6 +231,7 @@ private struct ProductThumbnailView: View {
 
 private struct ProductRowView: View {
     let product: Product
+    @Environment(\.theme) private var theme
 
     var body: some View {
         HStack(spacing: 12) {
@@ -240,10 +243,11 @@ private struct ProductRowView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(product.title)
                     .font(.body)
+                    .foregroundStyle(theme.textPrimary)
                 if let category = product.category {
                     Text(category.name)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.textSecondary)
                 }
             }
         }
@@ -255,6 +259,7 @@ private struct ProductRowView: View {
 
 private struct ProductGridCell: View {
     let product: Product
+    @Environment(\.theme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -262,22 +267,22 @@ private struct ProductGridCell: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(product.title)
                     .font(.subheadline.weight(.medium))
+                    .foregroundStyle(theme.textPrimary)
                     .lineLimit(2)
                 if let category = product.category {
                     Text(category.name)
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.textSecondary)
                         .lineLimit(1)
                 }
             }
             .padding(.horizontal, 4)
             .padding(.bottom, 8)
         }
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
+        .background(theme.surface, in: RoundedRectangle(cornerRadius: 14))
+        .shadow(color: theme.shadowColor, radius: theme.shadowRadius, y: theme.shadowY)
     }
 
-    // Grid cells need a full-width variable-height image with uneven corners,
-    // so this uses a bespoke layout rather than ProductThumbnailView.
     @ViewBuilder
     private var gridThumbnail: some View {
         let clip = UnevenRoundedRectangle(
@@ -293,14 +298,14 @@ private struct ProductGridCell: View {
                 .clipShape(clip)
         } else {
             Rectangle()
-                .fill(Color(.tertiarySystemFill))
+                .fill(theme.fillSubtle)
                 .frame(maxWidth: .infinity)
                 .frame(height: 140)
                 .clipShape(clip)
                 .overlay {
                     Image(systemName: "photo")
                         .font(.title2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(theme.textTertiary)
                 }
         }
     }

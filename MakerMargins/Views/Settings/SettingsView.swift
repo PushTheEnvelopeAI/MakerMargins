@@ -10,6 +10,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(\.currencyFormatter) private var currencyFormatter
+    @Environment(\.theme) private var theme
 
     var body: some View {
         // @Bindable lets us derive $formatter.selected from the @Observable

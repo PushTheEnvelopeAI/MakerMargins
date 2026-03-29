@@ -16,6 +16,7 @@ import PhotosUI
 struct ProductFormView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.theme) private var theme
 
     @Query(sort: \Category.name) private var categories: [Category]
 
@@ -81,6 +82,11 @@ struct ProductFormView: View {
         // so accessing @MainActor @State directly inside it is a Swift 6 error.
         let currentImage: UIImage? = imageData.flatMap { UIImage(data: $0) }
         let hasImage = currentImage != nil
+        // Hoist theme colors to Sendable locals alongside imageData —
+        // PhotosPicker's label closure is @Sendable in the iOS 18 SDK.
+        let fillColor = theme.fill
+        let secondaryColor = theme.textSecondary
+        let accentColor = theme.accent
         return Section {
             PhotosPicker(selection: $photoItem, matching: .images) {
                 VStack(spacing: 10) {
@@ -92,17 +98,17 @@ struct ProductFormView: View {
                             .clipShape(Circle())
                     } else {
                         Circle()
-                            .fill(Color(.secondarySystemFill))
+                            .fill(fillColor)
                             .frame(width: 100, height: 100)
                             .overlay {
                                 Image(systemName: "camera")
                                     .font(.title2)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(secondaryColor)
                             }
                     }
                     Text(hasImage ? "Change Photo" : "Add Photo")
                         .font(.subheadline)
-                        .foregroundStyle(.tint)
+                        .foregroundStyle(accentColor)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)

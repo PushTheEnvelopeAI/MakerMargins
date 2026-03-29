@@ -30,7 +30,7 @@ iOS 26 is the minimum. The Liquid Glass design language is a first-class iOS 26 
 | Epic | Scope | Status |
 |------|-------|--------|
 | 0 | Infrastructure — Repo, SwiftData models, Navigation shell, Design Sprint, CI pipeline | **Complete** |
-| 1 | Product & Category Management + E2E Tests | Pending |
+| 1 | Product & Category Management + E2E Tests | **Complete** |
 | 2 | Labor Engine & Stopwatch + E2E Tests | Pending |
 | 3 | Material Ledger & Costing + E2E Tests | Pending |
 | 4 | Pricing Calculator & Platform Tabs + E2E Tests | Pending |
