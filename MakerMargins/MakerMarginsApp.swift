@@ -27,11 +27,14 @@ struct MakerMarginsApp: App {
     }()
 
     @State private var currencyFormatter = CurrencyFormatter()
+    @State private var appearanceManager = AppearanceManager()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environment(\.currencyFormatter, currencyFormatter)
+                .environment(\.appearanceManager, appearanceManager)
+                .preferredColorScheme(appearanceManager.resolvedColorScheme)
                 .tint(AppTheme.Colors.accent)
         }
         .modelContainer(container)

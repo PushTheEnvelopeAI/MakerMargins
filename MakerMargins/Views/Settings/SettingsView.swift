@@ -10,18 +10,25 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(\.currencyFormatter) private var currencyFormatter
+    @Environment(\.appearanceManager) private var appearanceManager
 
     var body: some View {
-        // @Bindable lets us derive $formatter.selected from the @Observable
-        // currencyFormatter sourced from the environment — the Apple-recommended
-        // pattern for binding to @Observable objects obtained via @Environment.
+        // @Bindable lets us derive bindings from @Observable objects
+        // sourced from the environment — the Apple-recommended pattern.
         @Bindable var formatter = currencyFormatter
+        @Bindable var appearance = appearanceManager
 
         List {
             Section("Display") {
                 Picker("Currency", selection: $formatter.selected) {
                     ForEach(Currency.allCases) { currency in
                         Text(currency.displayName).tag(currency)
+                    }
+                }
+
+                Picker("Appearance", selection: $appearance.setting) {
+                    ForEach(AppearanceSetting.allCases) { mode in
+                        Label(mode.displayName, systemImage: mode.icon).tag(mode)
                     }
                 }
             }
@@ -43,6 +50,8 @@ struct SettingsView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .appBackground()
         .navigationTitle("Settings")
     }
 }

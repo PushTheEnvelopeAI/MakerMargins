@@ -28,6 +28,7 @@ struct ProductDetailView: View {
             }
             .padding(.vertical)
         }
+        .appBackground()
         .navigationTitle(product.title)
         .navigationBarTitleDisplayMode(.large)
         .toolbar {

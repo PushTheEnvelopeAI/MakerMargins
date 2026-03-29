@@ -15,7 +15,16 @@ extension View {
                 AppTheme.Colors.surfaceElevated,
                 in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
             )
-            .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+            .shadow(color: .black.opacity(0.12), radius: 4, x: 0, y: 2)
+    }
+}
+
+// MARK: - App Background
+
+extension View {
+    /// Applies the warm page-level background.
+    func appBackground() -> some View {
+        self.background(AppTheme.Colors.surface)
     }
 }
 
