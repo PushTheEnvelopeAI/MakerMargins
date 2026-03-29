@@ -131,7 +131,10 @@ struct ProductListView: View {
                     .padding(.top, 40)
             } else {
                 LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: AppTheme.Sizing.gridMinColumn), spacing: AppTheme.Spacing.lg)],
+                    columns: [
+                        GridItem(.flexible(), spacing: AppTheme.Spacing.lg),
+                        GridItem(.flexible())
+                    ],
                     spacing: AppTheme.Spacing.lg
                 ) {
                     ForEach(filteredProducts) { product in
@@ -275,6 +278,7 @@ private struct ProductGridCell: View {
             Spacer(minLength: 0)
         }
         .padding(.bottom, AppTheme.Spacing.sm)
+        .frame(height: AppTheme.Sizing.gridCellHeight)
         .cardStyle()
     }
 
@@ -292,6 +296,7 @@ private struct ProductGridCell: View {
                 .scaledToFill()
                 .frame(maxWidth: .infinity)
                 .frame(height: AppTheme.Sizing.gridImageHeight)
+                .clipped()
                 .clipShape(clip)
         } else {
             Rectangle()

@@ -83,6 +83,7 @@ enum AppTheme {
         static let thumbnailSmall:        CGFloat = 48
         static let thumbnailForm:         CGFloat = 100
         static let gridImageHeight:       CGFloat = 160
+        static let gridCellHeight:        CGFloat = 240
         static let gridMinColumn:         CGFloat = 160
         static let detailImageHeight:     CGFloat = 240
         static let detailPlaceholderHeight: CGFloat = 160
