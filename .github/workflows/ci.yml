@@ -26,11 +26,23 @@ jobs:
         run: xcodegen generate
 
       - name: Download iOS Simulator Runtime
-        run: xcodebuild -downloadPlatform iOS
+        run: |
+          # List available runtimes — macos-latest typically has iOS 18 pre-installed.
+          # Only download if no iOS runtime is found.
+          if xcrun simctl list runtimes | grep -q "iOS"; then
+            echo "iOS simulator runtime already available:"
+            xcrun simctl list runtimes | grep iOS
+          else
+            echo "No iOS runtime found, downloading..."
+            xcodebuild -downloadPlatform iOS
+          fi
 
       - name: Prepare Simulator
         run: |
-          DEVICE_UDID=$(xcrun simctl create "CI iPhone" "iPhone 16")
+          # Extract the full runtime identifier (e.g. com.apple.CoreSimulator.SimRuntime.iOS-18-2)
+          RUNTIME=$(xcrun simctl list runtimes | grep "com.apple.CoreSimulator.SimRuntime.iOS" | tail -1 | awk '{print $NF}')
+          echo "Using runtime: $RUNTIME"
+          DEVICE_UDID=$(xcrun simctl create "CI iPhone" "com.apple.CoreSimulator.SimDeviceType.iPhone-16" "$RUNTIME")
           xcrun simctl boot "$DEVICE_UDID"
           echo "DEVICE_UDID=$DEVICE_UDID" >> "$GITHUB_ENV"
 
