@@ -11,6 +11,7 @@ import SwiftData
 struct CategoryListView: View {
     @Query(sort: \Category.name) private var categories: [Category]
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.theme) private var theme
 
     @State private var showingCreateForm = false
     @State private var editingCategory: Category? = nil
@@ -24,15 +25,15 @@ struct CategoryListView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(category.name)
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(theme.textPrimary)
                             Text("\(category.products.count) product\(category.products.count == 1 ? "" : "s")")
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(theme.textSecondary)
                         }
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(.caption)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(theme.textTertiary)
                     }
                 }
             }

@@ -13,6 +13,7 @@ struct ProductDetailView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.theme) private var theme
 
     @State private var showingEditForm = false
     @State private var showingDeleteConfirmation = false
@@ -78,13 +79,13 @@ struct ProductDetailView: View {
                     .padding(.horizontal)
             } else {
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.secondarySystemFill))
+                    .fill(theme.fill)
                     .frame(maxWidth: .infinity)
                     .frame(height: 160)
                     .overlay {
                         Image(systemName: "photo")
                             .font(.largeTitle)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(theme.textTertiary)
                     }
                     .padding(.horizontal)
             }
@@ -95,13 +96,13 @@ struct ProductDetailView: View {
                         .font(.caption.weight(.medium))
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
-                        .background(Color.accentColor.opacity(0.15), in: Capsule())
-                        .foregroundStyle(Color.accentColor)
+                        .background(theme.accentSoft, in: Capsule())
+                        .foregroundStyle(theme.accent)
                 }
                 if !product.summary.isEmpty {
                     Text(product.summary)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.textSecondary)
                 }
             }
             .padding(.horizontal)
@@ -113,7 +114,7 @@ struct ProductDetailView: View {
             HStack {
                 Text("Add work steps to calculate labor costs")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.textSecondary)
                 Spacer()
             }
             .padding(.vertical, 4)
@@ -126,7 +127,7 @@ struct ProductDetailView: View {
             HStack {
                 Text("Add materials to calculate material costs")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.textSecondary)
                 Spacer()
             }
             .padding(.vertical, 4)

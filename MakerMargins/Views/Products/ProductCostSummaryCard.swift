@@ -10,10 +10,24 @@ import SwiftUI
 struct ProductCostSummaryCard: View {
     let product: Product
     @Environment(\.currencyFormatter) private var formatter
+    @Environment(\.theme) private var theme
 
     var body: some View {
-        GroupBox("Cost Summary") {
+        VStack(spacing: 0) {
+            // Accent bar at top
+            theme.accent
+                .frame(height: 3)
+                .frame(maxWidth: .infinity)
+
             VStack(spacing: 0) {
+                HStack {
+                    Text("Cost Summary")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(theme.textPrimary)
+                    Spacer()
+                }
+                .padding(.bottom, 10)
+
                 costRow(label: "Labor", value: 0, note: "Available in Epic 2")
                 Divider()
                 costRow(label: "Materials", value: 0, note: "Available in Epic 3")
@@ -22,7 +36,10 @@ struct ProductCostSummaryCard: View {
                 Divider()
                 costRow(label: "Total Production Cost", value: product.shippingCost, bold: true)
             }
+            .padding()
         }
+        .background(theme.surfaceElevated, in: RoundedRectangle(cornerRadius: theme.cardCornerRadius))
+        .shadow(color: theme.shadowColor, radius: theme.shadowRadius, y: theme.shadowY)
     }
 
     @ViewBuilder
@@ -31,16 +48,17 @@ struct ProductCostSummaryCard: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(label)
                     .font(bold ? .subheadline.weight(.semibold) : .subheadline)
+                    .foregroundStyle(theme.textPrimary)
                 if let note {
                     Text(note)
                         .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(theme.textTertiary)
                 }
             }
             Spacer()
             Text(formatter.format(value))
                 .font(bold ? .subheadline.weight(.semibold) : .subheadline)
-                .foregroundStyle(bold ? .primary : .secondary)
+                .foregroundStyle(bold ? theme.accent : theme.textSecondary)
         }
         .padding(.vertical, 8)
     }

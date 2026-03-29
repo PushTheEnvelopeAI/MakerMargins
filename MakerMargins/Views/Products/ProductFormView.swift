@@ -16,6 +16,7 @@ import PhotosUI
 struct ProductFormView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.theme) private var theme
 
     @Query(sort: \Category.name) private var categories: [Category]
 
@@ -92,17 +93,17 @@ struct ProductFormView: View {
                             .clipShape(Circle())
                     } else {
                         Circle()
-                            .fill(Color(.secondarySystemFill))
+                            .fill(theme.fill)
                             .frame(width: 100, height: 100)
                             .overlay {
                                 Image(systemName: "camera")
                                     .font(.title2)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(theme.textSecondary)
                             }
                     }
                     Text(hasImage ? "Change Photo" : "Add Photo")
                         .font(.subheadline)
-                        .foregroundStyle(.tint)
+                        .foregroundStyle(theme.accent)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)

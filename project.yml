@@ -25,6 +25,10 @@ targets:
     deploymentTarget: "26.0"
     sources:
       - MakerMargins
+    info:
+      properties:
+        UILaunchScreen: {}
+        UIApplicationSupportsIndirectInputEvents: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.makermargins.app

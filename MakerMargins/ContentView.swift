@@ -15,6 +15,8 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(\.theme) private var theme
+
     var body: some View {
         TabView {
             NavigationStack {
@@ -39,5 +41,6 @@ struct ContentView: View {
                 Label("Settings", systemImage: "gearshape")
             }
         }
+        .tint(theme.accent)
     }
 }
