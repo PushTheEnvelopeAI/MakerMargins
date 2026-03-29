@@ -273,7 +273,7 @@ private struct ProductGridCell: View {
                     .foregroundStyle(product.category != nil ? Color.secondary : Color.clear)
                     .lineLimit(1)
             }
-            .padding(.horizontal, AppTheme.Spacing.xs)
+            .padding(.horizontal, AppTheme.Spacing.sm)
 
             Spacer(minLength: 0)
         }
@@ -291,17 +291,17 @@ private struct ProductGridCell: View {
             topTrailingRadius: AppTheme.CornerRadius.medium
         )
         if let data = product.image, let uiImage = UIImage(data: data) {
-            Image(uiImage: uiImage)
-                .resizable()
-                .scaledToFill()
-                .frame(maxWidth: .infinity)
+            Color.clear
                 .frame(height: AppTheme.Sizing.gridImageHeight)
-                .clipped()
+                .overlay {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                }
                 .clipShape(clip)
         } else {
             Rectangle()
                 .fill(AppTheme.Colors.placeholder)
-                .frame(maxWidth: .infinity)
                 .frame(height: AppTheme.Sizing.gridImageHeight)
                 .clipShape(clip)
                 .overlay {

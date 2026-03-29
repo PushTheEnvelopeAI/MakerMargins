@@ -10,10 +10,12 @@ import SwiftUI
 extension View {
     /// Applies the standard elevated-card background with medium corner radius.
     func cardStyle() -> some View {
-        self.background(
-            AppTheme.Colors.surfaceElevated,
-            in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
-        )
+        self
+            .background(
+                AppTheme.Colors.surfaceElevated,
+                in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
+            )
+            .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
     }
 }
 
