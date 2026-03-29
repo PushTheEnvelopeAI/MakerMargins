@@ -267,7 +267,7 @@ private struct ProductGridCell: View {
                 // Always render category line to keep cells uniform height.
                 Text(product.category?.name ?? " ")
                     .font(AppTheme.Typography.gridCaption)
-                    .foregroundStyle(product.category != nil ? .secondary : .clear)
+                    .foregroundStyle(product.category != nil ? Color.secondary : Color.clear)
                     .lineLimit(1)
             }
             .padding(.horizontal, AppTheme.Spacing.xs)
