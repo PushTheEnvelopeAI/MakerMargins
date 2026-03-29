@@ -11,7 +11,7 @@ import SwiftData
 struct CategoryListView: View {
     @Query(sort: \Category.name) private var categories: [Category]
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.theme) private var theme
+    @Environment(\.appTheme) private var theme
 
     @State private var showingCreateForm = false
     @State private var editingCategory: Category? = nil

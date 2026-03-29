@@ -16,7 +16,7 @@ import PhotosUI
 struct ProductFormView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.theme) private var theme
+    @Environment(\.appTheme) private var theme
 
     @Query(sort: \Category.name) private var categories: [Category]
 

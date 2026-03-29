@@ -5,7 +5,7 @@
 // Provides semantic colors, spacing, corner radii, and shadow properties
 // with automatic light/dark mode support.
 //
-// Injected via EnvironmentKey and accessed via @Environment(\.theme).
+// Injected via EnvironmentKey and accessed via @Environment(\.appTheme).
 // All views must use theme tokens — never hardcode colors inline.
 
 import SwiftUI
@@ -125,7 +125,7 @@ private struct ThemeKey: EnvironmentKey {
 }
 
 extension EnvironmentValues {
-    var theme: Theme {
+    var appTheme: Theme {
         get { self[ThemeKey.self] }
         set { self[ThemeKey.self] = newValue }
     }

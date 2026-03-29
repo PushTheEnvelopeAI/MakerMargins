@@ -13,7 +13,7 @@ struct ProductDetailView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.theme) private var theme
+    @Environment(\.appTheme) private var theme
 
     @State private var showingEditForm = false
     @State private var showingDeleteConfirmation = false

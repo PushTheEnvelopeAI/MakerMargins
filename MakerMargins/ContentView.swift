@@ -15,7 +15,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @Environment(\.theme) private var theme
+    @Environment(\.appTheme) private var theme
 
     var body: some View {
         TabView {

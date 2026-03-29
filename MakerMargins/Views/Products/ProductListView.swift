@@ -12,7 +12,7 @@ struct ProductListView: View {
     @Query(sort: \Product.title) private var products: [Product]
     @Query(sort: \Category.name) private var categories: [Category]
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.theme) private var theme
+    @Environment(\.appTheme) private var theme
 
     @State private var searchText = ""
     @State private var selectedCategory: Category? = nil
@@ -206,7 +206,7 @@ private struct ProductThumbnailView: View {
     let imageData: Data?
     let size: CGSize
     let cornerRadius: CGFloat
-    @Environment(\.theme) private var theme
+    @Environment(\.appTheme) private var theme
 
     var body: some View {
         if let data = imageData, let uiImage = UIImage(data: data) {
@@ -231,7 +231,7 @@ private struct ProductThumbnailView: View {
 
 private struct ProductRowView: View {
     let product: Product
-    @Environment(\.theme) private var theme
+    @Environment(\.appTheme) private var theme
 
     var body: some View {
         HStack(spacing: 12) {
@@ -259,7 +259,7 @@ private struct ProductRowView: View {
 
 private struct ProductGridCell: View {
     let product: Product
-    @Environment(\.theme) private var theme
+    @Environment(\.appTheme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {

@@ -10,7 +10,7 @@ import SwiftUI
 struct ProductCostSummaryCard: View {
     let product: Product
     @Environment(\.currencyFormatter) private var formatter
-    @Environment(\.theme) private var theme
+    @Environment(\.appTheme) private var theme
 
     var body: some View {
         VStack(spacing: 0) {
