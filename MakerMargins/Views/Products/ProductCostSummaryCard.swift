@@ -30,18 +30,18 @@ struct ProductCostSummaryCard: View {
         HStack {
             VStack(alignment: .leading, spacing: 1) {
                 Text(label)
-                    .font(bold ? .subheadline.weight(.semibold) : .subheadline)
+                    .font(bold ? AppTheme.Typography.sectionHeader : AppTheme.Typography.bodyText)
                 if let note {
                     Text(note)
-                        .font(.caption2)
+                        .font(AppTheme.Typography.note)
                         .foregroundStyle(.tertiary)
                 }
             }
             Spacer()
             Text(formatter.format(value))
-                .font(bold ? .subheadline.weight(.semibold) : .subheadline)
+                .font(bold ? AppTheme.Typography.sectionHeader : AppTheme.Typography.bodyText)
                 .foregroundStyle(bold ? .primary : .secondary)
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, AppTheme.Spacing.sm)
     }
 }

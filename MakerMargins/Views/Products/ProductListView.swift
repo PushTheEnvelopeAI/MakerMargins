@@ -123,7 +123,7 @@ struct ProductListView: View {
             if !categories.isEmpty {
                 categoryChips
                     .padding(.horizontal)
-                    .padding(.top, 8)
+                    .padding(.top, AppTheme.Spacing.sm)
             }
 
             if filteredProducts.isEmpty {
@@ -131,8 +131,8 @@ struct ProductListView: View {
                     .padding(.top, 40)
             } else {
                 LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 160), spacing: 16)],
-                    spacing: 16
+                    columns: [GridItem(.adaptive(minimum: AppTheme.Sizing.gridMinColumn), spacing: AppTheme.Spacing.lg)],
+                    spacing: AppTheme.Spacing.lg
                 ) {
                     ForEach(filteredProducts) { product in
                         NavigationLink(value: product) {
@@ -151,7 +151,7 @@ struct ProductListView: View {
 
     private var categoryChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+            HStack(spacing: AppTheme.Spacing.sm) {
                 chip(label: "All", isSelected: selectedCategory == nil) {
                     selectedCategory = nil
                 }
@@ -171,11 +171,11 @@ struct ProductListView: View {
     private func chip(label: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(label)
-                .font(.subheadline.weight(isSelected ? .semibold : .regular))
+                .font(isSelected ? AppTheme.Typography.sectionHeader : AppTheme.Typography.bodyText)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 7)
                 .background(
-                    isSelected ? Color.accentColor : Color(.secondarySystemFill),
+                    isSelected ? AppTheme.Colors.accent : AppTheme.Colors.chipBackground,
                     in: Capsule()
                 )
                 .foregroundStyle(isSelected ? .white : .primary)
@@ -215,7 +215,7 @@ private struct ProductThumbnailView: View {
                 .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
         } else {
             RoundedRectangle(cornerRadius: cornerRadius)
-                .fill(Color(.secondarySystemFill))
+                .fill(AppTheme.Colors.placeholder)
                 .frame(width: size.width, height: size.height)
                 .overlay {
                     Image(systemName: "photo")
@@ -231,23 +231,23 @@ private struct ProductRowView: View {
     let product: Product
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppTheme.Spacing.md) {
             ProductThumbnailView(
                 imageData: product.image,
-                size: CGSize(width: 48, height: 48),
-                cornerRadius: 8
+                size: CGSize(width: AppTheme.Sizing.thumbnailSmall, height: AppTheme.Sizing.thumbnailSmall),
+                cornerRadius: AppTheme.CornerRadius.small
             )
             VStack(alignment: .leading, spacing: 3) {
                 Text(product.title)
-                    .font(.body)
+                    .font(AppTheme.Typography.rowTitle)
                 if let category = product.category {
                     Text(category.name)
-                        .font(.caption)
+                        .font(AppTheme.Typography.rowCaption)
                         .foregroundStyle(.secondary)
                 }
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, AppTheme.Spacing.xs)
     }
 }
 
@@ -257,45 +257,47 @@ private struct ProductGridCell: View {
     let product: Product
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
             gridThumbnail
-            VStack(alignment: .leading, spacing: 2) {
+
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                 Text(product.title)
-                    .font(.subheadline.weight(.medium))
+                    .font(AppTheme.Typography.gridTitle)
                     .lineLimit(2)
-                if let category = product.category {
-                    Text(category.name)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
+                // Always render category line to keep cells uniform height.
+                Text(product.category?.name ?? " ")
+                    .font(AppTheme.Typography.gridCaption)
+                    .foregroundStyle(product.category != nil ? .secondary : .clear)
+                    .lineLimit(1)
             }
-            .padding(.horizontal, 4)
-            .padding(.bottom, 8)
+            .padding(.horizontal, AppTheme.Spacing.xs)
+
+            Spacer(minLength: 0)
         }
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
+        .padding(.bottom, AppTheme.Spacing.sm)
+        .cardStyle()
     }
 
-    // Grid cells need a full-width variable-height image with uneven corners,
-    // so this uses a bespoke layout rather than ProductThumbnailView.
     @ViewBuilder
     private var gridThumbnail: some View {
         let clip = UnevenRoundedRectangle(
-            topLeadingRadius: 14, bottomLeadingRadius: 0,
-            bottomTrailingRadius: 0, topTrailingRadius: 14
+            topLeadingRadius: AppTheme.CornerRadius.medium,
+            bottomLeadingRadius: 0,
+            bottomTrailingRadius: 0,
+            topTrailingRadius: AppTheme.CornerRadius.medium
         )
         if let data = product.image, let uiImage = UIImage(data: data) {
             Image(uiImage: uiImage)
                 .resizable()
                 .scaledToFill()
                 .frame(maxWidth: .infinity)
-                .frame(height: 140)
+                .frame(height: AppTheme.Sizing.gridImageHeight)
                 .clipShape(clip)
         } else {
             Rectangle()
-                .fill(Color(.tertiarySystemFill))
+                .fill(AppTheme.Colors.placeholder)
                 .frame(maxWidth: .infinity)
-                .frame(height: 140)
+                .frame(height: AppTheme.Sizing.gridImageHeight)
                 .clipShape(clip)
                 .overlay {
                     Image(systemName: "photo")

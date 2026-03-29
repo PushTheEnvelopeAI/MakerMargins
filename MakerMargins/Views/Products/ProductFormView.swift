@@ -83,17 +83,17 @@ struct ProductFormView: View {
         let hasImage = currentImage != nil
         return Section {
             PhotosPicker(selection: $photoItem, matching: .images) {
-                VStack(spacing: 10) {
+                VStack(spacing: AppTheme.Spacing.sm) {
                     if let uiImage = currentImage {
                         Image(uiImage: uiImage)
                             .resizable()
                             .scaledToFill()
-                            .frame(width: 100, height: 100)
+                            .frame(width: AppTheme.Sizing.thumbnailForm, height: AppTheme.Sizing.thumbnailForm)
                             .clipShape(Circle())
                     } else {
                         Circle()
-                            .fill(Color(.secondarySystemFill))
-                            .frame(width: 100, height: 100)
+                            .fill(AppTheme.Colors.placeholder)
+                            .frame(width: AppTheme.Sizing.thumbnailForm, height: AppTheme.Sizing.thumbnailForm)
                             .overlay {
                                 Image(systemName: "camera")
                                     .font(.title2)
@@ -101,11 +101,11 @@ struct ProductFormView: View {
                             }
                     }
                     Text(hasImage ? "Change Photo" : "Add Photo")
-                        .font(.subheadline)
+                        .font(AppTheme.Typography.bodyText)
                         .foregroundStyle(.tint)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
+                .padding(.vertical, AppTheme.Spacing.sm)
             }
             .buttonStyle(.plain)
 
