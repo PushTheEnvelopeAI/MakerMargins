@@ -22,11 +22,11 @@ struct CategoryListView: View {
                     editingCategory = category
                 } label: {
                     HStack {
-                        VStack(alignment: .leading, spacing: 2) {
+                        VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                             Text(category.name)
                                 .foregroundStyle(.primary)
                             Text("\(category.products.count) product\(category.products.count == 1 ? "" : "s")")
-                                .font(.caption)
+                                .font(AppTheme.Typography.rowCaption)
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()

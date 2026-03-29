@@ -19,7 +19,7 @@ struct ProductDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xl) {
                 headerSection
                 ProductCostSummaryCard(product: product)
                     .padding(.horizontal)
@@ -67,40 +67,36 @@ struct ProductDetailView: View {
 
     @ViewBuilder
     private var headerSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
             if let data = product.image, let uiImage = UIImage(data: data) {
                 Image(uiImage: uiImage)
                     .resizable()
                     .scaledToFill()
                     .frame(maxWidth: .infinity)
-                    .frame(height: 220)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .frame(height: AppTheme.Sizing.detailImageHeight)
+                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large))
                     .padding(.horizontal)
             } else {
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.secondarySystemFill))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 160)
-                    .overlay {
-                        Image(systemName: "photo")
-                            .font(.largeTitle)
-                            .foregroundStyle(.tertiary)
-                    }
-                    .padding(.horizontal)
+                PlaceholderImageView(
+                    height: AppTheme.Sizing.detailPlaceholderHeight,
+                    cornerRadius: AppTheme.CornerRadius.large,
+                    iconFont: .largeTitle
+                )
+                .padding(.horizontal)
             }
 
             VStack(alignment: .leading, spacing: 6) {
                 if let category = product.category {
                     Text(category.name)
-                        .font(.caption.weight(.medium))
+                        .font(AppTheme.Typography.badge)
                         .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(Color.accentColor.opacity(0.15), in: Capsule())
-                        .foregroundStyle(Color.accentColor)
+                        .padding(.vertical, AppTheme.Spacing.xs)
+                        .background(AppTheme.Colors.accentSubtle, in: Capsule())
+                        .foregroundStyle(AppTheme.Colors.accent)
                 }
                 if !product.summary.isEmpty {
                     Text(product.summary)
-                        .font(.subheadline)
+                        .font(AppTheme.Typography.bodyText)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -112,11 +108,11 @@ struct ProductDetailView: View {
         GroupBox("Labor") {
             HStack {
                 Text("Add work steps to calculate labor costs")
-                    .font(.subheadline)
+                    .font(AppTheme.Typography.bodyText)
                     .foregroundStyle(.secondary)
                 Spacer()
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, AppTheme.Spacing.xs)
         }
         .padding(.horizontal)
     }
@@ -125,11 +121,11 @@ struct ProductDetailView: View {
         GroupBox("Materials") {
             HStack {
                 Text("Add materials to calculate material costs")
-                    .font(.subheadline)
+                    .font(AppTheme.Typography.bodyText)
                     .foregroundStyle(.secondary)
                 Spacer()
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, AppTheme.Spacing.xs)
         }
         .padding(.horizontal)
     }

@@ -32,6 +32,7 @@ struct MakerMarginsApp: App {
         WindowGroup {
             ContentView()
                 .environment(\.currencyFormatter, currencyFormatter)
+                .tint(AppTheme.Colors.accent)
         }
         .modelContainer(container)
     }

@@ -160,7 +160,11 @@ MakerMargins/                              ← repo root
 │   │
 │   ├── Engine/                            ← calculation & formatting logic
 │   │   ├── CostingEngine.swift            ← STUB — implemented Epic 2+
-│   │   └── CurrencyFormatter.swift        ← STUB — implemented Epic 1
+│   │   └── CurrencyFormatter.swift        ← implemented Epic 1
+│   │
+│   ├── Theme/                             ← design system tokens and reusable view modifiers
+│   │   ├── AppTheme.swift                 ← colors, spacing, corner radii, typography, sizing
+│   │   └── ViewModifiers.swift            ← CardStyle modifier, PlaceholderImageView
 │   │
 │   └── Views/                             ← SwiftUI views, grouped by feature
 │       ├── Products/                      ← Tab 1 root + all product-owned views
@@ -327,6 +331,7 @@ Runs on every push:
 - All monetary values use `Decimal` (never `Double`) to avoid floating-point drift.
 - `TimeInterval` (seconds as `Double`) is acceptable for time tracking. The `/ 3600` conversion is done in `CostingEngine` only — never at the model layer.
 - Buffers and percentages are stored as decimal fractions (0.10 = 10%), never as whole numbers.
+- **All styling tokens** (colors, spacing, corner radii, typography, sizing) are defined in `Theme/AppTheme.swift`. Use `AppTheme.*` tokens in views — never hardcode colors or magic numbers.
 
 ---
 
