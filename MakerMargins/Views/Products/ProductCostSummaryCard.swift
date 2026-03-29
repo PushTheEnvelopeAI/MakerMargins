@@ -15,9 +15,9 @@ struct ProductCostSummaryCard: View {
     var body: some View {
         VStack(spacing: 0) {
             // Accent bar at top
-            theme.accent
+            Rectangle()
+                .fill(theme.accent)
                 .frame(height: 3)
-                .frame(maxWidth: .infinity)
 
             VStack(spacing: 0) {
                 HStack {
@@ -38,8 +38,12 @@ struct ProductCostSummaryCard: View {
             }
             .padding()
         }
-        .background(theme.surfaceElevated, in: RoundedRectangle(cornerRadius: theme.cardCornerRadius))
-        .shadow(color: theme.shadowColor, radius: theme.shadowRadius, y: theme.shadowY)
+        .background(
+            RoundedRectangle(cornerRadius: theme.cardCornerRadius)
+                .fill(theme.surfaceElevated)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: theme.cardCornerRadius))
+        .shadow(color: theme.shadowColor, radius: theme.shadowRadius, x: 0, y: theme.shadowY)
     }
 
     @ViewBuilder
