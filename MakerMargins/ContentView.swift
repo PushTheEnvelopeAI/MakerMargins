@@ -25,8 +25,7 @@ struct ContentView: View {
             }
 
             NavigationStack {
-                Text("Workshop coming in Epic 2")
-                    .navigationTitle("Workshop")
+                WorkshopView()
             }
             .tabItem {
                 Label("Workshop", systemImage: "timer")

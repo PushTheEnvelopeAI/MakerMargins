@@ -2,8 +2,8 @@
 // MakerMargins
 //
 // Scrollable hub for a single Product.
-// Epic 1: header, cost summary card, and placeholder sections for labor and materials.
-// Labor section is wired in Epic 2; Materials in Epic 3.
+// Epic 1: header, cost summary card, materials placeholder.
+// Epic 2: live labor section via WorkStepListView, navigation to WorkStepDetailView.
 
 import SwiftUI
 import SwiftData
@@ -29,6 +29,9 @@ struct ProductDetailView: View {
             .padding(.vertical)
         }
         .appBackground()
+        .navigationDestination(for: WorkStep.self) { step in
+            WorkStepDetailView(step: step, product: product)
+        }
         .navigationTitle(product.title)
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -60,7 +63,7 @@ struct ProductDetailView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This will also delete all work steps and materials for this product. This action cannot be undone.")
+            Text("This will also delete all materials for this product. Work steps will be preserved in the step library. This action cannot be undone.")
         }
     }
 
@@ -106,16 +109,7 @@ struct ProductDetailView: View {
     }
 
     private var laborSection: some View {
-        GroupBox("Labor") {
-            HStack {
-                Text("Add work steps to calculate labor costs")
-                    .font(AppTheme.Typography.bodyText)
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            .padding(.vertical, AppTheme.Spacing.xs)
-        }
-        .padding(.horizontal)
+        WorkStepListView(product: product)
     }
 
     private var materialsSection: some View {

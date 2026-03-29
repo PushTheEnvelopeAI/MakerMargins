@@ -17,6 +17,7 @@ struct MakerMarginsApp: App {
             WorkStep.self,
             Material.self,
             PlatformFeeProfile.self,
+            ProductWorkStep.self,
         ])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         do {
@@ -28,12 +29,14 @@ struct MakerMarginsApp: App {
 
     @State private var currencyFormatter = CurrencyFormatter()
     @State private var appearanceManager = AppearanceManager()
+    @State private var laborRateManager = LaborRateManager()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environment(\.currencyFormatter, currencyFormatter)
                 .environment(\.appearanceManager, appearanceManager)
+                .environment(\.laborRateManager, laborRateManager)
                 .preferredColorScheme(appearanceManager.resolvedColorScheme)
                 .tint(AppTheme.Colors.accent)
         }

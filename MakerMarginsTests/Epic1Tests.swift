@@ -27,6 +27,7 @@ struct Epic1Tests {
             WorkStep.self,
             Material.self,
             PlatformFeeProfile.self,
+            ProductWorkStep.self,
         ])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         return try ModelContainer(for: schema, configurations: [config])
@@ -85,7 +86,7 @@ struct Epic1Tests {
 
     // MARK: - Cascade Delete
 
-    @Test("Deleting a product cascades to its WorkSteps and Materials")
+    @Test("Deleting a product cascades to associations and materials, but shared WorkSteps survive")
     func deleteProductCascadesToChildren() throws {
         let container = try makeContainer()
         let ctx = ModelContext(container)
@@ -94,25 +95,36 @@ struct Epic1Tests {
         let step = WorkStep(title: "Sand edges")
         let material = Material(title: "Sandpaper")
 
-        // Set relationships bidirectionally so SwiftData registers them before save
-        step.product = product
-        product.workSteps.append(step)
+        // Link step to product via the join model (many-to-many)
+        let link = ProductWorkStep(product: product, workStep: step, sortOrder: 0)
+        product.productWorkSteps.append(link)
+        step.productWorkSteps.append(link)
+
+        // Materials still use direct one-to-many
         material.product = product
         product.materials.append(material)
 
         ctx.insert(product)
+        ctx.insert(step)
+        ctx.insert(link)
         try ctx.save()
 
-        // Confirm children exist before deleting
+        // Confirm everything exists before deleting
         #expect(try ctx.fetch(FetchDescriptor<WorkStep>()).count == 1)
         #expect(try ctx.fetch(FetchDescriptor<Material>()).count == 1)
+        #expect(try ctx.fetch(FetchDescriptor<ProductWorkStep>()).count == 1)
 
         ctx.delete(product)
         try ctx.save()
 
         #expect(try ctx.fetch(FetchDescriptor<Product>()).isEmpty)
-        #expect(try ctx.fetch(FetchDescriptor<WorkStep>()).isEmpty)
+        // Material is cascade-deleted with the product
         #expect(try ctx.fetch(FetchDescriptor<Material>()).isEmpty)
+        // ProductWorkStep association is cascade-deleted with the product
+        #expect(try ctx.fetch(FetchDescriptor<ProductWorkStep>()).isEmpty)
+        // WorkStep survives — it's a shared entity, not owned by the product
+        #expect(try ctx.fetch(FetchDescriptor<WorkStep>()).count == 1)
+        #expect(try ctx.fetch(FetchDescriptor<WorkStep>())[0].title == "Sand edges")
     }
 
     // MARK: - Category CRUD
