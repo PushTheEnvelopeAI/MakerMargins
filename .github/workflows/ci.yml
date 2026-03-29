@@ -30,7 +30,7 @@ jobs:
           set -o pipefail
           xcodebuild build \
             -scheme MakerMargins \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
             IPHONEOS_DEPLOYMENT_TARGET=18.0
 
@@ -40,7 +40,7 @@ jobs:
           xcodebuild test \
             -scheme MakerMargins \
             -only-testing MakerMarginsTests \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
             IPHONEOS_DEPLOYMENT_TARGET=18.0 \
             -resultBundlePath TestResults
