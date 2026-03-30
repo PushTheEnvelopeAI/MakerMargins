@@ -38,8 +38,9 @@ struct ProductFormView: View {
 
     // MARK: - Init
 
-    init(product: Product?) {
+    init(product: Product?, onCreate: ((Product) -> Void)? = nil) {
         self.product = product
+        self.onCreate = onCreate
         _title = State(initialValue: product?.title ?? "")
         _summary = State(initialValue: product?.summary ?? "")
         _selectedCategory = State(initialValue: product?.category)
