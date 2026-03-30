@@ -60,30 +60,29 @@ struct WorkStepDetailView: View {
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Menu {
-                    if editProduct != nil {
-                        Button("Edit Step") {
-                            showingEditForm = true
-                        }
-                    }
+                HStack(spacing: AppTheme.Spacing.md) {
                     Button {
                         showingStopwatch = true
                     } label: {
-                        Label("Record Time", systemImage: "stopwatch")
+                        Image(systemName: "stopwatch")
                     }
-                    Divider()
-                    Button("Delete Step", role: .destructive) {
-                        showingDeleteConfirmation = true
+                    Button {
+                        showingEditForm = true
+                    } label: {
+                        Image(systemName: "pencil")
                     }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
+                    Menu {
+                        Button("Delete Step", role: .destructive) {
+                            showingDeleteConfirmation = true
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
                 }
             }
         }
         .sheet(isPresented: $showingEditForm) {
-            if let editProduct {
-                WorkStepFormView(step: step, product: editProduct)
-            }
+            WorkStepFormView(step: step, product: editProduct)
         }
         .fullScreenCover(isPresented: $showingStopwatch) {
             StopwatchView(stepTitle: step.title) { time in
@@ -141,13 +140,13 @@ struct WorkStepDetailView: View {
             VStack(spacing: 0) {
                 detailRow(label: "Recorded Time", value: CostingEngine.formatDuration(step.recordedTime))
                 Divider()
-                detailRow(label: "Batch Units Completed", value: "\(step.batchUnitsCompleted) \(step.unitName)\(step.batchUnitsCompleted == 1 ? "" : "s")")
+                detailRow(label: "\(step.unitName.capitalized)s Completed", value: "\(step.batchUnitsCompleted) \(step.unitName)\(step.batchUnitsCompleted == 1 ? "" : "s")")
                 Divider()
-                detailRow(label: "Time per \(step.unitName)", value: CostingEngine.formatDuration(unitTimeSeconds))
+                derivedRow(label: "Time per \(step.unitName)", value: CostingEngine.formatDuration(unitTimeSeconds))
                 Divider()
-                detailRow(label: "Units per Product", value: "\(step.unitsRequiredPerProduct)")
+                detailRow(label: "\(step.unitName.capitalized)s per Product", value: "\(step.unitsRequiredPerProduct)")
                 Divider()
-                detailRow(label: "Time per Product", value: CostingEngine.formatDuration(timePerProduct))
+                derivedRow(label: "Time per Product", value: CostingEngine.formatDuration(timePerProduct))
             }
         }
         .padding(.horizontal)
@@ -185,7 +184,8 @@ struct WorkStepDetailView: View {
             } else {
                 VStack(spacing: 0) {
                     ForEach(linkedProducts, id: \.persistentModelID) { linkedProduct in
-                        HStack {
+                        HStack(spacing: AppTheme.Spacing.md) {
+                            productThumbnail(imageData: linkedProduct.image)
                             Text(linkedProduct.title)
                                 .font(AppTheme.Typography.rowTitle)
                             Spacer()
@@ -202,6 +202,27 @@ struct WorkStepDetailView: View {
         .padding(.horizontal)
     }
 
+    @ViewBuilder
+    private func productThumbnail(imageData: Data?) -> some View {
+        let size: CGFloat = AppTheme.Sizing.thumbnailSmall
+        if let data = imageData, let uiImage = UIImage(data: data) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .scaledToFill()
+                .frame(width: size, height: size)
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small))
+        } else {
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small)
+                .fill(AppTheme.Colors.placeholder)
+                .frame(width: size, height: size)
+                .overlay {
+                    Image(systemName: "photo")
+                        .foregroundStyle(.tertiary)
+                        .font(.caption2)
+                }
+        }
+    }
+
     // MARK: - Helpers
 
     @ViewBuilder
@@ -212,6 +233,19 @@ struct WorkStepDetailView: View {
             Spacer()
             Text(value)
                 .font(AppTheme.Typography.sectionHeader)
+        }
+        .padding(.vertical, AppTheme.Spacing.sm)
+    }
+
+    @ViewBuilder
+    private func derivedRow(label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(AppTheme.Typography.bodyText)
+            Spacer()
+            Text(value)
+                .font(AppTheme.Typography.sectionHeader)
+                .foregroundStyle(AppTheme.Colors.accent)
         }
         .padding(.vertical, AppTheme.Spacing.sm)
     }

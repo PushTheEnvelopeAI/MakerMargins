@@ -162,7 +162,7 @@ MakerMargins/                              ← repo root
 │
 ├── MakerMargins/                          ← main app target
 │   ├── MakerMarginsApp.swift              ← @main entry point, ModelContainer with all 6 models
-│   ├── ContentView.swift                  ← 3-tab TabView shell (Products, Workshop, Settings)
+│   ├── ContentView.swift                  ← 4-tab TabView shell (Products, Labor, Materials, Settings)
 │   │
 │   ├── Models/                            ← SwiftData @Model types (all implemented)
 │   │   ├── Product.swift
@@ -179,39 +179,40 @@ MakerMargins/                              ← repo root
 │   │   └── LaborRateManager.swift         ← default hourly rate, UserDefaults-persisted (Epic 2)
 │   │
 │   ├── Theme/                             ← design system tokens and reusable view modifiers
-│   │   ├── AppTheme.swift                 ← colors (surface, surfaceElevated, accent, etc.), spacing, corner radii, typography, sizing
+│   │   ├── AppTheme.swift                 ← colors (surface, surfaceElevated, accent, categoryBadge, tabTint, cardBorder, etc.), spacing, corner radii, typography, sizing
 │   │   └── ViewModifiers.swift            ← .cardStyle(), .appBackground(), PlaceholderImageView, WorkStepThumbnailView
 │   │
 │   └── Views/                             ← SwiftUI views, grouped by feature
 │       ├── Products/                      ← Tab 1 root + all product-owned views
-│       │   ├── ProductListView.swift      ← Tab 1 root (NavigationStack) — Epic 1
+│       │   ├── ProductListView.swift      ← Tab 1 root (NavigationStack), product duplication via context menu — Epic 1
 │       │   ├── ProductDetailView.swift    ← scrollable hub: header, cost summary, labor, materials — Epic 1+2
-│       │   ├── ProductFormView.swift      ← create/edit sheet — Epic 1
+│       │   ├── ProductFormView.swift      ← create/edit sheet, inline category creation — Epic 1
 │       │   ├── ProductCostSummaryCard.swift ← cost breakdown card (labor live, materials stub) — Epic 2
 │       │   ├── PricingCalculatorView.swift  ← inline section in ProductDetailView — STUB
 │       │   └── BatchForecastView.swift      ← inline section in ProductDetailView — STUB
-│       ├── Workshop/                      ← Tab 2: shared step library
-│       │   └── WorkshopView.swift         ← searchable list of all WorkSteps — Epic 2
+│       ├── Workshop/                      ← Tab 2 (Labor): shared step library
+│       │   └── WorkshopView.swift         ← searchable list of all WorkSteps, titled "Labor" — Epic 2
 │       ├── Labor/
 │       │   ├── WorkStepListView.swift     ← inline step list in ProductDetailView — Epic 2
 │       │   ├── WorkStepDetailView.swift   ← pushed from Products or Workshop tab — Epic 2
 │       │   ├── WorkStepFormView.swift     ← create/edit sheet — Epic 2
 │       │   └── StopwatchView.swift        ← fullScreenCover from detail/form — Epic 2
 │       ├── Materials/
+│       │   ├── MaterialsLibraryView.swift ← Tab 3 root: shared materials library — STUB (Epic 3)
 │       │   ├── MaterialListView.swift     ← inline content in ProductDetailView — STUB
 │       │   ├── MaterialDetailView.swift   ← pushed from ProductDetailView — STUB
 │       │   └── MaterialFormView.swift     ← create/edit sheet — STUB
 │       ├── Categories/
-│       │   ├── CategoryListView.swift     ← pushed from SettingsView — Epic 1
-│       │   └── CategoryFormView.swift     ← create/edit sheet — Epic 1
-│       └── Settings/                      ← Tab 3 root + config views
-│           ├── SettingsView.swift         ← Tab 3 root: currency, appearance, labor rate, nav rows — Epic 1+2
+│       │   ├── CategoryListView.swift     ← legacy, no longer navigated to from Settings — Epic 1
+│       │   └── CategoryFormView.swift     ← legacy, categories now created inline in ProductFormView — Epic 1
+│       └── Settings/                      ← Tab 4 root + config views
+│           ├── SettingsView.swift         ← Tab 4 root: currency, appearance, labor rate, nav rows — Epic 1+2
 │           ├── PlatformFeeProfileListView.swift ← pushed from SettingsView — STUB
 │           └── PlatformFeeProfileFormView.swift ← create/edit sheet — STUB
 │
 ├── MakerMarginsTests/                     ← Swift Testing suite (import Testing, @Test)
 │   ├── Epic0Tests.swift                   ← Complete: test harness smoke test
-│   ├── Epic1Tests.swift                   ← Complete: Product/Category CRUD, cascade, CurrencyFormatter (12 tests)
+│   ├── Epic1Tests.swift                   ← Complete: Product/Category CRUD, cascade, CurrencyFormatter, product duplication (13 tests)
 │   ├── Epic2Tests.swift                   ← Complete: WorkStep/join CRUD, CostingEngine, reorder, LaborRateManager (12 tests)
 │   ├── Epic3Tests.swift                   ← STUB
 │   ├── Epic4Tests.swift                   ← STUB
@@ -225,48 +226,53 @@ MakerMargins/                              ← repo root
 
 ## Navigation Structure
 
-**3-Tab TabView.** ContentView owns only the TabView — no state, no queries. Each tab root owns its own `NavigationStack`.
+**4-Tab TabView.** ContentView owns only the TabView — no state, no queries. Each tab root owns its own `NavigationStack`. Tab bar is tinted sage green (`AppTheme.Colors.tabTint`).
 
 | Tab | Root View | SF Symbol |
 |-----|-----------|-----------|
 | 1 | `ProductListView` | `square.grid.2x2` |
-| 2 | `WorkshopView` | `timer` |
-| 3 | `SettingsView` | `gearshape` |
+| 2 | `WorkshopView` | `hammer` |
+| 3 | `MaterialsLibraryView` | `shippingbox` |
+| 4 | `SettingsView` | `gearshape` |
 
 ### Tab 1 — Products (primary workspace)
 ```
-ProductListView                            [ROOT]
-└── [push] ProductDetailView               [Level 1 — scrollable hub with DisclosureGroup sections]
+ProductListView                            [ROOT — context menu: Duplicate, Delete]
+└── [push] ProductDetailView               [Level 1 — scrollable hub]
     │   Cost Summary (ProductCostSummaryCard)
-    │   Labor section (inline WorkStepListView content)
+    │   Labor Workflow section (inline WorkStepListView — VStack, not List)
     │   Materials section (inline MaterialListView content)
     │   Pricing section (inline PricingCalculatorView content)
     │   Forecast section (inline BatchForecastView content)
-    ├── [push] WorkStepDetailView          [Level 2]
-    │   └── [fullScreenCover] StopwatchView  [Level 3 — MAX DEPTH]
+    ├── [push] WorkStepDetailView          [Level 2 — edit/stopwatch buttons in toolbar]
+    │   └── [fullScreenCover] StopwatchView  [Level 3 — MAX DEPTH, pause/resume]
     ├── [push] MaterialDetailView          [Level 2]
-    ├── [sheet] ProductFormView            [create / edit]
-    ├── [sheet] WorkStepFormView           [create / edit]
+    ├── [sheet] ProductFormView            [create / edit, inline category creation]
+    ├── [sheet] WorkStepFormView           [create / edit, FocusState, time validation]
     └── [sheet] MaterialFormView           [create / edit]
 ```
 
-### Tab 2 — Workshop (shared step library, speed to stopwatch)
+### Tab 2 — Labor (shared step library, speed to stopwatch)
 ```
-WorkshopView                              [ROOT — searchable list of all shared WorkSteps]
-└── [push] WorkStepDetailView             [Level 1]
-    └── [fullScreenCover] StopwatchView   [Level 2]
+WorkshopView                              [ROOT — titled "Labor", searchable list of all shared WorkSteps]
+└── [push] WorkStepDetailView             [Level 1 — edit/stopwatch surfaced in toolbar]
+    └── [fullScreenCover] StopwatchView   [Level 2 — pause/resume]
 ```
-**Stopwatch tap count:** 2 taps from Workshop tab. Fastest path for a maker mid-production.
-**Step library:** Steps are shared entities. Workshop shows all steps with usage count and cost. New steps can be created here (standalone, not linked to a product) or from a product's detail view.
+**Stopwatch tap count:** 2 taps from Labor tab. Fastest path for a maker mid-production.
+**Step library:** Steps are shared entities. Shows all steps with product names in "Used by" text and cost. New steps can be created here (standalone) or from a product's detail view.
 
-### Tab 3 — Settings (one-time config)
+### Tab 3 — Materials (shared material library — stub)
 ```
-SettingsView                              [ROOT — currency toggle inline]
-├── [push] PlatformFeeProfileListView     [Level 1]
-│   └── [sheet] PlatformFeeProfileFormView  [create / edit]
-└── [push] CategoryListView               [Level 1]
-    └── [sheet] CategoryFormView          [create / edit]
+MaterialsLibraryView                      [ROOT — stub for Epic 3]
 ```
+
+### Tab 4 — Settings (one-time config)
+```
+SettingsView                              [ROOT — currency, appearance, labor rate]
+└── [push] PlatformFeeProfileListView     [Level 1]
+    └── [sheet] PlatformFeeProfileFormView  [create / edit]
+```
+**Note:** Category management has moved to inline creation within `ProductFormView`. The Settings → Categories navigation link has been removed.
 
 ---
 
@@ -280,9 +286,10 @@ SettingsView                              [ROOT — currency toggle inline]
 - [x] User can delete a Product (with confirmation); its associations and Materials are cascade-deleted
 
 **Category CRUD**
-- [x] User can create, edit, and delete Categories from `SettingsView → CategoryListView`
+- [x] User can create Categories inline from the product form's category picker
 - [x] User can assign a Category when creating/editing a Product
 - [x] Deleting a Category does NOT delete its Products (products become uncategorised)
+- [x] Category management removed from Settings (inline-only workflow)
 
 **Currency Setting**
 - [x] `SettingsView` has a USD / EUR toggle
@@ -295,12 +302,18 @@ SettingsView                              [ROOT — currency toggle inline]
 - [x] `SettingsView` has a System / Light / Dark appearance picker
 - [x] `AppearanceManager` persists choice and applies `.preferredColorScheme()` at app root
 
+**Product Duplication**
+- [x] User can duplicate a Product via context menu (long press) in list or grid
+- [x] Duplication copies all metadata, re-links shared WorkSteps, deep-copies Materials
+- [x] Duplicated product title gets " (Copy)" suffix
+
 **E2E Tests (Epic1Tests.swift)**
 - [x] Test: create a Product and fetch it back via SwiftData
 - [x] Test: create a Category, assign it to a Product, verify the relationship
 - [x] Test: delete a Category, verify the Product's category becomes nil
 - [x] Test: delete a Product, verify its associations and Materials are also deleted
 - [x] Test: CurrencyFormatter formats Decimal correctly for USD and EUR
+- [x] Test: product duplication copies metadata, re-links shared steps, deep-copies materials
 
 ---
 
@@ -314,18 +327,19 @@ SettingsView                              [ROOT — currency toggle inline]
 
 **Shared Steps**
 - [x] Steps are reusable across products via `ProductWorkStep` join model
-- [x] User can add an existing step to a product via the "Add Existing Step" picker
-- [x] WorkStepDetailView shows "Used By" section listing all products
+- [x] User can add existing steps to a product via multi-select picker (checkmark toggles, batch add)
+- [x] WorkStepDetailView shows "Used By" section listing all products with thumbnails
 - [x] Editing a step from any product context updates it everywhere
+- [x] "Used by" text shows product names (e.g. "Used by Standard Bagel Board + 2 others")
 
-**Drag-to-Reorder**
-- [x] User can drag-to-reorder steps within a product's workflow
+**Reorder Steps**
+- [x] User can reorder steps within a product's workflow via "Reorder" toggle button (up/down arrows)
 - [x] `sortOrder` persists across app launches
 
 **Stopwatch**
 - [x] User can open a full-screen stopwatch from WorkStepDetailView or WorkStepFormView
 - [x] Stopwatch displays step title context ("Timing: Step Name")
-- [x] Start / Stop / Save / Discard / Re-record flow
+- [x] Start / Pause / Resume / Save / Discard / Re-record flow (pause/resume with accumulated time)
 - [x] Saving writes the elapsed time to the step's `recordedTime`
 - [x] User can still manually edit time after using the stopwatch
 
@@ -333,17 +347,18 @@ SettingsView                              [ROOT — currency toggle inline]
 - [x] `CostingEngine` implements labor calculations (unitTimeHours, stepLaborCost, totalLaborCost, totalProductionCost)
 - [x] Real-time calculated preview in WorkStepFormView as user fills fields
 - [x] `ProductCostSummaryCard` shows live labor cost and total production cost
+- [x] Derived/calculated values (time per unit, time per product, labor cost) displayed in accent color to distinguish from user-entered values
 
 **Default Labor Rate**
 - [x] `SettingsView` has a "Default Hourly Rate" field with `/hr` suffix
 - [x] `LaborRateManager` persists default rate to UserDefaults
 - [x] New steps pre-fill with the default rate; user can override per-step
 
-**Workshop Tab**
-- [x] Tab 2 shows all WorkSteps as a searchable step library
-- [x] Each row shows title, usage count, and step labor cost
-- [x] User can create standalone steps (not linked to a product) from Workshop
-- [x] Tapping a step pushes WorkStepDetailView for quick stopwatch access
+**Labor Tab (formerly Workshop)**
+- [x] Tab 2 shows all WorkSteps as a searchable step library, titled "Labor"
+- [x] Each row shows title, product names in "Used by" text, and step labor cost
+- [x] User can create standalone steps (not linked to a product) from Labor tab
+- [x] Tapping a step pushes WorkStepDetailView with edit and stopwatch buttons surfaced in toolbar
 
 **E2E Tests (Epic2Tests.swift)**
 - [x] Test: create a WorkStep, persist, fetch, verify all properties
@@ -427,6 +442,11 @@ Runs on every push:
 - **Image storage:** `Data?` blob in SwiftData for Epic 0–5. Migrate to file-system URLs in Epic 6 if performance requires it.
 - **Currency:** USD default, EUR option. Stored `Decimal` values are always in the user's chosen currency. No conversion logic — user picks one currency and sticks with it.
 - **Appearance management pattern:** `AppearanceManager` follows the same `@Observable` + `EnvironmentKey` + `UserDefaults` pattern as `CurrencyFormatter`. New app-level managers should follow this pattern. Injected at root in `MakerMarginsApp.swift`, accessed via `@Environment`.
-- **Background layering:** Two-tier warm background system — `surface` (page-level, subtle warm cream) and `surfaceElevated` (card-level, warmer cream). All colors use `UIColor { traits in ... }` closures for automatic dark/light adaptation.
-- **Reusable thumbnail components:** `ProductThumbnailView` (Epic 1) and `WorkStepThumbnailView` (Epic 2) in `ViewModifiers.swift`. Use these instead of duplicating image/placeholder logic in list rows.
+- **Background layering:** Two-tier warm background system — `surface` (page-level, subtle warm cream) and `surfaceElevated` (card-level, near-white in light / warm charcoal in dark). All colors use `UIColor { traits in ... }` closures for automatic dark/light adaptation.
+- **Color system:** Amber accent for costs/interactive elements, sage green for category badges and tab bar tint. Cards use adaptive border stroke (`cardBorder`) + subtle shadow.
+- **Reusable thumbnail components:** `ProductThumbnailView` (Epic 1, private to ProductListView) and `WorkStepThumbnailView` (Epic 2) in `ViewModifiers.swift`. Use these instead of duplicating image/placeholder logic in list rows.
+- **Labor list uses VStack, not List:** `WorkStepListView` renders steps in a plain `VStack` + `ForEach` (not `List`) to avoid nested-scrollable-container issues. NavigationLinks work normally; reorder uses a toggle button with up/down arrows; remove uses context menu.
+- **Form input behavior:** All numeric fields in `WorkStepFormView` use `@FocusState` to clear default values on focus and restore them on blur. Time fields (minutes/seconds) are clamped to 0–59 with digit-only validation.
+- **Dynamic unit labels:** Form and detail views use the step's `unitName` dynamically in labels (e.g. "Boards Completed", "Boards per Product", "Time per board").
+- **Category management is inline-only:** Categories are created from within `ProductFormView`'s category picker. The Settings → Categories navigation link has been removed. `CategoryListView` and `CategoryFormView` are legacy files.
 - **No CloudKit, no authentication, no sync.** Single-user, local-only.

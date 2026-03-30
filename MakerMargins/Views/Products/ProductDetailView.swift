@@ -95,8 +95,8 @@ struct ProductDetailView: View {
                         .font(AppTheme.Typography.badge)
                         .padding(.horizontal, 10)
                         .padding(.vertical, AppTheme.Spacing.xs)
-                        .background(AppTheme.Colors.accentSubtle, in: Capsule())
-                        .foregroundStyle(AppTheme.Colors.accent)
+                        .background(AppTheme.Colors.categoryBadgeBackground, in: Capsule())
+                        .foregroundStyle(AppTheme.Colors.categoryBadge)
                 }
                 if !product.summary.isEmpty {
                     Text(product.summary)

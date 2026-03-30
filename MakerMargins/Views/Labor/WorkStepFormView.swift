@@ -46,6 +46,14 @@ struct WorkStepFormView: View {
     // Stopwatch
     @State private var showingStopwatch = false
 
+    // Focus tracking for select-on-tap behavior
+    enum FocusableField: Hashable {
+        case hours, minutes, seconds
+        case batchUnits, unitName, unitsPerProduct
+        case laborRate
+    }
+    @FocusState private var focusedField: FocusableField?
+
     // MARK: - Init
 
     init(step: WorkStep?, product: Product?) {
@@ -127,6 +135,25 @@ struct WorkStepFormView: View {
                     laborRateText = "\(laborRateManager.defaultRate)"
                 }
             }
+            .onChange(of: focusedField) { oldField, newField in
+                // Restore defaults on blur for fields left empty
+                if let oldField {
+                    restoreDefaultIfEmpty(field: oldField)
+                }
+                // Clear default values on focus so user can type fresh
+                if let newField {
+                    clearDefaultOnFocus(field: newField)
+                }
+            }
+            .onChange(of: hoursText) { _, newValue in
+                hoursText = sanitizeDigitsOnly(newValue)
+            }
+            .onChange(of: minutesText) { _, newValue in
+                minutesText = clampTimeComponent(sanitizeDigitsOnly(newValue), max: 59)
+            }
+            .onChange(of: secondsText) { _, newValue in
+                secondsText = clampTimeComponent(sanitizeDigitsOnly(newValue), max: 59)
+            }
             .fullScreenCover(isPresented: $showingStopwatch) {
                 StopwatchView(stepTitle: title.isEmpty ? nil : title) { time in
                     let total = Int(time)
@@ -188,6 +215,11 @@ struct WorkStepFormView: View {
         }
     }
 
+    private var displayUnitName: String {
+        let name = unitName.trimmingCharacters(in: .whitespaces)
+        return name.isEmpty ? "unit" : name
+    }
+
     private var timeAndBatchSection: some View {
         Section {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
@@ -195,16 +227,19 @@ struct WorkStepFormView: View {
                     .font(AppTheme.Typography.bodyText)
                     .foregroundStyle(.secondary)
                 HStack(spacing: AppTheme.Spacing.xs) {
-                    timeField(text: $hoursText, label: "h")
+                    timeField(text: $hoursText, label: "h", field: .hours)
                     Text(":")
                         .font(.title3)
                         .foregroundStyle(.tertiary)
-                    timeField(text: $minutesText, label: "m")
+                    timeField(text: $minutesText, label: "m", field: .minutes)
                     Text(":")
                         .font(.title3)
                         .foregroundStyle(.tertiary)
-                    timeField(text: $secondsText, label: "s")
+                    timeField(text: $secondsText, label: "s", field: .seconds)
                 }
+                Text("Total time to produce the batch")
+                    .font(AppTheme.Typography.note)
+                    .foregroundStyle(.tertiary)
             }
 
             Button {
@@ -213,57 +248,77 @@ struct WorkStepFormView: View {
                 Label("Use Stopwatch", systemImage: "stopwatch")
             }
 
-            HStack {
-                Text("Units Completed")
-                Spacer()
-                TextField("1", text: $batchUnitsText)
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.trailing)
-                    .frame(width: 80)
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                HStack {
+                    Text("\(displayUnitName.capitalized)s Completed")
+                    Spacer()
+                    TextField("1", text: $batchUnitsText)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 80)
+                        .focused($focusedField, equals: .batchUnits)
+                }
+                Text("How many \(displayUnitName)s were produced in this timed batch")
+                    .font(AppTheme.Typography.note)
+                    .foregroundStyle(.tertiary)
             }
 
-            HStack {
-                Text("Unit Name")
-                Spacer()
-                TextField("unit", text: $unitName)
-                    .multilineTextAlignment(.trailing)
-                    .frame(width: 120)
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                HStack {
+                    Text("Unit Name")
+                    Spacer()
+                    TextField("unit", text: $unitName)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 120)
+                        .focused($focusedField, equals: .unitName)
+                }
+                Text("What you call each piece (e.g. board, piece, widget)")
+                    .font(AppTheme.Typography.note)
+                    .foregroundStyle(.tertiary)
             }
 
-            HStack {
-                Text("Units per Product")
-                Spacer()
-                TextField("1", text: $unitsPerProductText)
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.trailing)
-                    .frame(width: 80)
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                HStack {
+                    Text("\(displayUnitName.capitalized)s per Product")
+                    Spacer()
+                    TextField("1", text: $unitsPerProductText)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 80)
+                        .focused($focusedField, equals: .unitsPerProduct)
+                }
+                Text("How many \(displayUnitName)s go into one finished product")
+                    .font(AppTheme.Typography.note)
+                    .foregroundStyle(.tertiary)
             }
         } header: {
             Text("Time & Batch")
-        } footer: {
-            Text("Enter the total time for a batch, how many items you produced, and how many are needed per finished product.")
         }
     }
 
     private var costSection: some View {
         Section {
-            HStack {
-                Text("Hourly Rate")
-                Spacer()
-                Text(currencyFormatter.selected == .usd ? "$" : "€")
-                    .foregroundStyle(.secondary)
-                TextField("0", text: $laborRateText)
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.trailing)
-                    .frame(width: 80)
-                Text("/hr")
-                    .font(AppTheme.Typography.bodyText)
-                    .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                HStack {
+                    Text("Hourly Rate")
+                    Spacer()
+                    Text(currencyFormatter.selected == .usd ? "$" : "€")
+                        .foregroundStyle(.secondary)
+                    TextField("0", text: $laborRateText)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 80)
+                        .focused($focusedField, equals: .laborRate)
+                    Text("/hr")
+                        .font(AppTheme.Typography.bodyText)
+                        .foregroundStyle(.secondary)
+                }
+                Text("Defaults to your rate in Settings; override per step here")
+                    .font(AppTheme.Typography.note)
+                    .foregroundStyle(.tertiary)
             }
         } header: {
             Text("Cost")
-        } footer: {
-            Text("The hourly labor rate for this step. Defaults to your rate in Settings; you can adjust it here for this step.")
         }
     }
 
@@ -280,7 +335,7 @@ struct WorkStepFormView: View {
                 laborRate: laborRate
             )
 
-            previewRow(label: "Time per \(unitName)", value: CostingEngine.formatDuration(unitTimeSeconds))
+            previewRow(label: "Time per \(displayUnitName)", value: CostingEngine.formatDuration(unitTimeSeconds))
             previewRow(label: "Time per product", value: CostingEngine.formatDuration(timePerProduct))
 
             HStack {
@@ -297,12 +352,13 @@ struct WorkStepFormView: View {
     // MARK: - Helpers
 
     @ViewBuilder
-    private func timeField(text: Binding<String>, label: String) -> some View {
+    private func timeField(text: Binding<String>, label: String, field: FocusableField) -> some View {
         HStack(spacing: AppTheme.Spacing.xxs) {
             TextField("0", text: text)
                 .keyboardType(.numberPad)
                 .multilineTextAlignment(.trailing)
                 .frame(width: 52)
+                .focused($focusedField, equals: field)
             Text(label)
                 .font(AppTheme.Typography.bodyText)
                 .foregroundStyle(.secondary)
@@ -317,7 +373,58 @@ struct WorkStepFormView: View {
             Spacer()
             Text(value)
                 .font(AppTheme.Typography.sectionHeader)
+                .foregroundStyle(AppTheme.Colors.accent)
         }
+    }
+
+    // MARK: - Focus & Validation Helpers
+
+    private func clearDefaultOnFocus(field: FocusableField) {
+        switch field {
+        case .hours:
+            if hoursText == "0" || hoursText.isEmpty { hoursText = "" }
+        case .minutes:
+            if minutesText == "0" { minutesText = "" }
+        case .seconds:
+            if secondsText == "0" { secondsText = "" }
+        case .batchUnits:
+            if batchUnitsText == "1" { batchUnitsText = "" }
+        case .unitName:
+            if unitName == "unit" { unitName = "" }
+        case .unitsPerProduct:
+            if unitsPerProductText == "1" { unitsPerProductText = "" }
+        case .laborRate:
+            if laborRateText == "0" { laborRateText = "" }
+        }
+    }
+
+    private func restoreDefaultIfEmpty(field: FocusableField) {
+        switch field {
+        case .hours:
+            if hoursText.trimmingCharacters(in: .whitespaces).isEmpty { hoursText = "" }
+        case .minutes:
+            if minutesText.trimmingCharacters(in: .whitespaces).isEmpty { minutesText = "0" }
+        case .seconds:
+            if secondsText.trimmingCharacters(in: .whitespaces).isEmpty { secondsText = "0" }
+        case .batchUnits:
+            if batchUnitsText.trimmingCharacters(in: .whitespaces).isEmpty { batchUnitsText = "1" }
+        case .unitName:
+            if unitName.trimmingCharacters(in: .whitespaces).isEmpty { unitName = "unit" }
+        case .unitsPerProduct:
+            if unitsPerProductText.trimmingCharacters(in: .whitespaces).isEmpty { unitsPerProductText = "1" }
+        case .laborRate:
+            if laborRateText.trimmingCharacters(in: .whitespaces).isEmpty { laborRateText = "0" }
+        }
+    }
+
+    private func sanitizeDigitsOnly(_ value: String) -> String {
+        let filtered = value.filter { $0.isNumber }
+        return filtered == value ? value : filtered
+    }
+
+    private func clampTimeComponent(_ value: String, max: Int) -> String {
+        guard let intValue = Int(value), intValue > max else { return value }
+        return "\(max)"
     }
 
     // MARK: - Actions

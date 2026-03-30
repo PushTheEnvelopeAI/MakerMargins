@@ -4,7 +4,7 @@
 // Full-screen stopwatch for timing a production batch.
 // Presented as .fullScreenCover from WorkStepDetailView or WorkStepFormView.
 // Uses an onSave closure so the caller decides what to do with the elapsed time.
-// Timer uses Date.now diff for accuracy (not accumulated intervals).
+// Supports pause/resume — accumulated time is tracked across multiple intervals.
 
 import SwiftUI
 
@@ -16,10 +16,10 @@ struct StopwatchView: View {
 
     @State private var timerState: TimerState = .idle
     @State private var startDate: Date? = nil
-    @State private var elapsed: TimeInterval = 0
+    @State private var accumulatedTime: TimeInterval = 0
 
     private enum TimerState {
-        case idle, running, stopped
+        case idle, running, paused
     }
 
     // MARK: - Body
@@ -67,13 +67,13 @@ struct StopwatchView: View {
     private var timeDisplay: some View {
         if timerState == .running {
             TimelineView(.periodic(from: .now, by: 0.1)) { context in
-                let live = startDate.map { context.date.timeIntervalSince($0) } ?? 0
+                let live = accumulatedTime + (startDate.map { context.date.timeIntervalSince($0) } ?? 0)
                 Text(formatStopwatch(live))
                     .font(.system(size: 56, weight: .light, design: .monospaced))
                     .contentTransition(.numericText())
             }
         } else {
-            Text(formatStopwatch(elapsed))
+            Text(formatStopwatch(accumulatedTime))
                 .font(.system(size: 56, weight: .light, design: .monospaced))
         }
     }
@@ -89,23 +89,30 @@ struct StopwatchView: View {
             }
 
         case .running:
-            Button(action: stop) {
-                stopwatchButton(label: "Stop", style: .destructive)
+            Button(action: pause) {
+                stopwatchButton(label: "Pause", style: .destructive)
             }
 
-        case .stopped:
+        case .paused:
             VStack(spacing: AppTheme.Spacing.lg) {
                 HStack(spacing: AppTheme.Spacing.xl) {
-                    Button(action: discard) {
-                        stopwatchButton(label: "Discard", style: .secondary)
+                    Button(action: resume) {
+                        stopwatchButton(label: "Resume", style: .accent)
                     }
                     Button(action: save) {
-                        stopwatchButton(label: "Save", style: .accent)
+                        stopwatchButton(label: "Save", style: .secondary)
                     }
                 }
-                Button("Re-record", action: rerecord)
-                    .font(AppTheme.Typography.bodyText)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: AppTheme.Spacing.xl) {
+                    Button("Discard", action: discard)
+                        .font(AppTheme.Typography.bodyText)
+                        .foregroundStyle(.secondary)
+                    Text("·")
+                        .foregroundStyle(.tertiary)
+                    Button("Re-record", action: rerecord)
+                        .font(AppTheme.Typography.bodyText)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
     }
@@ -155,15 +162,21 @@ struct StopwatchView: View {
         timerState = .running
     }
 
-    private func stop() {
+    private func pause() {
         if let startDate {
-            elapsed = Date.now.timeIntervalSince(startDate)
+            accumulatedTime += Date.now.timeIntervalSince(startDate)
         }
-        timerState = .stopped
+        startDate = nil
+        timerState = .paused
+    }
+
+    private func resume() {
+        startDate = Date.now
+        timerState = .running
     }
 
     private func save() {
-        onSave(elapsed)
+        onSave(accumulatedTime)
         dismiss()
     }
 
@@ -172,7 +185,7 @@ struct StopwatchView: View {
     }
 
     private func rerecord() {
-        elapsed = 0
+        accumulatedTime = 0
         startDate = nil
         timerState = .idle
     }

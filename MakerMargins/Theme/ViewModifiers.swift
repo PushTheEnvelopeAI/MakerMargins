@@ -15,7 +15,11 @@ extension View {
                 AppTheme.Colors.surfaceElevated,
                 in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
             )
-            .shadow(color: .black.opacity(0.12), radius: 4, x: 0, y: 2)
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
+                    .strokeBorder(AppTheme.Colors.cardBorder, lineWidth: 0.5)
+            )
+            .shadow(color: .black.opacity(0.06), radius: 3, x: 0, y: 1)
     }
 }
 
