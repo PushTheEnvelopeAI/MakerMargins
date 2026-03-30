@@ -31,6 +31,10 @@ struct ProductFormView: View {
     @State private var photoItem: PhotosPickerItem? = nil
     @State private var imageData: Data? = nil
 
+    // Inline category creation
+    @State private var isCreatingCategory = false
+    @State private var newCategoryName: String = ""
+
     // MARK: - Init
 
     init(product: Product?) {
@@ -128,13 +132,69 @@ struct ProductFormView: View {
 
     private var categorySection: some View {
         Section("Category") {
-            Picker("Category", selection: $selectedCategory) {
-                Text("None").tag(Optional<Category>.none)
-                ForEach(categories) { category in
-                    Text(category.name).tag(Optional(category))
+            Button {
+                selectedCategory = nil
+            } label: {
+                HStack {
+                    Text("None")
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    if selectedCategory == nil {
+                        Image(systemName: "checkmark")
+                            .foregroundStyle(AppTheme.Colors.accent)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+
+            ForEach(categories) { category in
+                Button {
+                    selectedCategory = category
+                } label: {
+                    HStack {
+                        Text(category.name)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        if selectedCategory?.persistentModelID == category.persistentModelID {
+                            Image(systemName: "checkmark")
+                                .foregroundStyle(AppTheme.Colors.accent)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+
+            if isCreatingCategory {
+                HStack {
+                    TextField("Category name", text: $newCategoryName)
+                    Button("Add") {
+                        createCategory()
+                    }
+                    .disabled(newCategoryName.trimmingCharacters(in: .whitespaces).isEmpty)
+                    Button("Cancel") {
+                        isCreatingCategory = false
+                        newCategoryName = ""
+                    }
+                    .foregroundStyle(.secondary)
+                }
+            } else {
+                Button {
+                    isCreatingCategory = true
+                } label: {
+                    Label("New Category", systemImage: "plus.circle")
                 }
             }
         }
+    }
+
+    private func createCategory() {
+        let name = newCategoryName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        let category = Category(name: name)
+        modelContext.insert(category)
+        selectedCategory = category
+        newCategoryName = ""
+        isCreatingCategory = false
     }
 
     // MARK: - Actions

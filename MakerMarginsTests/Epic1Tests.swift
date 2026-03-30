@@ -266,4 +266,113 @@ struct Epic1Tests {
         #expect(result.contains("0"))
         #expect(result.contains("$"))
     }
+
+    // MARK: - Product Duplication
+
+    @Test("Duplicating a product copies metadata, re-links shared steps, and deep-copies materials")
+    func duplicateProductCopiesAllData() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+
+        let category = Category(name: "Boards")
+        let source = Product(
+            title: "Walnut Board",
+            summary: "End-grain cutting board",
+            shippingCost: Decimal(string: "8.50")!,
+            materialBuffer: Decimal(string: "0.10")!,
+            laborBuffer: Decimal(string: "0.05")!,
+            category: category
+        )
+
+        // Add a shared WorkStep
+        let step = WorkStep(title: "Sand edges", laborRate: 20, recordedTime: 1800)
+        let link = ProductWorkStep(product: source, workStep: step, sortOrder: 0)
+        source.productWorkSteps.append(link)
+        step.productWorkSteps.append(link)
+
+        // Add a Material
+        let material = Material(
+            title: "Walnut Lumber",
+            bulkCost: Decimal(string: "45.00")!,
+            bulkQuantity: Decimal(string: "10")!,
+            unitName: "board-foot",
+            unitsRequiredPerProduct: Decimal(string: "3")!,
+            product: source
+        )
+        source.materials.append(material)
+
+        ctx.insert(category)
+        ctx.insert(source)
+        ctx.insert(step)
+        ctx.insert(link)
+        try ctx.save()
+
+        // --- Duplicate (mirrors ProductListView.duplicateProduct logic) ---
+        let copy = Product(
+            title: "\(source.title) (Copy)",
+            summary: source.summary,
+            image: source.image,
+            shippingCost: source.shippingCost,
+            materialBuffer: source.materialBuffer,
+            laborBuffer: source.laborBuffer,
+            category: source.category
+        )
+        ctx.insert(copy)
+
+        for srcLink in source.productWorkSteps {
+            guard let ws = srcLink.workStep else { continue }
+            let newLink = ProductWorkStep(product: copy, workStep: ws, sortOrder: srcLink.sortOrder)
+            ctx.insert(newLink)
+            copy.productWorkSteps.append(newLink)
+            ws.productWorkSteps.append(newLink)
+        }
+
+        for srcMat in source.materials {
+            let newMat = Material(
+                title: srcMat.title,
+                summary: srcMat.summary,
+                bulkCost: srcMat.bulkCost,
+                bulkQuantity: srcMat.bulkQuantity,
+                unitName: srcMat.unitName,
+                unitsRequiredPerProduct: srcMat.unitsRequiredPerProduct,
+                product: copy
+            )
+            ctx.insert(newMat)
+            copy.materials.append(newMat)
+        }
+        try ctx.save()
+
+        // --- Assertions ---
+        let products = try ctx.fetch(FetchDescriptor<Product>())
+        #expect(products.count == 2)
+
+        let copied = products.first { $0.title == "Walnut Board (Copy)" }!
+
+        // Scalar metadata copied
+        #expect(copied.summary == "End-grain cutting board")
+        #expect(copied.shippingCost == Decimal(string: "8.50")!)
+        #expect(copied.materialBuffer == Decimal(string: "0.10")!)
+        #expect(copied.laborBuffer == Decimal(string: "0.05")!)
+        #expect(copied.category?.name == "Boards")
+
+        // Shared step re-linked (same WorkStep, new association)
+        #expect(copied.productWorkSteps.count == 1)
+        #expect(copied.productWorkSteps[0].workStep?.title == "Sand edges")
+        #expect(copied.productWorkSteps[0].sortOrder == 0)
+
+        // WorkStep is shared — still only 1 WorkStep total, now linked to 2 products
+        let steps = try ctx.fetch(FetchDescriptor<WorkStep>())
+        #expect(steps.count == 1)
+        #expect(steps[0].productWorkSteps.count == 2)
+
+        // Material deep-copied (new instance, not shared)
+        #expect(copied.materials.count == 1)
+        #expect(copied.materials[0].title == "Walnut Lumber")
+        #expect(copied.materials[0].bulkCost == Decimal(string: "45.00")!)
+        #expect(copied.materials[0].unitsRequiredPerProduct == Decimal(string: "3")!)
+
+        // 2 distinct Material instances total (original + copy)
+        let materials = try ctx.fetch(FetchDescriptor<Material>())
+        #expect(materials.count == 2)
+    }
 }

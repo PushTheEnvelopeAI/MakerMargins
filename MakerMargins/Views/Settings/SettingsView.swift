@@ -63,12 +63,6 @@ struct SettingsView: View {
                 Text("New work steps will default to this rate. You can adjust the rate per step.")
             }
 
-            Section("Products") {
-                NavigationLink("Categories") {
-                    CategoryListView()
-                }
-            }
-
             Section("Selling") {
                 NavigationLink("Platform Fee Profiles") {
                     ContentUnavailableView(

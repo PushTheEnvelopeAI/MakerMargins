@@ -44,7 +44,7 @@ struct WorkshopView: View {
                 stepList
             }
         }
-        .navigationTitle("Workshop")
+        .navigationTitle("Labor")
         .searchable(text: $searchText)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -63,6 +63,18 @@ struct WorkshopView: View {
         }
     }
 
+    // MARK: - Helpers
+
+    private func usedByText(for step: WorkStep) -> String {
+        let products = step.productWorkSteps.compactMap(\.product)
+        guard let first = products.first else { return "Not used" }
+        let remaining = products.count - 1
+        if remaining == 0 {
+            return "Used by \(first.title)"
+        }
+        return "Used by \(first.title) + \(remaining) \(remaining == 1 ? "other" : "others")"
+    }
+
     // MARK: - Step List
 
     private var stepList: some View {
@@ -77,8 +89,7 @@ struct WorkshopView: View {
                             .lineLimit(1)
 
                         HStack(spacing: AppTheme.Spacing.sm) {
-                            let count = step.productWorkSteps.count
-                            Text("Used by \(count) \(count == 1 ? "product" : "products")")
+                            Text(usedByText(for: step))
                                 .font(AppTheme.Typography.rowCaption)
                                 .foregroundStyle(.secondary)
 

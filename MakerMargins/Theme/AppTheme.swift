@@ -20,12 +20,39 @@ enum AppTheme {
             }
         )
 
-        /// Subtle accent background — badges, tag pills.
+        /// Subtle accent background — interactive highlights, selected states.
         static let accentSubtle = Color(
             UIColor { traits in
                 traits.userInterfaceStyle == .dark
                     ? UIColor(red: 0.88, green: 0.58, blue: 0.13, alpha: 0.20)
                     : UIColor(red: 0.76, green: 0.47, blue: 0.09, alpha: 0.12)
+            }
+        )
+
+        /// Category badge text — sage/olive green.
+        static let categoryBadge = Color(
+            UIColor { traits in
+                traits.userInterfaceStyle == .dark
+                    ? UIColor(red: 0.58, green: 0.70, blue: 0.52, alpha: 1)      // #94B385
+                    : UIColor(red: 0.42, green: 0.50, blue: 0.38, alpha: 1)      // #6B8061
+            }
+        )
+
+        /// Category badge background — sage green at low opacity.
+        static let categoryBadgeBackground = Color(
+            UIColor { traits in
+                traits.userInterfaceStyle == .dark
+                    ? UIColor(red: 0.58, green: 0.70, blue: 0.52, alpha: 0.20)
+                    : UIColor(red: 0.42, green: 0.50, blue: 0.38, alpha: 0.12)
+            }
+        )
+
+        /// Tab bar tint — muted sage green for selected tab icon/label.
+        static let tabTint = Color(
+            UIColor { traits in
+                traits.userInterfaceStyle == .dark
+                    ? UIColor(red: 0.58, green: 0.70, blue: 0.52, alpha: 1)      // #94B385
+                    : UIColor(red: 0.38, green: 0.46, blue: 0.34, alpha: 1)      // #617557
             }
         )
 
@@ -38,12 +65,22 @@ enum AppTheme {
             }
         )
 
-        /// Elevated surface — grid cells, cards. Warm tinted.
+        /// Elevated surface — grid cells, cards.
+        /// Light: near-white with faint warmth. Dark: warm charcoal with clear contrast against surface.
         static let surfaceElevated = Color(
             UIColor { traits in
                 traits.userInterfaceStyle == .dark
-                    ? UIColor(red: 0.11, green: 0.10, blue: 0.09, alpha: 1)   // #1C1A17
-                    : UIColor(red: 1.00, green: 0.969, blue: 0.933, alpha: 1)  // #FFF7EE
+                    ? UIColor(red: 0.173, green: 0.161, blue: 0.149, alpha: 1) // #2C2926
+                    : UIColor(red: 0.996, green: 0.992, blue: 0.984, alpha: 1) // #FEFDFB
+            }
+        )
+
+        /// Card border — subtle edge definition. Dark: light stroke, Light: dark stroke.
+        static let cardBorder = Color(
+            UIColor { traits in
+                traits.userInterfaceStyle == .dark
+                    ? UIColor(white: 1.0, alpha: 0.08)
+                    : UIColor(white: 0.0, alpha: 0.06)
             }
         )
 

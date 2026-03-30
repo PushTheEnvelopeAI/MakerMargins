@@ -1,16 +1,15 @@
 // ContentView.swift
 // MakerMargins
 //
-// Root 3-tab navigation shell.
+// Root 4-tab navigation shell.
 // This view owns only the TabView structure — no state, no queries.
 // Each tab root owns its own NavigationStack and data queries.
 //
 // Tabs:
-//   1. Products  (square.grid.2x2) — ProductListView    — Epic 1
-//   2. Workshop  (timer)           — WorkshopView       — Epic 2
-//   3. Settings  (gearshape)       — SettingsView       — Epic 1
-//
-// Epic 0 — placeholder tab destinations until each Epic is implemented.
+//   1. Products   (square.grid.2x2) — ProductListView     — Epic 1
+//   2. Labor      (hammer)          — WorkshopView         — Epic 2
+//   3. Materials  (shippingbox)     — MaterialsLibraryView — Epic 3 (stub)
+//   4. Settings   (gearshape)       — SettingsView         — Epic 1
 
 import SwiftUI
 
@@ -28,7 +27,14 @@ struct ContentView: View {
                 WorkshopView()
             }
             .tabItem {
-                Label("Workshop", systemImage: "timer")
+                Label("Labor", systemImage: "hammer")
+            }
+
+            NavigationStack {
+                MaterialsLibraryView()
+            }
+            .tabItem {
+                Label("Materials", systemImage: "shippingbox")
             }
 
             NavigationStack {
@@ -38,5 +44,6 @@ struct ContentView: View {
                 Label("Settings", systemImage: "gearshape")
             }
         }
+        .tint(AppTheme.Colors.tabTint)
     }
 }

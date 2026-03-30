@@ -105,6 +105,18 @@ struct ProductListView: View {
                     NavigationLink(value: product) {
                         ProductRowView(product: product)
                     }
+                    .contextMenu {
+                        Button {
+                            duplicateProduct(product)
+                        } label: {
+                            Label("Duplicate", systemImage: "doc.on.doc")
+                        }
+                        Button(role: .destructive) {
+                            productToDelete = product
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
                 }
                 .onDelete { offsets in
                     if let index = offsets.first {
@@ -144,6 +156,18 @@ struct ProductListView: View {
                             ProductGridCell(product: product)
                         }
                         .buttonStyle(.plain)
+                        .contextMenu {
+                            Button {
+                                duplicateProduct(product)
+                            } label: {
+                                Label("Duplicate", systemImage: "doc.on.doc")
+                            }
+                            Button(role: .destructive) {
+                                productToDelete = product
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
                     }
                 }
                 .padding(.horizontal)
@@ -201,6 +225,49 @@ struct ProductListView: View {
             )
         } else {
             ContentUnavailableView.search(text: searchText)
+        }
+    }
+
+    // MARK: - Actions
+
+    private func duplicateProduct(_ source: Product) {
+        let copy = Product(
+            title: "\(source.title) (Copy)",
+            summary: source.summary,
+            image: source.image,
+            shippingCost: source.shippingCost,
+            materialBuffer: source.materialBuffer,
+            laborBuffer: source.laborBuffer,
+            category: source.category
+        )
+        modelContext.insert(copy)
+
+        // Re-link shared WorkSteps via new ProductWorkStep associations
+        for link in source.productWorkSteps {
+            guard let step = link.workStep else { continue }
+            let newLink = ProductWorkStep(
+                product: copy,
+                workStep: step,
+                sortOrder: link.sortOrder
+            )
+            modelContext.insert(newLink)
+            copy.productWorkSteps.append(newLink)
+            step.productWorkSteps.append(newLink)
+        }
+
+        // Deep-copy Materials (each product owns its own material instances)
+        for material in source.materials {
+            let newMaterial = Material(
+                title: material.title,
+                summary: material.summary,
+                bulkCost: material.bulkCost,
+                bulkQuantity: material.bulkQuantity,
+                unitName: material.unitName,
+                unitsRequiredPerProduct: material.unitsRequiredPerProduct,
+                product: copy
+            )
+            modelContext.insert(newMaterial)
+            copy.materials.append(newMaterial)
         }
     }
 }
