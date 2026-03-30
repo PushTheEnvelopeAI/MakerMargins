@@ -20,6 +20,7 @@ struct MaterialListView: View {
     @State private var showingNewMaterialForm = false
     @State private var showingExistingMaterialPicker = false
     @State private var linkToRemove: ProductMaterial?
+    @State private var isReordering = false
     @State private var selectedMaterialIDs: [PersistentIdentifier] = []
     @State private var bufferText: String
     @FocusState private var bufferFocused: Bool
@@ -96,21 +97,32 @@ struct MaterialListView: View {
         HStack {
             Text("Materials")
             Spacer()
-            Menu {
+            if !sortedLinks.isEmpty {
                 Button {
-                    showingNewMaterialForm = true
+                    withAnimation { isReordering.toggle() }
                 } label: {
-                    Label("New Material", systemImage: "plus")
+                    Text(isReordering ? "Done" : "Reorder")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.tint)
                 }
-                Button {
-                    showingExistingMaterialPicker = true
+            }
+            if !isReordering {
+                Menu {
+                    Button {
+                        showingNewMaterialForm = true
+                    } label: {
+                        Label("New Material", systemImage: "plus")
+                    }
+                    Button {
+                        showingExistingMaterialPicker = true
+                    } label: {
+                        Label("Add Existing Material", systemImage: "tray.and.arrow.down")
+                    }
                 } label: {
-                    Label("Add Existing Material", systemImage: "tray.and.arrow.down")
+                    Image(systemName: "plus.circle")
+                        .font(.title3)
+                        .foregroundStyle(.tint)
                 }
-            } label: {
-                Image(systemName: "plus.circle")
-                    .font(.title3)
-                    .foregroundStyle(.tint)
             }
         }
     }
@@ -126,28 +138,32 @@ struct MaterialListView: View {
     }
 
     private var materialList: some View {
-        List {
-            ForEach(sortedLinks, id: \.persistentModelID) { link in
+        VStack(spacing: 0) {
+            ForEach(Array(sortedLinks.enumerated()), id: \.element.persistentModelID) { index, link in
                 if let material = link.material {
-                    NavigationLink(value: material) {
-                        materialRow(link: link)
+                    if index > 0 {
+                        Divider()
+                            .padding(.leading, AppTheme.Spacing.md + AppTheme.Sizing.thumbnailSmall)
                     }
-                    .contextMenu {
-                        Button(role: .destructive) {
-                            linkToRemove = link
-                        } label: {
-                            Label("Remove from Product", systemImage: "minus.circle")
+
+                    if isReordering {
+                        reorderRow(link: link, index: index)
+                    } else {
+                        NavigationLink(value: material) {
+                            materialRow(link: link)
+                        }
+                        .buttonStyle(.plain)
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                linkToRemove = link
+                            } label: {
+                                Label("Remove from Product", systemImage: "minus.circle")
+                            }
                         }
                     }
                 }
             }
-            .onMove(perform: reorderMaterials)
         }
-        .listStyle(.plain)
-        .environment(\.editMode, .constant(.active))
-        .scrollDisabled(true)
-        .scrollContentBackground(.hidden)
-        .frame(minHeight: CGFloat(sortedLinks.count) * 60)
     }
 
     private func materialRow(link: ProductMaterial) -> some View {
@@ -169,6 +185,38 @@ struct MaterialListView: View {
             Image(systemName: "chevron.right")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.tertiary)
+        }
+        .padding(.vertical, AppTheme.Spacing.sm)
+    }
+
+    private func reorderRow(link: ProductMaterial, index: Int) -> some View {
+        let material = link.material!
+        return HStack(spacing: AppTheme.Spacing.md) {
+            MaterialThumbnailView(imageData: material.image)
+
+            Text(material.title)
+                .font(AppTheme.Typography.rowTitle)
+                .lineLimit(1)
+
+            Spacer()
+
+            Button {
+                moveMaterial(at: index, direction: -1)
+            } label: {
+                Image(systemName: "arrow.up")
+                    .font(.caption.weight(.semibold))
+            }
+            .disabled(index == 0)
+            .buttonStyle(.bordered)
+
+            Button {
+                moveMaterial(at: index, direction: 1)
+            } label: {
+                Image(systemName: "arrow.down")
+                    .font(.caption.weight(.semibold))
+            }
+            .disabled(index == sortedLinks.count - 1)
+            .buttonStyle(.bordered)
         }
         .padding(.vertical, AppTheme.Spacing.sm)
     }
@@ -306,9 +354,11 @@ struct MaterialListView: View {
         material.productMaterials.append(link)
     }
 
-    private func reorderMaterials(from source: IndexSet, to destination: Int) {
+    private func moveMaterial(at index: Int, direction: Int) {
+        let targetIndex = index + direction
         var links = sortedLinks
-        links.move(fromOffsets: source, toOffset: destination)
+        guard targetIndex >= 0, targetIndex < links.count else { return }
+        links.swapAt(index, targetIndex)
         for (i, link) in links.enumerated() {
             link.sortOrder = i
         }

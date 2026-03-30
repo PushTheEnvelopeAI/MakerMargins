@@ -20,6 +20,7 @@ struct WorkStepListView: View {
     @State private var showingNewStepForm = false
     @State private var showingExistingStepPicker = false
     @State private var linkToRemove: ProductWorkStep?
+    @State private var isReordering = false
     @State private var selectedStepIDs: [PersistentIdentifier] = []
     @State private var bufferText: String
     @FocusState private var bufferFocused: Bool
@@ -96,21 +97,32 @@ struct WorkStepListView: View {
         HStack {
             Text("Labor Workflow")
             Spacer()
-            Menu {
+            if !sortedLinks.isEmpty {
                 Button {
-                    showingNewStepForm = true
+                    withAnimation { isReordering.toggle() }
                 } label: {
-                    Label("New Step", systemImage: "plus")
+                    Text(isReordering ? "Done" : "Reorder")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.tint)
                 }
-                Button {
-                    showingExistingStepPicker = true
+            }
+            if !isReordering {
+                Menu {
+                    Button {
+                        showingNewStepForm = true
+                    } label: {
+                        Label("New Step", systemImage: "plus")
+                    }
+                    Button {
+                        showingExistingStepPicker = true
+                    } label: {
+                        Label("Add Existing Step", systemImage: "tray.and.arrow.down")
+                    }
                 } label: {
-                    Label("Add Existing Step", systemImage: "tray.and.arrow.down")
+                    Image(systemName: "plus.circle")
+                        .font(.title3)
+                        .foregroundStyle(.tint)
                 }
-            } label: {
-                Image(systemName: "plus.circle")
-                    .font(.title3)
-                    .foregroundStyle(.tint)
             }
         }
     }
@@ -126,28 +138,32 @@ struct WorkStepListView: View {
     }
 
     private var stepList: some View {
-        List {
-            ForEach(sortedLinks, id: \.persistentModelID) { link in
+        VStack(spacing: 0) {
+            ForEach(Array(sortedLinks.enumerated()), id: \.element.persistentModelID) { index, link in
                 if let step = link.workStep {
-                    NavigationLink(value: step) {
-                        stepRow(link: link)
+                    if index > 0 {
+                        Divider()
+                            .padding(.leading, AppTheme.Spacing.md + AppTheme.Sizing.thumbnailSmall)
                     }
-                    .contextMenu {
-                        Button(role: .destructive) {
-                            linkToRemove = link
-                        } label: {
-                            Label("Remove from Product", systemImage: "minus.circle")
+
+                    if isReordering {
+                        reorderRow(link: link, index: index)
+                    } else {
+                        NavigationLink(value: step) {
+                            stepRow(link: link)
+                        }
+                        .buttonStyle(.plain)
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                linkToRemove = link
+                            } label: {
+                                Label("Remove from Product", systemImage: "minus.circle")
+                            }
                         }
                     }
                 }
             }
-            .onMove(perform: reorderSteps)
         }
-        .listStyle(.plain)
-        .environment(\.editMode, .constant(.active))
-        .scrollDisabled(true)
-        .scrollContentBackground(.hidden)
-        .frame(minHeight: CGFloat(sortedLinks.count) * 60)
     }
 
     private func stepRow(link: ProductWorkStep) -> some View {
@@ -169,6 +185,38 @@ struct WorkStepListView: View {
             Image(systemName: "chevron.right")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.tertiary)
+        }
+        .padding(.vertical, AppTheme.Spacing.sm)
+    }
+
+    private func reorderRow(link: ProductWorkStep, index: Int) -> some View {
+        let step = link.workStep!
+        return HStack(spacing: AppTheme.Spacing.md) {
+            WorkStepThumbnailView(imageData: step.image)
+
+            Text(step.title)
+                .font(AppTheme.Typography.rowTitle)
+                .lineLimit(1)
+
+            Spacer()
+
+            Button {
+                moveStep(at: index, direction: -1)
+            } label: {
+                Image(systemName: "arrow.up")
+                    .font(.caption.weight(.semibold))
+            }
+            .disabled(index == 0)
+            .buttonStyle(.bordered)
+
+            Button {
+                moveStep(at: index, direction: 1)
+            } label: {
+                Image(systemName: "arrow.down")
+                    .font(.caption.weight(.semibold))
+            }
+            .disabled(index == sortedLinks.count - 1)
+            .buttonStyle(.bordered)
         }
         .padding(.vertical, AppTheme.Spacing.sm)
     }
@@ -306,9 +354,11 @@ struct WorkStepListView: View {
         step.productWorkSteps.append(link)
     }
 
-    private func reorderSteps(from source: IndexSet, to destination: Int) {
+    private func moveStep(at index: Int, direction: Int) {
+        let targetIndex = index + direction
         var links = sortedLinks
-        links.move(fromOffsets: source, toOffset: destination)
+        guard targetIndex >= 0, targetIndex < links.count else { return }
+        links.swapAt(index, targetIndex)
         for (i, link) in links.enumerated() {
             link.sortOrder = i
         }
