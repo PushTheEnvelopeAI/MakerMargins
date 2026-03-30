@@ -37,14 +37,20 @@ struct ProductListView: View {
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
-            Group {
-                if isGridMode {
-                    gridContent
-                } else {
-                    listContent
-                }
+            productContent
+        }
+    }
+
+    @ViewBuilder
+    private var productContent: some View {
+        Group {
+            if isGridMode {
+                gridContent
+            } else {
+                listContent
             }
-            .navigationTitle("Products")
+        }
+        .navigationTitle("Products")
         .searchable(text: $searchText, prompt: "Search products")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -93,7 +99,6 @@ struct ProductListView: View {
         } message: {
             Text("This will permanently delete this product. Work steps and materials will remain in their libraries. This action cannot be undone.")
         }
-        } // NavigationStack
     }
 
     // MARK: - List
