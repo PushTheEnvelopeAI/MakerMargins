@@ -278,8 +278,8 @@ struct Epic2Tests {
             defaultUnitsPerProduct: 2
         )
 
-        let linkA = ProductWorkStep(product: product, workStep: stepA, sortOrder: 0)
-        let linkB = ProductWorkStep(product: product, workStep: stepB, sortOrder: 1)
+        let linkA = ProductWorkStep(product: product, workStep: stepA, sortOrder: 0, unitsRequiredPerProduct: stepA.defaultUnitsPerProduct)
+        let linkB = ProductWorkStep(product: product, workStep: stepB, sortOrder: 1, unitsRequiredPerProduct: stepB.defaultUnitsPerProduct)
 
         product.productWorkSteps.append(linkA)
         product.productWorkSteps.append(linkB)

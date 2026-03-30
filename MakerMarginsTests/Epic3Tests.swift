@@ -276,8 +276,8 @@ struct Epic3Tests {
             defaultUnitsPerProduct: Decimal(string: "2")!
         )
 
-        let linkA = ProductMaterial(product: product, material: matA, sortOrder: 0)
-        let linkB = ProductMaterial(product: product, material: matB, sortOrder: 1)
+        let linkA = ProductMaterial(product: product, material: matA, sortOrder: 0, unitsRequiredPerProduct: matA.defaultUnitsPerProduct)
+        let linkB = ProductMaterial(product: product, material: matB, sortOrder: 1, unitsRequiredPerProduct: matB.defaultUnitsPerProduct)
 
         product.productMaterials.append(linkA)
         product.productMaterials.append(linkB)
@@ -327,7 +327,7 @@ struct Epic3Tests {
             bulkQuantity: Decimal(string: "10")!,
             defaultUnitsPerProduct: Decimal(string: "3")!
         )
-        let matLink = ProductMaterial(product: product, material: material, sortOrder: 0)
+        let matLink = ProductMaterial(product: product, material: material, sortOrder: 0, unitsRequiredPerProduct: material.defaultUnitsPerProduct)
         product.productMaterials.append(matLink)
         material.productMaterials.append(matLink)
 
