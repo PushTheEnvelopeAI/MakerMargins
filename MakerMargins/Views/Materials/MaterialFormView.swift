@@ -203,11 +203,11 @@ struct MaterialFormView: View {
     private var previewSection: some View {
         Section("Calculated") {
             let unitCost = CostingEngine.materialUnitCost(
-                bulkCost: safeCost,
+                bulkCost: bulkCost,
                 bulkQuantity: bulkQuantity
             )
             let lineCost = CostingEngine.materialLineCost(
-                bulkCost: safeCost,
+                bulkCost: bulkCost,
                 bulkQuantity: bulkQuantity,
                 unitsRequiredPerProduct: unitsPerProduct
             )
