@@ -304,7 +304,7 @@ struct Epic1Tests {
             bulkCost: Decimal(string: "45.00")!,
             bulkQuantity: Decimal(string: "10")!,
             unitName: "board-foot",
-            unitsRequiredPerProduct: Decimal(string: "3")!
+            defaultUnitsPerProduct: Decimal(string: "3")!
         )
         let matLink = ProductMaterial(product: source, material: material, sortOrder: 0)
         source.productMaterials.append(matLink)

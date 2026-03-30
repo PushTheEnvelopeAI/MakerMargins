@@ -18,6 +18,8 @@ struct ProductListView: View {
     @State private var isGridMode = false
     @State private var showingCreateForm = false
     @State private var productToDelete: Product? = nil
+    @State private var navigationPath = NavigationPath()
+    @State private var newlyCreatedProduct: Product?
 
     // MARK: - Filtering
 
@@ -34,6 +36,13 @@ struct ProductListView: View {
     // MARK: - Body
 
     var body: some View {
+        NavigationStack(path: $navigationPath) {
+            productContent
+        }
+    }
+
+    @ViewBuilder
+    private var productContent: some View {
         Group {
             if isGridMode {
                 gridContent
@@ -59,8 +68,15 @@ struct ProductListView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingCreateForm) {
-            ProductFormView(product: nil)
+        .sheet(isPresented: $showingCreateForm, onDismiss: {
+            if let product = newlyCreatedProduct {
+                navigationPath.append(product)
+                newlyCreatedProduct = nil
+            }
+        }) {
+            ProductFormView(product: nil, onCreate: { product in
+                newlyCreatedProduct = product
+            })
         }
         .navigationDestination(for: Product.self) { product in
             ProductDetailView(product: product)
@@ -248,7 +264,8 @@ struct ProductListView: View {
             let newLink = ProductWorkStep(
                 product: copy,
                 workStep: step,
-                sortOrder: link.sortOrder
+                sortOrder: link.sortOrder,
+                unitsRequiredPerProduct: link.unitsRequiredPerProduct
             )
             modelContext.insert(newLink)
             copy.productWorkSteps.append(newLink)
@@ -261,7 +278,8 @@ struct ProductListView: View {
             let newLink = ProductMaterial(
                 product: copy,
                 material: mat,
-                sortOrder: srcLink.sortOrder
+                sortOrder: srcLink.sortOrder,
+                unitsRequiredPerProduct: srcLink.unitsRequiredPerProduct
             )
             modelContext.insert(newLink)
             copy.productMaterials.append(newLink)

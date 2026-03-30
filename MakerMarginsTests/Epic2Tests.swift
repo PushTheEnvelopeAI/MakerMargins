@@ -48,7 +48,7 @@ struct Epic2Tests {
             recordedTime: 1800,
             batchUnitsCompleted: Decimal(string: "4")!,
             unitName: "piece",
-            unitsRequiredPerProduct: Decimal(string: "2")!
+            defaultUnitsPerProduct: Decimal(string: "2")!
         )
         ctx.insert(step)
         try ctx.save()
@@ -61,7 +61,7 @@ struct Epic2Tests {
         #expect(results[0].recordedTime == 1800)
         #expect(results[0].batchUnitsCompleted == Decimal(string: "4")!)
         #expect(results[0].unitName == "piece")
-        #expect(results[0].unitsRequiredPerProduct == Decimal(string: "2")!)
+        #expect(results[0].defaultUnitsPerProduct == Decimal(string: "2")!)
     }
 
     @Test("Create a ProductWorkStep association and verify sortOrder")
@@ -266,7 +266,7 @@ struct Epic2Tests {
             laborRate: 20,
             recordedTime: 3600,
             batchUnitsCompleted: 1,
-            unitsRequiredPerProduct: 1
+            defaultUnitsPerProduct: 1
         )
         // Step B: 1800s, 1 batch unit, 2 units/product, $15/hr
         // 0.5 hours/unit × 2 units/product × $15/hr = $15
@@ -275,11 +275,11 @@ struct Epic2Tests {
             laborRate: 15,
             recordedTime: 1800,
             batchUnitsCompleted: 1,
-            unitsRequiredPerProduct: 2
+            defaultUnitsPerProduct: 2
         )
 
-        let linkA = ProductWorkStep(product: product, workStep: stepA, sortOrder: 0)
-        let linkB = ProductWorkStep(product: product, workStep: stepB, sortOrder: 1)
+        let linkA = ProductWorkStep(product: product, workStep: stepA, sortOrder: 0, unitsRequiredPerProduct: stepA.defaultUnitsPerProduct)
+        let linkB = ProductWorkStep(product: product, workStep: stepB, sortOrder: 1, unitsRequiredPerProduct: stepB.defaultUnitsPerProduct)
 
         product.productWorkSteps.append(linkA)
         product.productWorkSteps.append(linkB)
@@ -316,7 +316,7 @@ struct Epic2Tests {
             laborRate: 20,
             recordedTime: 3600,
             batchUnitsCompleted: 1,
-            unitsRequiredPerProduct: 1
+            defaultUnitsPerProduct: 1
         )
 
         let link = ProductWorkStep(product: product, workStep: step, sortOrder: 0)

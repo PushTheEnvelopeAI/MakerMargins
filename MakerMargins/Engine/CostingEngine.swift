@@ -40,7 +40,18 @@ enum CostingEngine {
         stepLaborCost(
             recordedTime: step.recordedTime,
             batchUnitsCompleted: step.batchUnitsCompleted,
-            unitsRequiredPerProduct: step.unitsRequiredPerProduct,
+            unitsRequiredPerProduct: step.defaultUnitsPerProduct,
+            laborRate: step.laborRate
+        )
+    }
+
+    /// Product-context overload — uses the join model's per-product units.
+    static func stepLaborCost(link: ProductWorkStep) -> Decimal {
+        guard let step = link.workStep else { return 0 }
+        return stepLaborCost(
+            recordedTime: step.recordedTime,
+            batchUnitsCompleted: step.batchUnitsCompleted,
+            unitsRequiredPerProduct: link.unitsRequiredPerProduct,
             laborRate: step.laborRate
         )
     }
@@ -85,7 +96,17 @@ enum CostingEngine {
         materialLineCost(
             bulkCost: material.bulkCost,
             bulkQuantity: material.bulkQuantity,
-            unitsRequiredPerProduct: material.unitsRequiredPerProduct
+            unitsRequiredPerProduct: material.defaultUnitsPerProduct
+        )
+    }
+
+    /// Product-context overload — uses the join model's per-product units.
+    static func materialLineCost(link: ProductMaterial) -> Decimal {
+        guard let material = link.material else { return 0 }
+        return materialLineCost(
+            bulkCost: material.bulkCost,
+            bulkQuantity: material.bulkQuantity,
+            unitsRequiredPerProduct: link.unitsRequiredPerProduct
         )
     }
 
@@ -101,18 +122,18 @@ enum CostingEngine {
     // MARK: - Product-Level Calculations
 
     /// Total labor cost across all work steps linked to a product.
-    /// Traverses ProductWorkStep join entries to reach each shared WorkStep.
+    /// Uses per-product unitsRequiredPerProduct from each join model.
     static func totalLaborCost(product: Product) -> Decimal {
-        product.productWorkSteps.compactMap(\.workStep).reduce(Decimal.zero) { sum, step in
-            sum + stepLaborCost(step: step)
+        product.productWorkSteps.reduce(Decimal.zero) { sum, link in
+            sum + stepLaborCost(link: link)
         }
     }
 
     /// Total material cost across all materials linked to a product.
-    /// Traverses ProductMaterial join entries to reach each shared Material.
+    /// Uses per-product unitsRequiredPerProduct from each join model.
     static func totalMaterialCost(product: Product) -> Decimal {
-        product.productMaterials.compactMap(\.material).reduce(Decimal.zero) { sum, material in
-            sum + materialLineCost(material: material)
+        product.productMaterials.reduce(Decimal.zero) { sum, link in
+            sum + materialLineCost(link: link)
         }
     }
 

@@ -20,9 +20,9 @@ struct WorkStepListView: View {
     @State private var showingNewStepForm = false
     @State private var showingExistingStepPicker = false
     @State private var linkToRemove: ProductWorkStep?
-    @State private var isReordering = false
-    @State private var selectedStepIDs: Set<PersistentIdentifier> = []
+    @State private var selectedStepIDs: [PersistentIdentifier] = []
     @State private var bufferText: String
+    @FocusState private var bufferFocused: Bool
 
     // MARK: - Init
 
@@ -57,7 +57,6 @@ struct WorkStepListView: View {
                 emptyState
             } else {
                 stepList
-                totalFooter
             }
             bufferSection
         } label: {
@@ -97,32 +96,21 @@ struct WorkStepListView: View {
         HStack {
             Text("Labor Workflow")
             Spacer()
-            if !sortedLinks.isEmpty {
+            Menu {
                 Button {
-                    withAnimation { isReordering.toggle() }
+                    showingNewStepForm = true
                 } label: {
-                    Text(isReordering ? "Done" : "Reorder")
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(.tint)
+                    Label("New Step", systemImage: "plus")
                 }
-            }
-            if !isReordering {
-                Menu {
-                    Button {
-                        showingNewStepForm = true
-                    } label: {
-                        Label("New Step", systemImage: "plus")
-                    }
-                    Button {
-                        showingExistingStepPicker = true
-                    } label: {
-                        Label("Add Existing Step", systemImage: "tray.and.arrow.down")
-                    }
+                Button {
+                    showingExistingStepPicker = true
                 } label: {
-                    Image(systemName: "plus.circle")
-                        .font(.title3)
-                        .foregroundStyle(.tint)
+                    Label("Add Existing Step", systemImage: "tray.and.arrow.down")
                 }
+            } label: {
+                Image(systemName: "plus.circle")
+                    .font(.title3)
+                    .foregroundStyle(.tint)
             }
         }
     }
@@ -138,43 +126,40 @@ struct WorkStepListView: View {
     }
 
     private var stepList: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(sortedLinks.enumerated()), id: \.element.persistentModelID) { index, link in
+        List {
+            ForEach(sortedLinks, id: \.persistentModelID) { link in
                 if let step = link.workStep {
-                    if index > 0 {
-                        Divider()
-                            .padding(.leading, AppTheme.Spacing.md + AppTheme.Sizing.thumbnailSmall)
+                    NavigationLink(value: step) {
+                        stepRow(link: link)
                     }
-
-                    if isReordering {
-                        reorderRow(step: step, link: link, index: index)
-                    } else {
-                        NavigationLink(value: step) {
-                            stepRow(step: step)
-                        }
-                        .buttonStyle(.plain)
-                        .contextMenu {
-                            Button(role: .destructive) {
-                                linkToRemove = link
-                            } label: {
-                                Label("Remove from Product", systemImage: "minus.circle")
-                            }
+                    .contextMenu {
+                        Button(role: .destructive) {
+                            linkToRemove = link
+                        } label: {
+                            Label("Remove from Product", systemImage: "minus.circle")
                         }
                     }
                 }
             }
+            .onMove(perform: reorderSteps)
         }
+        .listStyle(.plain)
+        .environment(\.editMode, .constant(.active))
+        .scrollDisabled(true)
+        .scrollContentBackground(.hidden)
+        .frame(minHeight: CGFloat(sortedLinks.count) * 60)
     }
 
-    private func stepRow(step: WorkStep) -> some View {
-        HStack(spacing: AppTheme.Spacing.md) {
+    private func stepRow(link: ProductWorkStep) -> some View {
+        let step = link.workStep!
+        return HStack(spacing: AppTheme.Spacing.md) {
             WorkStepThumbnailView(imageData: step.image)
 
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                 Text(step.title)
                     .font(AppTheme.Typography.rowTitle)
                     .lineLimit(1)
-                Text(formatter.format(CostingEngine.stepLaborCost(step: step)))
+                Text(formatter.format(CostingEngine.stepLaborCost(link: link)))
                     .font(AppTheme.Typography.rowCaption)
                     .foregroundStyle(.secondary)
             }
@@ -186,49 +171,6 @@ struct WorkStepListView: View {
                 .foregroundStyle(.tertiary)
         }
         .padding(.vertical, AppTheme.Spacing.sm)
-    }
-
-    private func reorderRow(step: WorkStep, link: ProductWorkStep, index: Int) -> some View {
-        HStack(spacing: AppTheme.Spacing.md) {
-            WorkStepThumbnailView(imageData: step.image)
-
-            Text(step.title)
-                .font(AppTheme.Typography.rowTitle)
-                .lineLimit(1)
-
-            Spacer()
-
-            Button {
-                moveStep(at: index, direction: -1)
-            } label: {
-                Image(systemName: "arrow.up")
-                    .font(.caption.weight(.semibold))
-            }
-            .disabled(index == 0)
-            .buttonStyle(.bordered)
-
-            Button {
-                moveStep(at: index, direction: 1)
-            } label: {
-                Image(systemName: "arrow.down")
-                    .font(.caption.weight(.semibold))
-            }
-            .disabled(index == sortedLinks.count - 1)
-            .buttonStyle(.bordered)
-        }
-        .padding(.vertical, AppTheme.Spacing.sm)
-    }
-
-    private var totalFooter: some View {
-        HStack {
-            Text("Total Labor")
-                .font(AppTheme.Typography.sectionHeader)
-            Spacer()
-            Text(formatter.format(CostingEngine.totalLaborCost(product: product)))
-                .font(AppTheme.Typography.sectionHeader)
-                .foregroundStyle(AppTheme.Colors.accent)
-        }
-        .padding(.top, AppTheme.Spacing.sm)
     }
 
     private var bufferSection: some View {
@@ -244,6 +186,7 @@ struct WorkStepListView: View {
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                         .frame(width: AppTheme.Sizing.inputBuffer)
+                        .focused($bufferFocused)
                     Text("%")
                         .font(AppTheme.Typography.bodyText)
                         .foregroundStyle(.secondary)
@@ -255,9 +198,16 @@ struct WorkStepListView: View {
             .onChange(of: bufferText) { _, _ in
                 product.laborBuffer = bufferFraction
             }
+            .onChange(of: bufferFocused) { _, focused in
+                if focused {
+                    if bufferText == "0" { bufferText = "" }
+                } else {
+                    if bufferText.trimmingCharacters(in: .whitespaces).isEmpty { bufferText = "0" }
+                }
+            }
 
             HStack {
-                Text("Total after buffer")
+                Text("Total Labor")
                     .font(AppTheme.Typography.sectionHeader)
                 Spacer()
                 Text(formatter.format(CostingEngine.totalLaborCostBuffered(product: product)))
@@ -329,17 +279,18 @@ struct WorkStepListView: View {
 
     private func toggleSelection(_ step: WorkStep) {
         let id = step.persistentModelID
-        if selectedStepIDs.contains(id) {
-            selectedStepIDs.remove(id)
+        if let index = selectedStepIDs.firstIndex(of: id) {
+            selectedStepIDs.remove(at: index)
         } else {
-            selectedStepIDs.insert(id)
+            selectedStepIDs.append(id)
         }
     }
 
     private func addSelectedSteps() {
-        let stepsToAdd = availableSteps.filter { selectedStepIDs.contains($0.persistentModelID) }
-        for step in stepsToAdd {
-            addExistingStep(step)
+        for id in selectedStepIDs {
+            if let step = availableSteps.first(where: { $0.persistentModelID == id }) {
+                addExistingStep(step)
+            }
         }
     }
 
@@ -347,18 +298,17 @@ struct WorkStepListView: View {
         let link = ProductWorkStep(
             product: product,
             workStep: step,
-            sortOrder: product.productWorkSteps.count
+            sortOrder: product.productWorkSteps.count,
+            unitsRequiredPerProduct: step.defaultUnitsPerProduct
         )
         modelContext.insert(link)
         product.productWorkSteps.append(link)
         step.productWorkSteps.append(link)
     }
 
-    private func moveStep(at index: Int, direction: Int) {
-        let targetIndex = index + direction
+    private func reorderSteps(from source: IndexSet, to destination: Int) {
         var links = sortedLinks
-        guard targetIndex >= 0, targetIndex < links.count else { return }
-        links.swapAt(index, targetIndex)
+        links.move(fromOffsets: source, toOffset: destination)
         for (i, link) in links.enumerated() {
             link.sortOrder = i
         }

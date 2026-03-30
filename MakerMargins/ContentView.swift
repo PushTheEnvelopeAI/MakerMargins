@@ -16,9 +16,7 @@ import SwiftUI
 struct ContentView: View {
     var body: some View {
         TabView {
-            NavigationStack {
-                ProductListView()
-            }
+            ProductListView()
             .tabItem {
                 Label("Products", systemImage: "square.grid.2x2")
             }

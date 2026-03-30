@@ -56,7 +56,7 @@ struct MaterialFormView: View {
         _bulkCostText = State(initialValue: "\(material?.bulkCost ?? 0)")
         _bulkQuantityText = State(initialValue: "\(material?.bulkQuantity ?? 1)")
         _unitName = State(initialValue: material?.unitName ?? "unit")
-        _unitsPerProductText = State(initialValue: "\(material?.unitsRequiredPerProduct ?? 1)")
+        _unitsPerProductText = State(initialValue: "\(material?.defaultUnitsPerProduct ?? 1)")
     }
 
     // MARK: - Computed
@@ -183,7 +183,7 @@ struct MaterialFormView: View {
 
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                 HStack {
-                    Text("\(displayUnitName.capitalized)s per Product")
+                    Text("Default \(displayUnitName.capitalized)s per Product")
                     Spacer()
                     TextField("1", text: $unitsPerProductText)
                         .keyboardType(.decimalPad)
@@ -191,7 +191,7 @@ struct MaterialFormView: View {
                         .frame(width: AppTheme.Sizing.inputMedium)
                         .focused($focusedField, equals: .unitsPerProduct)
                 }
-                Text("How many \(displayUnitName)s go into one finished product")
+                Text("Default when adding this material to a product. Each product can override.")
                     .font(AppTheme.Typography.note)
                     .foregroundStyle(.tertiary)
             }
@@ -274,7 +274,7 @@ struct MaterialFormView: View {
             material.bulkCost = safeCost
             material.bulkQuantity = safeQuantity
             material.unitName = safeUnitName
-            material.unitsRequiredPerProduct = safeUnitsPerProduct
+            material.defaultUnitsPerProduct = safeUnitsPerProduct
         } else {
             // Create new material + link to product
             let newMaterial = Material(
@@ -285,7 +285,7 @@ struct MaterialFormView: View {
                 bulkCost: safeCost,
                 bulkQuantity: safeQuantity,
                 unitName: safeUnitName,
-                unitsRequiredPerProduct: safeUnitsPerProduct
+                defaultUnitsPerProduct: safeUnitsPerProduct
             )
             modelContext.insert(newMaterial)
 
@@ -293,7 +293,8 @@ struct MaterialFormView: View {
                 let matLink = ProductMaterial(
                     product: product,
                     material: newMaterial,
-                    sortOrder: product.productMaterials.count
+                    sortOrder: product.productMaterials.count,
+                    unitsRequiredPerProduct: newMaterial.defaultUnitsPerProduct
                 )
                 modelContext.insert(matLink)
                 product.productMaterials.append(matLink)

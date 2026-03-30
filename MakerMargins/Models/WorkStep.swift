@@ -11,7 +11,7 @@
 //
 // CostingEngine derives:
 //   unitTimeHours  = (recordedTime / batchUnitsCompleted) / 3600
-//   stepLaborCost  = unitTimeHours * unitsRequiredPerProduct * laborRate
+//   stepLaborCost  = unitTimeHours * defaultUnitsPerProduct * laborRate
 
 import Foundation
 import SwiftData
@@ -34,8 +34,9 @@ final class WorkStep {
     /// Display label for the unit of work (e.g. "piece", "board", "item").
     var unitName: String
 
-    /// How many times this step is performed per finished product.
-    var unitsRequiredPerProduct: Decimal
+    /// Default number of times this step is performed per finished product.
+    /// Pre-fills ProductWorkStep.unitsRequiredPerProduct when linking to a product.
+    var defaultUnitsPerProduct: Decimal
 
     // MARK: Relationship
 
@@ -51,7 +52,7 @@ final class WorkStep {
         recordedTime: TimeInterval = 0,
         batchUnitsCompleted: Decimal = 1,
         unitName: String = "unit",
-        unitsRequiredPerProduct: Decimal = 1
+        defaultUnitsPerProduct: Decimal = 1
     ) {
         self.title = title
         self.summary = summary
@@ -60,6 +61,6 @@ final class WorkStep {
         self.recordedTime = recordedTime
         self.batchUnitsCompleted = batchUnitsCompleted
         self.unitName = unitName
-        self.unitsRequiredPerProduct = unitsRequiredPerProduct
+        self.defaultUnitsPerProduct = defaultUnitsPerProduct
     }
 }

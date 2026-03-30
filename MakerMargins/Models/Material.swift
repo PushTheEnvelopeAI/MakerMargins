@@ -12,7 +12,7 @@
 //
 // CostingEngine derives:
 //   materialUnitCost  = bulkCost / bulkQuantity
-//   materialLineCost  = materialUnitCost * unitsRequiredPerProduct
+//   materialLineCost  = materialUnitCost * unitsRequiredPerProduct (from join model)
 
 import Foundation
 import SwiftData
@@ -35,8 +35,9 @@ final class Material {
     /// Display label for the unit of measure (e.g. "oz", "board-foot", "sheet").
     var unitName: String
 
-    /// How many units of this material are consumed per finished product.
-    var unitsRequiredPerProduct: Decimal
+    /// Default number of units consumed per finished product.
+    /// Pre-fills ProductMaterial.unitsRequiredPerProduct when linking to a product.
+    var defaultUnitsPerProduct: Decimal
 
     // MARK: Relationship
 
@@ -53,7 +54,7 @@ final class Material {
         bulkCost: Decimal = 0,
         bulkQuantity: Decimal = 1,
         unitName: String = "unit",
-        unitsRequiredPerProduct: Decimal = 1
+        defaultUnitsPerProduct: Decimal = 1
     ) {
         self.title = title
         self.summary = summary
@@ -62,6 +63,6 @@ final class Material {
         self.bulkCost = bulkCost
         self.bulkQuantity = bulkQuantity
         self.unitName = unitName
-        self.unitsRequiredPerProduct = unitsRequiredPerProduct
+        self.defaultUnitsPerProduct = defaultUnitsPerProduct
     }
 }

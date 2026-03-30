@@ -24,13 +24,19 @@ final class ProductMaterial {
     /// Display order of this material within the product's material list. Zero-based.
     var sortOrder: Int
 
+    /// How many units of this material are consumed per finished product.
+    /// Per-product override — pre-filled from Material.defaultUnitsPerProduct on creation.
+    var unitsRequiredPerProduct: Decimal
+
     init(
         product: Product? = nil,
         material: Material? = nil,
-        sortOrder: Int = 0
+        sortOrder: Int = 0,
+        unitsRequiredPerProduct: Decimal = 1
     ) {
         self.product = product
         self.material = material
         self.sortOrder = sortOrder
+        self.unitsRequiredPerProduct = unitsRequiredPerProduct
     }
 }

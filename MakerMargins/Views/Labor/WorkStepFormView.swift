@@ -72,7 +72,7 @@ struct WorkStepFormView: View {
 
         _batchUnitsText = State(initialValue: "\(step?.batchUnitsCompleted ?? 1)")
         _unitName = State(initialValue: step?.unitName ?? "unit")
-        _unitsPerProductText = State(initialValue: "\(step?.unitsRequiredPerProduct ?? 1)")
+        _unitsPerProductText = State(initialValue: "\(step?.defaultUnitsPerProduct ?? 1)")
 
         // Labor rate: for new steps this will be overridden in onAppear
         // to use the LaborRateManager default
@@ -233,7 +233,7 @@ struct WorkStepFormView: View {
 
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                 HStack {
-                    Text("\(displayUnitName.capitalized)s per Product")
+                    Text("Default \(displayUnitName.capitalized)s per Product")
                     Spacer()
                     TextField("1", text: $unitsPerProductText)
                         .keyboardType(.decimalPad)
@@ -241,7 +241,7 @@ struct WorkStepFormView: View {
                         .frame(width: AppTheme.Sizing.inputMedium)
                         .focused($focusedField, equals: .unitsPerProduct)
                 }
-                Text("How many \(displayUnitName)s go into one finished product")
+                Text("Default when adding this step to a product. Each product can override.")
                     .font(AppTheme.Typography.note)
                     .foregroundStyle(.tertiary)
             }
@@ -378,7 +378,7 @@ struct WorkStepFormView: View {
             step.recordedTime = recordedTime
             step.batchUnitsCompleted = safeBatchUnits
             step.unitName = unitName.trimmingCharacters(in: .whitespaces).isEmpty ? "unit" : unitName.trimmingCharacters(in: .whitespaces)
-            step.unitsRequiredPerProduct = unitsPerProduct > 0 ? unitsPerProduct : 1
+            step.defaultUnitsPerProduct = unitsPerProduct > 0 ? unitsPerProduct : 1
             step.laborRate = safeRate
         } else {
             // Create new step + link to product
@@ -390,7 +390,7 @@ struct WorkStepFormView: View {
                 recordedTime: recordedTime,
                 batchUnitsCompleted: safeBatchUnits,
                 unitName: unitName.trimmingCharacters(in: .whitespaces).isEmpty ? "unit" : unitName.trimmingCharacters(in: .whitespaces),
-                unitsRequiredPerProduct: unitsPerProduct > 0 ? unitsPerProduct : 1
+                defaultUnitsPerProduct: unitsPerProduct > 0 ? unitsPerProduct : 1
             )
             modelContext.insert(newStep)
 
@@ -398,7 +398,8 @@ struct WorkStepFormView: View {
                 let link = ProductWorkStep(
                     product: product,
                     workStep: newStep,
-                    sortOrder: product.productWorkSteps.count
+                    sortOrder: product.productWorkSteps.count,
+                    unitsRequiredPerProduct: newStep.defaultUnitsPerProduct
                 )
                 modelContext.insert(link)
                 product.productWorkSteps.append(link)

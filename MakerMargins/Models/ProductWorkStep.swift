@@ -24,13 +24,19 @@ final class ProductWorkStep {
     /// Display order of this step within the product's workflow. Zero-based.
     var sortOrder: Int
 
+    /// How many units of this step are required per finished product.
+    /// Per-product override — pre-filled from WorkStep.defaultUnitsPerProduct on creation.
+    var unitsRequiredPerProduct: Decimal
+
     init(
         product: Product? = nil,
         workStep: WorkStep? = nil,
-        sortOrder: Int = 0
+        sortOrder: Int = 0,
+        unitsRequiredPerProduct: Decimal = 1
     ) {
         self.product = product
         self.workStep = workStep
         self.sortOrder = sortOrder
+        self.unitsRequiredPerProduct = unitsRequiredPerProduct
     }
 }
