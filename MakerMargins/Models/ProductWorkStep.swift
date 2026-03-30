@@ -26,7 +26,7 @@ final class ProductWorkStep {
 
     /// How many units of this step are required per finished product.
     /// Per-product override — pre-filled from WorkStep.defaultUnitsPerProduct on creation.
-    var unitsRequiredPerProduct: Decimal
+    var unitsRequiredPerProduct: Decimal = 1
 
     init(
         product: Product? = nil,

@@ -36,6 +36,7 @@ final class WorkStep {
 
     /// Default number of times this step is performed per finished product.
     /// Pre-fills ProductWorkStep.unitsRequiredPerProduct when linking to a product.
+    @Attribute(originalName: "unitsRequiredPerProduct")
     var defaultUnitsPerProduct: Decimal
 
     // MARK: Relationship

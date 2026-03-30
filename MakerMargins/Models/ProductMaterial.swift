@@ -26,7 +26,7 @@ final class ProductMaterial {
 
     /// How many units of this material are consumed per finished product.
     /// Per-product override — pre-filled from Material.defaultUnitsPerProduct on creation.
-    var unitsRequiredPerProduct: Decimal
+    var unitsRequiredPerProduct: Decimal = 1
 
     init(
         product: Product? = nil,

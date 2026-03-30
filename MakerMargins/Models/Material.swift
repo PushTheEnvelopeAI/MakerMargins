@@ -37,6 +37,7 @@ final class Material {
 
     /// Default number of units consumed per finished product.
     /// Pre-fills ProductMaterial.unitsRequiredPerProduct when linking to a product.
+    @Attribute(originalName: "unitsRequiredPerProduct")
     var defaultUnitsPerProduct: Decimal
 
     // MARK: Relationship
