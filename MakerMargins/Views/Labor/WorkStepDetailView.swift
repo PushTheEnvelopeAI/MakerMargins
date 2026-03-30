@@ -18,7 +18,6 @@ struct WorkStepDetailView: View {
     @Environment(\.currencyFormatter) private var formatter
 
     @State private var showingEditForm = false
-    @State private var showingStopwatch = false
     @State private var showingDeleteConfirmation = false
 
     // MARK: - Computed
@@ -35,8 +34,16 @@ struct WorkStepDetailView: View {
         return step.recordedTime / batch
     }
 
+    private var activeUnitsPerProduct: Decimal {
+        if let product {
+            let link = step.productWorkSteps.first { $0.product?.persistentModelID == product.persistentModelID }
+            return link?.unitsRequiredPerProduct ?? step.defaultUnitsPerProduct
+        }
+        return step.defaultUnitsPerProduct
+    }
+
     private var timePerProduct: TimeInterval {
-        unitTimeSeconds * Double(truncating: step.unitsRequiredPerProduct as NSDecimalNumber)
+        unitTimeSeconds * Double(truncating: activeUnitsPerProduct as NSDecimalNumber)
     }
 
     private var linkedProducts: [Product] {
@@ -62,11 +69,6 @@ struct WorkStepDetailView: View {
             ToolbarItem(placement: .primaryAction) {
                 HStack(spacing: AppTheme.Spacing.md) {
                     Button {
-                        showingStopwatch = true
-                    } label: {
-                        Image(systemName: "stopwatch")
-                    }
-                    Button {
                         showingEditForm = true
                     } label: {
                         Image(systemName: "pencil")
@@ -83,11 +85,6 @@ struct WorkStepDetailView: View {
         }
         .sheet(isPresented: $showingEditForm) {
             WorkStepFormView(step: step, product: editProduct)
-        }
-        .fullScreenCover(isPresented: $showingStopwatch) {
-            StopwatchView(stepTitle: step.title) { time in
-                step.recordedTime = time
-            }
         }
         .confirmationDialog(
             "Delete \"\(step.title)\"?",
@@ -144,7 +141,7 @@ struct WorkStepDetailView: View {
                 Divider()
                 DerivedRow(label: "Time per \(step.unitName)", value: CostingEngine.formatDuration(unitTimeSeconds))
                 Divider()
-                DetailRow(label: "\(step.unitName.capitalized)s per Product", value: "\(step.unitsRequiredPerProduct)")
+                DetailRow(label: "\(step.unitName.capitalized)s per Product", value: "\(activeUnitsPerProduct)")
                 Divider()
                 DerivedRow(label: "Time per Product", value: CostingEngine.formatDuration(timePerProduct))
             }

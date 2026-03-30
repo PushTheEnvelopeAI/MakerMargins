@@ -20,6 +20,7 @@ struct ProductFormView: View {
     @Query(sort: \Category.name) private var categories: [Category]
 
     let product: Product?
+    var onCreate: ((Product) -> Void)?
 
     // MARK: - Form state
 
@@ -126,6 +127,16 @@ struct ProductFormView: View {
                     }
                 }
                 .buttonStyle(.plain)
+                .swipeActions(edge: .trailing) {
+                    Button(role: .destructive) {
+                        if selectedCategory?.persistentModelID == category.persistentModelID {
+                            selectedCategory = nil
+                        }
+                        modelContext.delete(category)
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
             }
 
             if isCreatingCategory {
@@ -184,6 +195,7 @@ struct ProductFormView: View {
                 category: selectedCategory
             )
             modelContext.insert(newProduct)
+            onCreate?(newProduct)
         }
         dismiss()
     }

@@ -50,7 +50,7 @@ struct Epic3Tests {
             bulkCost: Decimal(string: "45.00")!,
             bulkQuantity: Decimal(string: "10")!,
             unitName: "board-foot",
-            unitsRequiredPerProduct: Decimal(string: "3")!
+            defaultUnitsPerProduct: Decimal(string: "3")!
         )
         ctx.insert(material)
         try ctx.save()
@@ -64,7 +64,7 @@ struct Epic3Tests {
         #expect(results[0].bulkCost == Decimal(string: "45.00")!)
         #expect(results[0].bulkQuantity == Decimal(string: "10")!)
         #expect(results[0].unitName == "board-foot")
-        #expect(results[0].unitsRequiredPerProduct == Decimal(string: "3")!)
+        #expect(results[0].defaultUnitsPerProduct == Decimal(string: "3")!)
     }
 
     @Test("Create a ProductMaterial association and verify sortOrder")
@@ -266,14 +266,14 @@ struct Epic3Tests {
             title: "Material A",
             bulkCost: Decimal(string: "20")!,
             bulkQuantity: Decimal(string: "10")!,
-            unitsRequiredPerProduct: Decimal(string: "3")!
+            defaultUnitsPerProduct: Decimal(string: "3")!
         )
         // Material B: $50 / 5 units, 2 per product → $20
         let matB = Material(
             title: "Material B",
             bulkCost: Decimal(string: "50")!,
             bulkQuantity: Decimal(string: "5")!,
-            unitsRequiredPerProduct: Decimal(string: "2")!
+            defaultUnitsPerProduct: Decimal(string: "2")!
         )
 
         let linkA = ProductMaterial(product: product, material: matA, sortOrder: 0)
@@ -314,7 +314,7 @@ struct Epic3Tests {
             laborRate: 20,
             recordedTime: 3600,
             batchUnitsCompleted: 1,
-            unitsRequiredPerProduct: 1
+            defaultUnitsPerProduct: 1
         )
         let stepLink = ProductWorkStep(product: product, workStep: step, sortOrder: 0)
         product.productWorkSteps.append(stepLink)
@@ -325,7 +325,7 @@ struct Epic3Tests {
             title: "Only Material",
             bulkCost: Decimal(string: "20")!,
             bulkQuantity: Decimal(string: "10")!,
-            unitsRequiredPerProduct: Decimal(string: "3")!
+            defaultUnitsPerProduct: Decimal(string: "3")!
         )
         let matLink = ProductMaterial(product: product, material: material, sortOrder: 0)
         product.productMaterials.append(matLink)
@@ -360,7 +360,7 @@ struct Epic3Tests {
             bulkCost: Decimal(string: "30.00")!,
             bulkQuantity: Decimal(string: "5")!,
             unitName: "board-foot",
-            unitsRequiredPerProduct: Decimal(string: "2")!
+            defaultUnitsPerProduct: Decimal(string: "2")!
         )
         let matLink = ProductMaterial(product: source, material: material, sortOrder: 0)
         source.productMaterials.append(matLink)

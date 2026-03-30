@@ -26,6 +26,14 @@ struct MaterialDetailView: View {
         product ?? material.productMaterials.first?.product
     }
 
+    private var activeUnitsPerProduct: Decimal {
+        if let product {
+            let link = material.productMaterials.first { $0.product?.persistentModelID == product.persistentModelID }
+            return link?.unitsRequiredPerProduct ?? material.defaultUnitsPerProduct
+        }
+        return material.defaultUnitsPerProduct
+    }
+
     private var linkedProducts: [Product] {
         material.productMaterials.compactMap(\.product)
     }
@@ -139,7 +147,7 @@ struct MaterialDetailView: View {
                 Divider()
                 DetailRow(label: "Unit Name", value: material.unitName)
                 Divider()
-                DetailRow(label: "\(material.unitName.capitalized)s per Product", value: "\(material.unitsRequiredPerProduct)")
+                DetailRow(label: "\(material.unitName.capitalized)s per Product", value: "\(activeUnitsPerProduct)")
             }
         }
         .padding(.horizontal)
