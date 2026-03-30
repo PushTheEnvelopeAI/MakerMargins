@@ -81,7 +81,7 @@ struct ProductListView: View {
             }
             Button("Cancel", role: .cancel) { productToDelete = nil }
         } message: {
-            Text("This will also delete all work steps and materials. This action cannot be undone.")
+            Text("This will permanently delete this product. Work steps and materials will remain in their libraries. This action cannot be undone.")
         }
     }
 
@@ -142,7 +142,7 @@ struct ProductListView: View {
 
             if filteredProducts.isEmpty {
                 emptyState
-                    .padding(.top, 40)
+                    .padding(.top, AppTheme.Spacing.xl * 2)
             } else {
                 LazyVGrid(
                     columns: [
@@ -153,7 +153,7 @@ struct ProductListView: View {
                 ) {
                     ForEach(filteredProducts) { product in
                         NavigationLink(value: product) {
-                            ProductGridCell(product: product)
+                            ProductGridCellView(product: product)
                         }
                         .buttonStyle(.plain)
                         .contextMenu {
@@ -193,7 +193,7 @@ struct ProductListView: View {
                 }
             }
             .padding(.horizontal)
-            .padding(.vertical, 10)
+            .padding(.vertical, AppTheme.Spacing.md)
         }
     }
 
@@ -202,8 +202,8 @@ struct ProductListView: View {
         Button(action: action) {
             Text(label)
                 .font(isSelected ? AppTheme.Typography.sectionHeader : AppTheme.Typography.bodyText)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 7)
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .padding(.vertical, AppTheme.Spacing.sm)
                 .background(
                     isSelected ? AppTheme.Colors.accent : AppTheme.Colors.chipBackground,
                     in: Capsule()
@@ -255,45 +255,17 @@ struct ProductListView: View {
             step.productWorkSteps.append(newLink)
         }
 
-        // Deep-copy Materials (each product owns its own material instances)
-        for material in source.materials {
-            let newMaterial = Material(
-                title: material.title,
-                summary: material.summary,
-                bulkCost: material.bulkCost,
-                bulkQuantity: material.bulkQuantity,
-                unitName: material.unitName,
-                unitsRequiredPerProduct: material.unitsRequiredPerProduct,
-                product: copy
+        // Re-link shared Materials via new ProductMaterial associations
+        for srcLink in source.productMaterials {
+            guard let mat = srcLink.material else { continue }
+            let newLink = ProductMaterial(
+                product: copy,
+                material: mat,
+                sortOrder: srcLink.sortOrder
             )
-            modelContext.insert(newMaterial)
-            copy.materials.append(newMaterial)
-        }
-    }
-}
-
-// MARK: - ProductThumbnailView
-
-private struct ProductThumbnailView: View {
-    let imageData: Data?
-    let size: CGSize
-    let cornerRadius: CGFloat
-
-    var body: some View {
-        if let data = imageData, let uiImage = UIImage(data: data) {
-            Image(uiImage: uiImage)
-                .resizable()
-                .scaledToFill()
-                .frame(width: size.width, height: size.height)
-                .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-        } else {
-            RoundedRectangle(cornerRadius: cornerRadius)
-                .fill(AppTheme.Colors.placeholder)
-                .frame(width: size.width, height: size.height)
-                .overlay {
-                    Image(systemName: "photo")
-                        .foregroundStyle(.tertiary)
-                }
+            modelContext.insert(newLink)
+            copy.productMaterials.append(newLink)
+            mat.productMaterials.append(newLink)
         }
     }
 }
@@ -305,12 +277,8 @@ private struct ProductRowView: View {
 
     var body: some View {
         HStack(spacing: AppTheme.Spacing.md) {
-            ProductThumbnailView(
-                imageData: product.image,
-                size: CGSize(width: AppTheme.Sizing.thumbnailSmall, height: AppTheme.Sizing.thumbnailSmall),
-                cornerRadius: AppTheme.CornerRadius.small
-            )
-            VStack(alignment: .leading, spacing: 3) {
+            ProductThumbnailView(imageData: product.image)
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                 Text(product.title)
                     .font(AppTheme.Typography.rowTitle)
                 if let category = product.category {
@@ -324,9 +292,9 @@ private struct ProductRowView: View {
     }
 }
 
-// MARK: - ProductGridCell
+// MARK: - ProductGridCellView
 
-private struct ProductGridCell: View {
+private struct ProductGridCellView: View {
     let product: Product
 
     var body: some View {

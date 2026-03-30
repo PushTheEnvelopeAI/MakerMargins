@@ -28,6 +28,7 @@ struct Epic2Tests {
             Material.self,
             PlatformFeeProfile.self,
             ProductWorkStep.self,
+            ProductMaterial.self,
         ])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         return try ModelContainer(for: schema, configurations: [config])
@@ -327,9 +328,9 @@ struct Epic2Tests {
         ctx.insert(link)
         try ctx.save()
 
-        // ($20 labor + $0 material + $5 shipping) × (1 + 0.10 + 0.05) = $25 × 1.15 = $28.75
+        // Per-section buffers: $20 × (1 + 0.05) + $0 × (1 + 0.10) + $5 = $21 + $0 + $5 = $26
         let total = CostingEngine.totalProductionCost(product: product)
-        #expect(total == Decimal(string: "28.75")!)
+        #expect(total == Decimal(string: "26")!)
     }
 
     // MARK: - LaborRateManager

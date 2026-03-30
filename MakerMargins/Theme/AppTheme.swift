@@ -89,17 +89,24 @@ enum AppTheme {
 
         /// Unselected chip / filter background.
         static let chipBackground = Color(.secondarySystemFill)
+
+        /// Destructive action color — stop, delete, discard.
+        static let destructive = Color.red
+        /// Secondary button color — muted actions.
+        static let secondaryButton = Color.gray
     }
 
     // MARK: - Spacing (4-pt grid)
 
     enum Spacing {
-        static let xxs: CGFloat = 2
-        static let xs:  CGFloat = 4
-        static let sm:  CGFloat = 8
-        static let md:  CGFloat = 12
-        static let lg:  CGFloat = 16
-        static let xl:  CGFloat = 20
+        static let xxxs: CGFloat = 1
+        static let xxs:  CGFloat = 2
+        static let xs:   CGFloat = 4
+        static let smd:  CGFloat = 6
+        static let sm:   CGFloat = 8
+        static let md:   CGFloat = 12
+        static let lg:   CGFloat = 16
+        static let xl:   CGFloat = 20
     }
 
     // MARK: - Corner Radii
@@ -121,6 +128,7 @@ enum AppTheme {
         static let bodyText:      Font = .subheadline
         static let badge:         Font = .caption.weight(.medium)
         static let note:          Font = .caption2
+        static let timerDisplay:  Font = .system(size: 56, weight: .light, design: .monospaced)
     }
 
     // MARK: - Sizing
@@ -133,5 +141,15 @@ enum AppTheme {
         static let gridMinColumn:         CGFloat = 160
         static let detailImageHeight:     CGFloat = 240
         static let detailPlaceholderHeight: CGFloat = 160
+
+        // Input field widths
+        static let inputTime:              CGFloat = 52
+        static let inputBuffer:            CGFloat = 60
+        static let inputMedium:            CGFloat = 80
+        static let inputLarge:             CGFloat = 120
+
+        // Stopwatch
+        static let stopwatchButtonWidth:   CGFloat = 130
+        static let stopwatchButtonHeight:  CGFloat = 54
     }
 }

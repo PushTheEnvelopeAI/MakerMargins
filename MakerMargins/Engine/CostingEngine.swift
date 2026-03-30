@@ -4,7 +4,7 @@
 // Central calculation handler for all costing and pricing logic.
 // Pure logic — no state, no UI. Models are pure data; this is pure math.
 //
-// Model-based functions accept WorkStep/Product objects for use in views.
+// Model-based functions accept WorkStep/Product/Material objects for use in views.
 // Raw-value overloads accept primitives for real-time form previews
 // before a model is saved.
 
@@ -59,6 +59,45 @@ enum CostingEngine {
         return hours * unitsRequiredPerProduct * laborRate
     }
 
+    // MARK: - Per-Material Calculations
+
+    /// Cost per unit of material.
+    /// Returns 0 if bulkQuantity is zero (division guard).
+    static func materialUnitCost(material: Material) -> Decimal {
+        materialUnitCost(
+            bulkCost: material.bulkCost,
+            bulkQuantity: material.bulkQuantity
+        )
+    }
+
+    /// Raw-value overload for form previews.
+    static func materialUnitCost(
+        bulkCost: Decimal,
+        bulkQuantity: Decimal
+    ) -> Decimal {
+        guard bulkQuantity != 0 else { return 0 }
+        return bulkCost / bulkQuantity
+    }
+
+    /// Cost of a single material line item per finished product.
+    /// materialLineCost = materialUnitCost * unitsRequiredPerProduct
+    static func materialLineCost(material: Material) -> Decimal {
+        materialLineCost(
+            bulkCost: material.bulkCost,
+            bulkQuantity: material.bulkQuantity,
+            unitsRequiredPerProduct: material.unitsRequiredPerProduct
+        )
+    }
+
+    /// Raw-value overload for form previews.
+    static func materialLineCost(
+        bulkCost: Decimal,
+        bulkQuantity: Decimal,
+        unitsRequiredPerProduct: Decimal
+    ) -> Decimal {
+        materialUnitCost(bulkCost: bulkCost, bulkQuantity: bulkQuantity) * unitsRequiredPerProduct
+    }
+
     // MARK: - Product-Level Calculations
 
     /// Total labor cost across all work steps linked to a product.
@@ -69,20 +108,31 @@ enum CostingEngine {
         }
     }
 
-    /// Total material cost across all materials for a product.
-    /// Stub — full implementation in Epic 3.
+    /// Total material cost across all materials linked to a product.
+    /// Traverses ProductMaterial join entries to reach each shared Material.
     static func totalMaterialCost(product: Product) -> Decimal {
-        0
+        product.productMaterials.compactMap(\.material).reduce(Decimal.zero) { sum, material in
+            sum + materialLineCost(material: material)
+        }
     }
 
-    /// Total production cost with buffers applied.
-    /// (labor + material + shipping) * (1 + materialBuffer + laborBuffer)
+    /// Total labor cost with the product's labor buffer applied.
+    static func totalLaborCostBuffered(product: Product) -> Decimal {
+        totalLaborCost(product: product) * (1 + product.laborBuffer)
+    }
+
+    /// Total material cost with the product's material buffer applied.
+    static func totalMaterialCostBuffered(product: Product) -> Decimal {
+        totalMaterialCost(product: product) * (1 + product.materialBuffer)
+    }
+
+    /// Total production cost with per-section buffers applied.
+    /// labor × (1 + laborBuffer) + material × (1 + materialBuffer) + shipping
+    /// Shipping is never buffered.
     static func totalProductionCost(product: Product) -> Decimal {
-        let labor = totalLaborCost(product: product)
-        let material = totalMaterialCost(product: product)
-        let base = labor + material + product.shippingCost
-        let bufferMultiplier = 1 + product.materialBuffer + product.laborBuffer
-        return base * bufferMultiplier
+        let laborBuffered = totalLaborCostBuffered(product: product)
+        let materialBuffered = totalMaterialCostBuffered(product: product)
+        return laborBuffered + materialBuffered + product.shippingCost
     }
 
     // MARK: - Time Formatting

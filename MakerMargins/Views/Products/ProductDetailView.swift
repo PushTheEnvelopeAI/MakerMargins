@@ -32,6 +32,9 @@ struct ProductDetailView: View {
         .navigationDestination(for: WorkStep.self) { step in
             WorkStepDetailView(step: step, product: product)
         }
+        .navigationDestination(for: Material.self) { material in
+            MaterialDetailView(material: material, product: product)
+        }
         .navigationTitle(product.title)
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -63,7 +66,7 @@ struct ProductDetailView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This will also delete all materials for this product. Work steps will be preserved in the step library. This action cannot be undone.")
+            Text("This will permanently delete this product. Work steps and materials will remain in their libraries. This action cannot be undone.")
         }
     }
 
@@ -89,11 +92,11 @@ struct ProductDetailView: View {
                 .padding(.horizontal)
             }
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.smd) {
                 if let category = product.category {
                     Text(category.name)
                         .font(AppTheme.Typography.badge)
-                        .padding(.horizontal, 10)
+                        .padding(.horizontal, AppTheme.Spacing.md)
                         .padding(.vertical, AppTheme.Spacing.xs)
                         .background(AppTheme.Colors.categoryBadgeBackground, in: Capsule())
                         .foregroundStyle(AppTheme.Colors.categoryBadge)
@@ -113,15 +116,6 @@ struct ProductDetailView: View {
     }
 
     private var materialsSection: some View {
-        GroupBox("Materials") {
-            HStack {
-                Text("Add materials to calculate material costs")
-                    .font(AppTheme.Typography.bodyText)
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            .padding(.vertical, AppTheme.Spacing.xs)
-        }
-        .padding(.horizontal)
+        MaterialListView(product: product)
     }
 }

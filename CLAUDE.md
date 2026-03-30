@@ -32,7 +32,7 @@ iOS 26 is the minimum. The Liquid Glass design language is a first-class iOS 26 
 | 0 | Infrastructure — Repo, SwiftData models, Navigation shell, Design Sprint, CI pipeline | **Complete** |
 | 1 | Product & Category Management + E2E Tests | **Complete** |
 | 2 | Labor Engine & Stopwatch + E2E Tests | **Complete** |
-| 3 | Material Ledger & Costing + E2E Tests | Pending |
+| 3 | Material Ledger & Costing + E2E Tests | **Complete** |
 | 4 | Pricing Calculator & Platform Tabs + E2E Tests | Pending |
 | 5 | Batch Forecasting Widgets + E2E Tests | Pending |
 | 6 | Production Readiness & App Store Launch | Pending |
@@ -55,7 +55,7 @@ iOS 26 is the minimum. The Liquid Glass design language is a first-class iOS 26 
 | laborBuffer | Decimal | Fraction e.g. 0.05 = 5% |
 | category | Category? | Many-to-one, optional |
 | productWorkSteps | [ProductWorkStep] | One-to-many to join model, cascade delete (removes associations, NOT the shared WorkSteps) |
-| materials | [Material] | One-to-many, cascade delete |
+| productMaterials | [ProductMaterial] | One-to-many to join model, cascade delete (removes associations, NOT the shared Materials) |
 
 ### Category
 | Swift Property | Type | Notes |
@@ -87,16 +87,29 @@ Join model enabling many-to-many between Product and WorkStep with per-product o
 | workStep | WorkStep? | Many-to-one |
 | sortOrder | Int | Per-product display order. **Default: 0** |
 
+### ProductMaterial
+Join model enabling many-to-many between Product and Material with per-product ordering.
+
+| Swift Property | Type | Notes |
+|----------------|------|-------|
+| product | Product? | Many-to-one |
+| material | Material? | Many-to-one |
+| sortOrder | Int | Per-product display order. **Default: 0** |
+
 ### Material
+Materials are **shared entities** — they can be reused across multiple products via the `ProductMaterial` join model. Editing a material from any context updates it everywhere.
+
 | Swift Property | Type | Notes |
 |----------------|------|-------|
 | title | String | |
 | summary | String | Conceptual field name is "description" |
+| image | Data? | Optional |
+| link | String | Optional supplier URL. **Default: ""** |
 | bulkCost | Decimal | Total cost of the bulk purchase |
 | bulkQuantity | Decimal | Units in the bulk purchase. **Default: 1** (guards against division by zero) |
 | unitName | String | e.g. "oz", "board-foot". **Default: "unit"** |
 | unitsRequiredPerProduct | Decimal | Units consumed per product. **Default: 1** |
-| product | Product? | Many-to-one inverse, optional |
+| productMaterials | [ProductMaterial] | One-to-many to join model, cascade delete (deleting a material removes all its associations) |
 
 ### PlatformFeeProfile
 | Swift Property | Type | Notes |
@@ -112,7 +125,7 @@ Join model enabling many-to-many between Product and WorkStep with per-product o
 
 ## Calculation Logic (The Math)
 
-All calculations are implemented in `Engine/CostingEngine.swift` — **not** as computed properties on the models. Models are pure data; CostingEngine is pure logic. `CostingEngine` is a caseless `enum` (pure namespace) with `static` functions. Labor calculations are implemented (Epic 2); material calculations are stubbed (Epic 3).
+All calculations are implemented in `Engine/CostingEngine.swift` — **not** as computed properties on the models. Models are pure data; CostingEngine is pure logic. `CostingEngine` is a caseless `enum` (pure namespace) with `static` functions. Labor calculations implemented (Epic 2); material calculations implemented (Epic 3).
 
 Each function has a model-based overload (accepts `WorkStep`/`Product`) and a raw-value overload (accepts `TimeInterval`/`Decimal` primitives) for real-time form previews before a model is saved.
 
@@ -137,9 +150,10 @@ materialLineCost = materialUnitCost * unitsRequiredPerProduct
 // Product total material
 totalMaterialCost = sum of materialLineCost across all Materials
 
-// Total Production Cost
-totalProductionCost = (totalLaborCost + totalMaterialCost + shippingCost)
-                      * (1 + materialBuffer + laborBuffer)
+// Total Production Cost (per-section buffers — shipping is never buffered)
+totalLaborCostBuffered    = totalLaborCost * (1 + laborBuffer)
+totalMaterialCostBuffered = totalMaterialCost * (1 + materialBuffer)
+totalProductionCost       = totalLaborCostBuffered + totalMaterialCostBuffered + shippingCost
 
 // Target Retail Price (given a PlatformFeeProfile)
 targetRetailPrice = totalProductionCost / (1 - (feePercentage + marginGoal))
@@ -161,7 +175,7 @@ MakerMargins/                              ← repo root
 │       └── ci.yml                         ← GitHub Actions: XcodeGen → build → test
 │
 ├── MakerMargins/                          ← main app target
-│   ├── MakerMarginsApp.swift              ← @main entry point, ModelContainer with all 6 models
+│   ├── MakerMarginsApp.swift              ← @main entry point, ModelContainer with all 7 models
 │   ├── ContentView.swift                  ← 4-tab TabView shell (Products, Labor, Materials, Settings)
 │   │
 │   ├── Models/                            ← SwiftData @Model types (all implemented)
@@ -169,25 +183,26 @@ MakerMargins/                              ← repo root
 │   │   ├── Category.swift
 │   │   ├── WorkStep.swift                 ← shared entity (many-to-many via ProductWorkStep)
 │   │   ├── ProductWorkStep.swift          ← join model: Product ↔ WorkStep with sortOrder
-│   │   ├── Material.swift
+│   │   ├── Material.swift                 ← shared entity (many-to-many via ProductMaterial)
+│   │   ├── ProductMaterial.swift          ← join model: Product ↔ Material with sortOrder
 │   │   └── PlatformFeeProfile.swift       ← also contains PlatformType enum
 │   │
 │   ├── Engine/                            ← calculation, formatting & app-level managers
-│   │   ├── CostingEngine.swift            ← labor calculations implemented (Epic 2); material stubs (Epic 3)
+│   │   ├── CostingEngine.swift            ← labor + material calculations implemented (Epic 2-3)
 │   │   ├── CurrencyFormatter.swift        ← implemented Epic 1
 │   │   ├── AppearanceManager.swift        ← System/Light/Dark toggle, UserDefaults-persisted
 │   │   └── LaborRateManager.swift         ← default hourly rate, UserDefaults-persisted (Epic 2)
 │   │
 │   ├── Theme/                             ← design system tokens and reusable view modifiers
 │   │   ├── AppTheme.swift                 ← colors (surface, surfaceElevated, accent, categoryBadge, tabTint, cardBorder, etc.), spacing, corner radii, typography, sizing
-│   │   └── ViewModifiers.swift            ← .cardStyle(), .appBackground(), PlaceholderImageView, WorkStepThumbnailView
+│   │   └── ViewModifiers.swift            ← .cardStyle(), .appBackground(), PlaceholderImageView, WorkStepThumbnailView, MaterialThumbnailView
 │   │
 │   └── Views/                             ← SwiftUI views, grouped by feature
 │       ├── Products/                      ← Tab 1 root + all product-owned views
 │       │   ├── ProductListView.swift      ← Tab 1 root (NavigationStack), product duplication via context menu — Epic 1
 │       │   ├── ProductDetailView.swift    ← scrollable hub: header, cost summary, labor, materials — Epic 1+2
 │       │   ├── ProductFormView.swift      ← create/edit sheet, inline category creation — Epic 1
-│       │   ├── ProductCostSummaryCard.swift ← cost breakdown card (labor live, materials stub) — Epic 2
+│       │   ├── ProductCostSummaryCard.swift ← cost breakdown card (labor + materials live) — Epic 2+3
 │       │   ├── PricingCalculatorView.swift  ← inline section in ProductDetailView — STUB
 │       │   └── BatchForecastView.swift      ← inline section in ProductDetailView — STUB
 │       ├── Workshop/                      ← Tab 2 (Labor): shared step library
@@ -198,10 +213,10 @@ MakerMargins/                              ← repo root
 │       │   ├── WorkStepFormView.swift     ← create/edit sheet — Epic 2
 │       │   └── StopwatchView.swift        ← fullScreenCover from detail/form — Epic 2
 │       ├── Materials/
-│       │   ├── MaterialsLibraryView.swift ← Tab 3 root: shared materials library — STUB (Epic 3)
-│       │   ├── MaterialListView.swift     ← inline content in ProductDetailView — STUB
-│       │   ├── MaterialDetailView.swift   ← pushed from ProductDetailView — STUB
-│       │   └── MaterialFormView.swift     ← create/edit sheet — STUB
+│       │   ├── MaterialsLibraryView.swift ← Tab 3 root: shared materials library — Epic 3
+│       │   ├── MaterialListView.swift     ← inline material list in ProductDetailView — Epic 3
+│       │   ├── MaterialDetailView.swift   ← pushed from Products or Materials tab — Epic 3
+│       │   └── MaterialFormView.swift     ← create/edit sheet — Epic 3
 │       ├── Categories/
 │       │   ├── CategoryListView.swift     ← legacy, no longer navigated to from Settings — Epic 1
 │       │   └── CategoryFormView.swift     ← legacy, categories now created inline in ProductFormView — Epic 1
@@ -214,7 +229,7 @@ MakerMargins/                              ← repo root
 │   ├── Epic0Tests.swift                   ← Complete: test harness smoke test
 │   ├── Epic1Tests.swift                   ← Complete: Product/Category CRUD, cascade, CurrencyFormatter, product duplication (13 tests)
 │   ├── Epic2Tests.swift                   ← Complete: WorkStep/join CRUD, CostingEngine, reorder, LaborRateManager (12 tests)
-│   ├── Epic3Tests.swift                   ← STUB
+│   ├── Epic3Tests.swift                   ← Complete: Material/join CRUD, CostingEngine material calcs, per-section buffers, duplication (12 tests)
 │   ├── Epic4Tests.swift                   ← STUB
 │   └── Epic5Tests.swift                   ← STUB
 │
@@ -246,10 +261,11 @@ ProductListView                            [ROOT — context menu: Duplicate, De
     │   Forecast section (inline BatchForecastView content)
     ├── [push] WorkStepDetailView          [Level 2 — edit/stopwatch buttons in toolbar]
     │   └── [fullScreenCover] StopwatchView  [Level 3 — MAX DEPTH, pause/resume]
-    ├── [push] MaterialDetailView          [Level 2]
+    ├── [push] MaterialDetailView          [Level 2 — edit/delete buttons in toolbar]
+    │   └── [sheet] MaterialFormView       [edit]
     ├── [sheet] ProductFormView            [create / edit, inline category creation]
     ├── [sheet] WorkStepFormView           [create / edit, FocusState, time validation]
-    └── [sheet] MaterialFormView           [create / edit]
+    └── [sheet] MaterialFormView           [create / edit, FocusState, cost validation]
 ```
 
 ### Tab 2 — Labor (shared step library, speed to stopwatch)
@@ -261,10 +277,13 @@ WorkshopView                              [ROOT — titled "Labor", searchable l
 **Stopwatch tap count:** 2 taps from Labor tab. Fastest path for a maker mid-production.
 **Step library:** Steps are shared entities. Shows all steps with product names in "Used by" text and cost. New steps can be created here (standalone) or from a product's detail view.
 
-### Tab 3 — Materials (shared material library — stub)
+### Tab 3 — Materials (shared material library)
 ```
-MaterialsLibraryView                      [ROOT — stub for Epic 3]
+MaterialsLibraryView                      [ROOT — titled "Materials", searchable list of all shared Materials]
+└── [push] MaterialDetailView             [Level 1 — edit/delete in toolbar]
+    └── [sheet] MaterialFormView          [edit]
 ```
+**Material library:** Materials are shared entities. Shows all materials with product names in "Used by" text and cost. New materials can be created here (standalone) or from a product's detail view.
 
 ### Tab 4 — Settings (one-time config)
 ```
@@ -304,16 +323,16 @@ SettingsView                              [ROOT — currency, appearance, labor 
 
 **Product Duplication**
 - [x] User can duplicate a Product via context menu (long press) in list or grid
-- [x] Duplication copies all metadata, re-links shared WorkSteps, deep-copies Materials
+- [x] Duplication copies all metadata, re-links shared WorkSteps, re-links shared Materials
 - [x] Duplicated product title gets " (Copy)" suffix
 
 **E2E Tests (Epic1Tests.swift)**
 - [x] Test: create a Product and fetch it back via SwiftData
 - [x] Test: create a Category, assign it to a Product, verify the relationship
 - [x] Test: delete a Category, verify the Product's category becomes nil
-- [x] Test: delete a Product, verify its associations and Materials are also deleted
+- [x] Test: delete a Product, verify its associations are deleted but shared WorkSteps and Materials survive
 - [x] Test: CurrencyFormatter formats Decimal correctly for USD and EUR
-- [x] Test: product duplication copies metadata, re-links shared steps, deep-copies materials
+- [x] Test: product duplication copies metadata, re-links shared steps, re-links shared materials
 
 ---
 
@@ -369,6 +388,61 @@ SettingsView                              [ROOT — currency, appearance, labor 
 - [x] Test: delete WorkStep cascades to associations
 - [x] Test: CostingEngine calculations (unitTimeHours, zero guard, stepLaborCost, totalLaborCost, totalProductionCost)
 - [x] Test: LaborRateManager UserDefaults round-trip
+
+---
+
+## Epic 3 — Acceptance Criteria ✅
+
+**Material CRUD**
+- [x] User can create a Material from a product's detail view (title, summary, image, link, bulk cost, bulk quantity, unit name, units per product)
+- [x] User can edit a Material; changes propagate to all products using it
+- [x] User can delete a Material from its detail view; all associations are cascade-deleted
+- [x] User can remove a Material from a product (removes association, material survives in library)
+
+**Shared Materials**
+- [x] Materials are reusable across products via `ProductMaterial` join model
+- [x] User can add existing materials to a product via multi-select picker (checkmark toggles, batch add)
+- [x] MaterialDetailView shows "Used By" section listing all products with thumbnails
+- [x] Editing a material from any product context updates it everywhere
+- [x] "Used by" text shows product names (e.g. "Used by Walnut Board + 2 others")
+
+**Reorder Materials**
+- [x] User can reorder materials within a product via "Reorder" toggle button (up/down arrows)
+- [x] `sortOrder` persists across app launches
+
+**Cost Calculations**
+- [x] `CostingEngine` implements material calculations (materialUnitCost, materialLineCost, totalMaterialCost)
+- [x] Real-time calculated preview in MaterialFormView as user fills fields (cost per unit, cost per product)
+- [x] `ProductCostSummaryCard` shows live material cost and total production cost
+- [x] Derived/calculated values displayed in accent color to distinguish from user-entered values
+
+**Per-Section Buffers**
+- [x] Labor Cost Buffer % editable inline in WorkStepListView section
+- [x] Material Cost Buffer % editable inline in MaterialListView section
+- [x] Buffer sections include helper text explaining the percentage
+- [x] "Total after buffer" shown below each buffer input
+- [x] `totalProductionCost` uses per-section formula: `labor × (1 + laborBuffer) + material × (1 + materialBuffer) + shipping`
+
+**Materials Tab**
+- [x] Tab 3 shows all Materials as a searchable material library, titled "Materials"
+- [x] Each row shows title, product names in "Used by" text, and material line cost
+- [x] User can create standalone materials (not linked to a product) from Materials tab
+- [x] Tapping a material pushes MaterialDetailView with edit and delete buttons in toolbar
+
+**Material Detail**
+- [x] MaterialDetailView shows header (image/placeholder, summary, tappable supplier link)
+- [x] Purchase GroupBox shows bulk cost, quantity, unit name, units per product with dynamic labels
+- [x] Cost GroupBox shows derived cost per unit and cost per product in accent color
+
+**E2E Tests (Epic3Tests.swift)**
+- [x] Test: create a Material, persist, fetch, verify all properties
+- [x] Test: create ProductMaterial association, verify sortOrder
+- [x] Test: shared material across two products, edit propagates to both
+- [x] Test: reorder materials, verify sortOrder updates correctly
+- [x] Test: delete product preserves shared Material
+- [x] Test: delete Material cascades to associations
+- [x] Test: CostingEngine calculations (materialUnitCost, zero guard, materialLineCost, totalMaterialCost, totalProductionCost with per-section buffers)
+- [x] Test: product duplication re-links shared materials
 
 ---
 
@@ -438,7 +512,10 @@ Runs on every push:
 - **`bulkQuantity` defaults to 1:** Same reason.
 - **PlatformFeeProfiles are global:** Not per-product. One profile can be reused across all products.
 - **Shared WorkSteps (many-to-many):** Steps are reusable across products via the `ProductWorkStep` join model. Edit once, updates everywhere. The Workshop tab serves as the step library. Per-product ordering is stored in `ProductWorkStep.sortOrder`.
-- **Cascade deletes:** Deleting a Product deletes its `ProductWorkStep` associations and Materials, but shared WorkSteps survive. Deleting a WorkStep cascades to its `ProductWorkStep` associations. Deleting a Category does NOT delete its Products (nullify rule).
+- **Cascade deletes:** Deleting a Product deletes its `ProductWorkStep` and `ProductMaterial` associations, but shared WorkSteps and Materials survive in their libraries. Deleting a WorkStep cascades to its `ProductWorkStep` associations. Deleting a Material cascades to its `ProductMaterial` associations. Deleting a Category does NOT delete its Products (nullify rule).
+- **Shared Materials (many-to-many):** Materials are reusable across products via the `ProductMaterial` join model (mirrors WorkStep/ProductWorkStep exactly). Edit once, updates everywhere. The Materials tab serves as the material library. Per-product ordering is stored in `ProductMaterial.sortOrder`.
+- **Per-section buffers:** `laborBuffer` applies only to labor cost, `materialBuffer` applies only to material cost. Shipping is never buffered. Formula: `labor × (1 + laborBuffer) + material × (1 + materialBuffer) + shipping`.
+- **Product duplication re-links materials:** Duplicated products get new `ProductMaterial` associations pointing to the same shared Material entities (not deep-copied). Consistent with WorkStep duplication behavior.
 - **Image storage:** `Data?` blob in SwiftData for Epic 0–5. Migrate to file-system URLs in Epic 6 if performance requires it.
 - **Currency:** USD default, EUR option. Stored `Decimal` values are always in the user's chosen currency. No conversion logic — user picks one currency and sticks with it.
 - **Appearance management pattern:** `AppearanceManager` follows the same `@Observable` + `EnvironmentKey` + `UserDefaults` pattern as `CurrencyFormatter`. New app-level managers should follow this pattern. Injected at root in `MakerMarginsApp.swift`, accessed via `@Environment`.

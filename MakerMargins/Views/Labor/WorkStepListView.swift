@@ -22,6 +22,14 @@ struct WorkStepListView: View {
     @State private var linkToRemove: ProductWorkStep?
     @State private var isReordering = false
     @State private var selectedStepIDs: Set<PersistentIdentifier> = []
+    @State private var bufferText: String
+
+    // MARK: - Init
+
+    init(product: Product) {
+        self.product = product
+        _bufferText = State(initialValue: "\(product.laborBuffer * 100)")
+    }
 
     // MARK: - Computed
 
@@ -37,6 +45,10 @@ struct WorkStepListView: View {
         allSteps.filter { !linkedStepIDs.contains($0.persistentModelID) }
     }
 
+    private var bufferFraction: Decimal {
+        (Decimal(string: bufferText) ?? 0) / 100
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -47,6 +59,7 @@ struct WorkStepListView: View {
                 stepList
                 totalFooter
             }
+            bufferSection
         } label: {
             groupBoxLabel
         }
@@ -74,7 +87,7 @@ struct WorkStepListView: View {
                 linkToRemove = nil
             }
         } message: {
-            Text("This will remove the step from this product. The step will remain in the step library.")
+            Text("This will remove the step from this product only. It will remain available in the step library.")
         }
     }
 
@@ -218,6 +231,43 @@ struct WorkStepListView: View {
         .padding(.top, AppTheme.Spacing.sm)
     }
 
+    private var bufferSection: some View {
+        VStack(spacing: AppTheme.Spacing.sm) {
+            Divider()
+
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                HStack {
+                    Text("Labor Cost Buffer")
+                        .font(AppTheme.Typography.bodyText)
+                    Spacer()
+                    TextField("0", text: $bufferText)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: AppTheme.Sizing.inputBuffer)
+                    Text("%")
+                        .font(AppTheme.Typography.bodyText)
+                        .foregroundStyle(.secondary)
+                }
+                Text("Adds a percentage on top of the base labor cost")
+                    .font(AppTheme.Typography.note)
+                    .foregroundStyle(.tertiary)
+            }
+            .onChange(of: bufferText) { _, _ in
+                product.laborBuffer = bufferFraction
+            }
+
+            HStack {
+                Text("Total after buffer")
+                    .font(AppTheme.Typography.sectionHeader)
+                Spacer()
+                Text(formatter.format(CostingEngine.totalLaborCostBuffered(product: product)))
+                    .font(AppTheme.Typography.sectionHeader)
+                    .foregroundStyle(AppTheme.Colors.accent)
+            }
+        }
+        .padding(.top, AppTheme.Spacing.xs)
+    }
+
     // MARK: - Existing Step Picker
 
     private var existingStepPicker: some View {
@@ -244,7 +294,7 @@ struct WorkStepListView: View {
                                 VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                                     Text(step.title)
                                         .font(AppTheme.Typography.rowTitle)
-                                    Text(usedByText(for: step))
+                                    Text(UsageText.from(products: step.productWorkSteps.compactMap(\.product)))
                                         .font(AppTheme.Typography.rowCaption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -276,16 +326,6 @@ struct WorkStepListView: View {
     }
 
     // MARK: - Actions
-
-    private func usedByText(for step: WorkStep) -> String {
-        let products = step.productWorkSteps.compactMap(\.product)
-        guard let first = products.first else { return "Not used" }
-        let remaining = products.count - 1
-        if remaining == 0 {
-            return "Used by \(first.title)"
-        }
-        return "Used by \(first.title) + \(remaining) \(remaining == 1 ? "other" : "others")"
-    }
 
     private func toggleSelection(_ step: WorkStep) {
         let id = step.persistentModelID

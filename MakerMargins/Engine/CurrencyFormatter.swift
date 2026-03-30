@@ -53,6 +53,11 @@ final class CurrencyFormatter {
         return f
     }()
 
+    /// The currency symbol for the currently selected currency.
+    var symbol: String {
+        selected == .usd ? "$" : "€"
+    }
+
     /// Format a Decimal monetary value using the currently selected currency.
     /// Never casts Decimal to Double — uses NSDecimalNumber for lossless conversion.
     func format(_ value: Decimal) -> String {
