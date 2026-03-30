@@ -100,7 +100,7 @@ struct WorkStepDetailView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This will remove the step from all products that use it. This action cannot be undone.")
+            Text("This will permanently delete this step and remove it from all products that use it. This action cannot be undone.")
         }
     }
 
@@ -138,15 +138,15 @@ struct WorkStepDetailView: View {
     private var timeBatchSection: some View {
         GroupBox("Time & Batch") {
             VStack(spacing: 0) {
-                detailRow(label: "Recorded Time", value: CostingEngine.formatDuration(step.recordedTime))
+                DetailRow(label: "Recorded Time", value: CostingEngine.formatDuration(step.recordedTime))
                 Divider()
-                detailRow(label: "\(step.unitName.capitalized)s Completed", value: "\(step.batchUnitsCompleted) \(step.unitName)\(step.batchUnitsCompleted == 1 ? "" : "s")")
+                DetailRow(label: "\(step.unitName.capitalized)s Completed", value: "\(step.batchUnitsCompleted) \(step.unitName)\(step.batchUnitsCompleted == 1 ? "" : "s")")
                 Divider()
-                derivedRow(label: "Time per \(step.unitName)", value: CostingEngine.formatDuration(unitTimeSeconds))
+                DerivedRow(label: "Time per \(step.unitName)", value: CostingEngine.formatDuration(unitTimeSeconds))
                 Divider()
-                detailRow(label: "\(step.unitName.capitalized)s per Product", value: "\(step.unitsRequiredPerProduct)")
+                DetailRow(label: "\(step.unitName.capitalized)s per Product", value: "\(step.unitsRequiredPerProduct)")
                 Divider()
-                derivedRow(label: "Time per Product", value: CostingEngine.formatDuration(timePerProduct))
+                DerivedRow(label: "Time per Product", value: CostingEngine.formatDuration(timePerProduct))
             }
         }
         .padding(.horizontal)
@@ -155,7 +155,7 @@ struct WorkStepDetailView: View {
     private var costSection: some View {
         GroupBox("Cost") {
             VStack(spacing: 0) {
-                detailRow(label: "Hourly Rate", value: "\(formatter.format(step.laborRate))/hr")
+                DetailRow(label: "Hourly Rate", value: "\(formatter.format(step.laborRate))/hr")
                 Divider()
                 HStack {
                     Text("Labor Cost per Product")
@@ -185,7 +185,7 @@ struct WorkStepDetailView: View {
                 VStack(spacing: 0) {
                     ForEach(linkedProducts, id: \.persistentModelID) { linkedProduct in
                         HStack(spacing: AppTheme.Spacing.md) {
-                            productThumbnail(imageData: linkedProduct.image)
+                            ProductThumbnailView(imageData: linkedProduct.image)
                             Text(linkedProduct.title)
                                 .font(AppTheme.Typography.rowTitle)
                             Spacer()
@@ -202,51 +202,4 @@ struct WorkStepDetailView: View {
         .padding(.horizontal)
     }
 
-    @ViewBuilder
-    private func productThumbnail(imageData: Data?) -> some View {
-        let size: CGFloat = AppTheme.Sizing.thumbnailSmall
-        if let data = imageData, let uiImage = UIImage(data: data) {
-            Image(uiImage: uiImage)
-                .resizable()
-                .scaledToFill()
-                .frame(width: size, height: size)
-                .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small))
-        } else {
-            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small)
-                .fill(AppTheme.Colors.placeholder)
-                .frame(width: size, height: size)
-                .overlay {
-                    Image(systemName: "photo")
-                        .foregroundStyle(.tertiary)
-                        .font(.caption2)
-                }
-        }
-    }
-
-    // MARK: - Helpers
-
-    @ViewBuilder
-    private func detailRow(label: String, value: String) -> some View {
-        HStack {
-            Text(label)
-                .font(AppTheme.Typography.bodyText)
-            Spacer()
-            Text(value)
-                .font(AppTheme.Typography.sectionHeader)
-        }
-        .padding(.vertical, AppTheme.Spacing.sm)
-    }
-
-    @ViewBuilder
-    private func derivedRow(label: String, value: String) -> some View {
-        HStack {
-            Text(label)
-                .font(AppTheme.Typography.bodyText)
-            Spacer()
-            Text(value)
-                .font(AppTheme.Typography.sectionHeader)
-                .foregroundStyle(AppTheme.Colors.accent)
-        }
-        .padding(.vertical, AppTheme.Spacing.sm)
-    }
 }

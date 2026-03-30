@@ -28,6 +28,7 @@ struct Epic1Tests {
             Material.self,
             PlatformFeeProfile.self,
             ProductWorkStep.self,
+            ProductMaterial.self,
         ])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         return try ModelContainer(for: schema, configurations: [config])
@@ -86,7 +87,7 @@ struct Epic1Tests {
 
     // MARK: - Cascade Delete
 
-    @Test("Deleting a product cascades to associations and materials, but shared WorkSteps survive")
+    @Test("Deleting a product cascades to associations, but shared WorkSteps and Materials survive")
     func deleteProductCascadesToChildren() throws {
         let container = try makeContainer()
         let ctx = ModelContext(container)
@@ -96,35 +97,42 @@ struct Epic1Tests {
         let material = Material(title: "Sandpaper")
 
         // Link step to product via the join model (many-to-many)
-        let link = ProductWorkStep(product: product, workStep: step, sortOrder: 0)
-        product.productWorkSteps.append(link)
-        step.productWorkSteps.append(link)
+        let stepLink = ProductWorkStep(product: product, workStep: step, sortOrder: 0)
+        product.productWorkSteps.append(stepLink)
+        step.productWorkSteps.append(stepLink)
 
-        // Materials still use direct one-to-many
-        material.product = product
-        product.materials.append(material)
+        // Link material to product via the join model (many-to-many)
+        let matLink = ProductMaterial(product: product, material: material, sortOrder: 0)
+        product.productMaterials.append(matLink)
+        material.productMaterials.append(matLink)
 
         ctx.insert(product)
         ctx.insert(step)
-        ctx.insert(link)
+        ctx.insert(material)
+        ctx.insert(stepLink)
+        ctx.insert(matLink)
         try ctx.save()
 
         // Confirm everything exists before deleting
         #expect(try ctx.fetch(FetchDescriptor<WorkStep>()).count == 1)
         #expect(try ctx.fetch(FetchDescriptor<Material>()).count == 1)
         #expect(try ctx.fetch(FetchDescriptor<ProductWorkStep>()).count == 1)
+        #expect(try ctx.fetch(FetchDescriptor<ProductMaterial>()).count == 1)
 
         ctx.delete(product)
         try ctx.save()
 
         #expect(try ctx.fetch(FetchDescriptor<Product>()).isEmpty)
-        // Material is cascade-deleted with the product
-        #expect(try ctx.fetch(FetchDescriptor<Material>()).isEmpty)
         // ProductWorkStep association is cascade-deleted with the product
         #expect(try ctx.fetch(FetchDescriptor<ProductWorkStep>()).isEmpty)
+        // ProductMaterial association is cascade-deleted with the product
+        #expect(try ctx.fetch(FetchDescriptor<ProductMaterial>()).isEmpty)
         // WorkStep survives — it's a shared entity, not owned by the product
         #expect(try ctx.fetch(FetchDescriptor<WorkStep>()).count == 1)
         #expect(try ctx.fetch(FetchDescriptor<WorkStep>())[0].title == "Sand edges")
+        // Material survives — it's a shared entity, not owned by the product
+        #expect(try ctx.fetch(FetchDescriptor<Material>()).count == 1)
+        #expect(try ctx.fetch(FetchDescriptor<Material>())[0].title == "Sandpaper")
     }
 
     // MARK: - Category CRUD
@@ -269,7 +277,7 @@ struct Epic1Tests {
 
     // MARK: - Product Duplication
 
-    @Test("Duplicating a product copies metadata, re-links shared steps, and deep-copies materials")
+    @Test("Duplicating a product copies metadata, re-links shared steps and shared materials")
     func duplicateProductCopiesAllData() throws {
         let container = try makeContainer()
         let ctx = ModelContext(container)
@@ -286,25 +294,28 @@ struct Epic1Tests {
 
         // Add a shared WorkStep
         let step = WorkStep(title: "Sand edges", laborRate: 20, recordedTime: 1800)
-        let link = ProductWorkStep(product: source, workStep: step, sortOrder: 0)
-        source.productWorkSteps.append(link)
-        step.productWorkSteps.append(link)
+        let stepLink = ProductWorkStep(product: source, workStep: step, sortOrder: 0)
+        source.productWorkSteps.append(stepLink)
+        step.productWorkSteps.append(stepLink)
 
-        // Add a Material
+        // Add a shared Material via join model
         let material = Material(
             title: "Walnut Lumber",
             bulkCost: Decimal(string: "45.00")!,
             bulkQuantity: Decimal(string: "10")!,
             unitName: "board-foot",
-            unitsRequiredPerProduct: Decimal(string: "3")!,
-            product: source
+            unitsRequiredPerProduct: Decimal(string: "3")!
         )
-        source.materials.append(material)
+        let matLink = ProductMaterial(product: source, material: material, sortOrder: 0)
+        source.productMaterials.append(matLink)
+        material.productMaterials.append(matLink)
 
         ctx.insert(category)
         ctx.insert(source)
         ctx.insert(step)
-        ctx.insert(link)
+        ctx.insert(stepLink)
+        ctx.insert(material)
+        ctx.insert(matLink)
         try ctx.save()
 
         // --- Duplicate (mirrors ProductListView.duplicateProduct logic) ---
@@ -327,18 +338,13 @@ struct Epic1Tests {
             ws.productWorkSteps.append(newLink)
         }
 
-        for srcMat in source.materials {
-            let newMat = Material(
-                title: srcMat.title,
-                summary: srcMat.summary,
-                bulkCost: srcMat.bulkCost,
-                bulkQuantity: srcMat.bulkQuantity,
-                unitName: srcMat.unitName,
-                unitsRequiredPerProduct: srcMat.unitsRequiredPerProduct,
-                product: copy
-            )
-            ctx.insert(newMat)
-            copy.materials.append(newMat)
+        // Re-link shared Materials via new ProductMaterial associations
+        for srcLink in source.productMaterials {
+            guard let mat = srcLink.material else { continue }
+            let newLink = ProductMaterial(product: copy, material: mat, sortOrder: srcLink.sortOrder)
+            ctx.insert(newLink)
+            copy.productMaterials.append(newLink)
+            mat.productMaterials.append(newLink)
         }
         try ctx.save()
 
@@ -365,14 +371,15 @@ struct Epic1Tests {
         #expect(steps.count == 1)
         #expect(steps[0].productWorkSteps.count == 2)
 
-        // Material deep-copied (new instance, not shared)
-        #expect(copied.materials.count == 1)
-        #expect(copied.materials[0].title == "Walnut Lumber")
-        #expect(copied.materials[0].bulkCost == Decimal(string: "45.00")!)
-        #expect(copied.materials[0].unitsRequiredPerProduct == Decimal(string: "3")!)
+        // Material re-linked (shared, same instance linked to both products)
+        #expect(copied.productMaterials.count == 1)
+        #expect(copied.productMaterials[0].material?.title == "Walnut Lumber")
+        #expect(copied.productMaterials[0].material?.bulkCost == Decimal(string: "45.00")!)
+        #expect(copied.productMaterials[0].sortOrder == 0)
 
-        // 2 distinct Material instances total (original + copy)
+        // Material is shared — still only 1 Material total, now linked to 2 products
         let materials = try ctx.fetch(FetchDescriptor<Material>())
-        #expect(materials.count == 2)
+        #expect(materials.count == 1)
+        #expect(materials[0].productMaterials.count == 2)
     }
 }

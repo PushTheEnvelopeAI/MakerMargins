@@ -69,12 +69,12 @@ struct StopwatchView: View {
             TimelineView(.periodic(from: .now, by: 0.1)) { context in
                 let live = accumulatedTime + (startDate.map { context.date.timeIntervalSince($0) } ?? 0)
                 Text(formatStopwatch(live))
-                    .font(.system(size: 56, weight: .light, design: .monospaced))
+                    .font(AppTheme.Typography.timerDisplay)
                     .contentTransition(.numericText())
             }
         } else {
             Text(formatStopwatch(accumulatedTime))
-                .font(.system(size: 56, weight: .light, design: .monospaced))
+                .font(AppTheme.Typography.timerDisplay)
         }
     }
 
@@ -127,7 +127,7 @@ struct StopwatchView: View {
     private func stopwatchButton(label: String, style: StopwatchButtonVariant) -> some View {
         Text(label)
             .font(.title3.weight(.semibold))
-            .frame(width: 130, height: 54)
+            .frame(width: AppTheme.Sizing.stopwatchButtonWidth, height: AppTheme.Sizing.stopwatchButtonHeight)
             .foregroundStyle(.white)
             .background(buttonColor(for: style), in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium))
     }
@@ -135,8 +135,8 @@ struct StopwatchView: View {
     private func buttonColor(for style: StopwatchButtonVariant) -> Color {
         switch style {
         case .accent: return AppTheme.Colors.accent
-        case .destructive: return .red
-        case .secondary: return .gray
+        case .destructive: return AppTheme.Colors.destructive
+        case .secondary: return AppTheme.Colors.secondaryButton
         }
     }
 

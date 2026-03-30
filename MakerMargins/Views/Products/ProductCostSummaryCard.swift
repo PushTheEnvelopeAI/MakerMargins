@@ -2,8 +2,8 @@
 // MakerMargins
 //
 // Reusable card showing the cost breakdown for a Product.
-// Labor and total production cost use CostingEngine (Epic 2).
-// Materials stub remains until Epic 3.
+// Labor and material costs use CostingEngine with per-section buffers.
+// Total production cost = labor×(1+laborBuffer) + material×(1+materialBuffer) + shipping.
 
 import SwiftUI
 
@@ -16,7 +16,7 @@ struct ProductCostSummaryCard: View {
             VStack(spacing: 0) {
                 costRow(label: "Labor", value: CostingEngine.totalLaborCost(product: product))
                 Divider()
-                costRow(label: "Materials", value: 0, note: "Available in Epic 3")
+                costRow(label: "Materials", value: CostingEngine.totalMaterialCost(product: product))
                 Divider()
                 costRow(label: "Shipping", value: product.shippingCost)
                 Divider()
@@ -28,7 +28,7 @@ struct ProductCostSummaryCard: View {
     @ViewBuilder
     private func costRow(label: String, value: Decimal, note: String? = nil, bold: Bool = false) -> some View {
         HStack {
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxxs) {
                 Text(label)
                     .font(bold ? AppTheme.Typography.sectionHeader : AppTheme.Typography.bodyText)
                 if let note {
@@ -40,7 +40,7 @@ struct ProductCostSummaryCard: View {
             Spacer()
             Text(formatter.format(value))
                 .font(bold ? AppTheme.Typography.sectionHeader : AppTheme.Typography.bodyText)
-                .foregroundStyle(bold ? .primary : .secondary)
+                .foregroundStyle(bold ? AppTheme.Colors.accent : .secondary)
         }
         .padding(.vertical, AppTheme.Spacing.sm)
     }

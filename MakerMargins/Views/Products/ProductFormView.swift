@@ -56,7 +56,7 @@ struct ProductFormView: View {
     var body: some View {
         NavigationStack {
             Form {
-                imageSection
+                PhotoPickerSection(imageData: $imageData, photoItem: $photoItem)
                 basicInfoSection
                 categorySection
             }
@@ -79,59 +79,23 @@ struct ProductFormView: View {
 
     // MARK: - Sections
 
-    private var imageSection: some View {
-        // Hoist all imageData reads to Sendable locals before the PhotosPicker
-        // closure — PhotosUI's @ViewBuilder label is @Sendable in the iOS 18 SDK,
-        // so accessing @MainActor @State directly inside it is a Swift 6 error.
-        let currentImage: UIImage? = imageData.flatMap { UIImage(data: $0) }
-        let hasImage = currentImage != nil
-        return Section {
-            PhotosPicker(selection: $photoItem, matching: .images) {
-                VStack(spacing: AppTheme.Spacing.sm) {
-                    if let uiImage = currentImage {
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: AppTheme.Sizing.thumbnailForm, height: AppTheme.Sizing.thumbnailForm)
-                            .clipShape(Circle())
-                    } else {
-                        Circle()
-                            .fill(AppTheme.Colors.placeholder)
-                            .frame(width: AppTheme.Sizing.thumbnailForm, height: AppTheme.Sizing.thumbnailForm)
-                            .overlay {
-                                Image(systemName: "camera")
-                                    .font(.title2)
-                                    .foregroundStyle(.secondary)
-                            }
-                    }
-                    Text(hasImage ? "Change Photo" : "Add Photo")
-                        .font(AppTheme.Typography.bodyText)
-                        .foregroundStyle(.tint)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, AppTheme.Spacing.sm)
-            }
-            .buttonStyle(.plain)
-
-            if hasImage {
-                Button("Remove Photo", role: .destructive) {
-                    imageData = nil
-                    photoItem = nil
-                }
-            }
-        }
-    }
-
     private var basicInfoSection: some View {
-        Section("Details") {
+        Section {
             TextField("Title", text: $title)
-            TextField("Description", text: $summary, axis: .vertical)
-                .lineLimit(3...6)
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                TextField("Description", text: $summary, axis: .vertical)
+                    .lineLimit(3...6)
+                Text("A short summary to help identify this product")
+                    .font(AppTheme.Typography.note)
+                    .foregroundStyle(.tertiary)
+            }
+        } header: {
+            Text("Details")
         }
     }
 
     private var categorySection: some View {
-        Section("Category") {
+        Section {
             Button {
                 selectedCategory = nil
             } label: {
@@ -184,6 +148,10 @@ struct ProductFormView: View {
                     Label("New Category", systemImage: "plus.circle")
                 }
             }
+        } header: {
+            Text("Category")
+        } footer: {
+            Text("Group products by category for easy filtering")
         }
     }
 

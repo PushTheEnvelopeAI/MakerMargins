@@ -42,12 +42,12 @@ struct SettingsView: View {
                 HStack {
                     Text("Default Hourly Rate")
                     Spacer()
-                    Text(currencyFormatter.selected == .usd ? "$" : "€")
+                    Text(currencyFormatter.symbol)
                         .foregroundStyle(.secondary)
                     TextField("0", text: $laborRateText)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
-                        .frame(width: 80)
+                        .frame(width: AppTheme.Sizing.inputMedium)
                         .focused($laborRateFocused)
                         .onSubmit { commitLaborRate() }
                         .onChange(of: laborRateFocused) { _, focused in

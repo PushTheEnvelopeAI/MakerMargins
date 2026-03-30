@@ -110,7 +110,7 @@ struct WorkStepFormView: View {
     var body: some View {
         NavigationStack {
             Form {
-                imageSection
+                PhotoPickerSection(imageData: $imageData, photoItem: $photoItem)
                 detailsSection
                 timeAndBatchSection
                 costSection
@@ -136,14 +136,8 @@ struct WorkStepFormView: View {
                 }
             }
             .onChange(of: focusedField) { oldField, newField in
-                // Restore defaults on blur for fields left empty
-                if let oldField {
-                    restoreDefaultIfEmpty(field: oldField)
-                }
-                // Clear default values on focus so user can type fresh
-                if let newField {
-                    clearDefaultOnFocus(field: newField)
-                }
+                if let oldField { fieldDefault(for: oldField).restoreOnBlur() }
+                if let newField { fieldDefault(for: newField).clearOnFocus() }
             }
             .onChange(of: hoursText) { _, newValue in
                 hoursText = sanitizeDigitsOnly(newValue)
@@ -166,46 +160,6 @@ struct WorkStepFormView: View {
     }
 
     // MARK: - Sections
-
-    private var imageSection: some View {
-        let currentImage: UIImage? = imageData.flatMap { UIImage(data: $0) }
-        let hasImage = currentImage != nil
-        return Section {
-            PhotosPicker(selection: $photoItem, matching: .images) {
-                VStack(spacing: AppTheme.Spacing.sm) {
-                    if let uiImage = currentImage {
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: AppTheme.Sizing.thumbnailForm, height: AppTheme.Sizing.thumbnailForm)
-                            .clipShape(Circle())
-                    } else {
-                        Circle()
-                            .fill(AppTheme.Colors.placeholder)
-                            .frame(width: AppTheme.Sizing.thumbnailForm, height: AppTheme.Sizing.thumbnailForm)
-                            .overlay {
-                                Image(systemName: "camera")
-                                    .font(.title2)
-                                    .foregroundStyle(.secondary)
-                            }
-                    }
-                    Text(hasImage ? "Change Photo" : "Add Photo")
-                        .font(AppTheme.Typography.bodyText)
-                        .foregroundStyle(.tint)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, AppTheme.Spacing.sm)
-            }
-            .buttonStyle(.plain)
-
-            if hasImage {
-                Button("Remove Photo", role: .destructive) {
-                    imageData = nil
-                    photoItem = nil
-                }
-            }
-        }
-    }
 
     private var detailsSection: some View {
         Section("Details") {
@@ -255,7 +209,7 @@ struct WorkStepFormView: View {
                     TextField("1", text: $batchUnitsText)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
-                        .frame(width: 80)
+                        .frame(width: AppTheme.Sizing.inputMedium)
                         .focused($focusedField, equals: .batchUnits)
                 }
                 Text("How many \(displayUnitName)s were produced in this timed batch")
@@ -269,7 +223,7 @@ struct WorkStepFormView: View {
                     Spacer()
                     TextField("unit", text: $unitName)
                         .multilineTextAlignment(.trailing)
-                        .frame(width: 120)
+                        .frame(width: AppTheme.Sizing.inputLarge)
                         .focused($focusedField, equals: .unitName)
                 }
                 Text("What you call each piece (e.g. board, piece, widget)")
@@ -284,7 +238,7 @@ struct WorkStepFormView: View {
                     TextField("1", text: $unitsPerProductText)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
-                        .frame(width: 80)
+                        .frame(width: AppTheme.Sizing.inputMedium)
                         .focused($focusedField, equals: .unitsPerProduct)
                 }
                 Text("How many \(displayUnitName)s go into one finished product")
@@ -302,12 +256,12 @@ struct WorkStepFormView: View {
                 HStack {
                     Text("Hourly Rate")
                     Spacer()
-                    Text(currencyFormatter.selected == .usd ? "$" : "€")
+                    Text(currencyFormatter.symbol)
                         .foregroundStyle(.secondary)
                     TextField("0", text: $laborRateText)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
-                        .frame(width: 80)
+                        .frame(width: AppTheme.Sizing.inputMedium)
                         .focused($focusedField, equals: .laborRate)
                     Text("/hr")
                         .font(AppTheme.Typography.bodyText)
@@ -357,7 +311,7 @@ struct WorkStepFormView: View {
             TextField("0", text: text)
                 .keyboardType(.numberPad)
                 .multilineTextAlignment(.trailing)
-                .frame(width: 52)
+                .frame(width: AppTheme.Sizing.inputTime)
                 .focused($focusedField, equals: field)
             Text(label)
                 .font(AppTheme.Typography.bodyText)
@@ -379,41 +333,22 @@ struct WorkStepFormView: View {
 
     // MARK: - Focus & Validation Helpers
 
-    private func clearDefaultOnFocus(field: FocusableField) {
+    private func fieldDefault(for field: FocusableField) -> FormFieldDefault {
         switch field {
         case .hours:
-            if hoursText == "0" || hoursText.isEmpty { hoursText = "" }
+            FormFieldDefault(get: { hoursText }, set: { hoursText = $0 }, defaultValue: "")
         case .minutes:
-            if minutesText == "0" { minutesText = "" }
+            FormFieldDefault(get: { minutesText }, set: { minutesText = $0 }, defaultValue: "0")
         case .seconds:
-            if secondsText == "0" { secondsText = "" }
+            FormFieldDefault(get: { secondsText }, set: { secondsText = $0 }, defaultValue: "0")
         case .batchUnits:
-            if batchUnitsText == "1" { batchUnitsText = "" }
+            FormFieldDefault(get: { batchUnitsText }, set: { batchUnitsText = $0 }, defaultValue: "1")
         case .unitName:
-            if unitName == "unit" { unitName = "" }
+            FormFieldDefault(get: { unitName }, set: { unitName = $0 }, defaultValue: "unit")
         case .unitsPerProduct:
-            if unitsPerProductText == "1" { unitsPerProductText = "" }
+            FormFieldDefault(get: { unitsPerProductText }, set: { unitsPerProductText = $0 }, defaultValue: "1")
         case .laborRate:
-            if laborRateText == "0" { laborRateText = "" }
-        }
-    }
-
-    private func restoreDefaultIfEmpty(field: FocusableField) {
-        switch field {
-        case .hours:
-            if hoursText.trimmingCharacters(in: .whitespaces).isEmpty { hoursText = "" }
-        case .minutes:
-            if minutesText.trimmingCharacters(in: .whitespaces).isEmpty { minutesText = "0" }
-        case .seconds:
-            if secondsText.trimmingCharacters(in: .whitespaces).isEmpty { secondsText = "0" }
-        case .batchUnits:
-            if batchUnitsText.trimmingCharacters(in: .whitespaces).isEmpty { batchUnitsText = "1" }
-        case .unitName:
-            if unitName.trimmingCharacters(in: .whitespaces).isEmpty { unitName = "unit" }
-        case .unitsPerProduct:
-            if unitsPerProductText.trimmingCharacters(in: .whitespaces).isEmpty { unitsPerProductText = "1" }
-        case .laborRate:
-            if laborRateText.trimmingCharacters(in: .whitespaces).isEmpty { laborRateText = "0" }
+            FormFieldDefault(get: { laborRateText }, set: { laborRateText = $0 }, defaultValue: "0")
         }
     }
 
@@ -433,6 +368,7 @@ struct WorkStepFormView: View {
         let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
         let trimmedSummary = summary.trimmingCharacters(in: .whitespaces)
         let safeBatchUnits = batchUnits > 0 ? batchUnits : 1
+        let safeRate = laborRate >= 0 ? laborRate : 0
 
         if let step {
             // Edit existing — changes propagate to all products using this step
@@ -443,14 +379,14 @@ struct WorkStepFormView: View {
             step.batchUnitsCompleted = safeBatchUnits
             step.unitName = unitName.trimmingCharacters(in: .whitespaces).isEmpty ? "unit" : unitName.trimmingCharacters(in: .whitespaces)
             step.unitsRequiredPerProduct = unitsPerProduct > 0 ? unitsPerProduct : 1
-            step.laborRate = laborRate
+            step.laborRate = safeRate
         } else {
             // Create new step + link to product
             let newStep = WorkStep(
                 title: trimmedTitle,
                 summary: trimmedSummary,
                 image: imageData,
-                laborRate: laborRate,
+                laborRate: safeRate,
                 recordedTime: recordedTime,
                 batchUnitsCompleted: safeBatchUnits,
                 unitName: unitName.trimmingCharacters(in: .whitespaces).isEmpty ? "unit" : unitName.trimmingCharacters(in: .whitespaces),
