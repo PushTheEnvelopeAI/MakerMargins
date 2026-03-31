@@ -117,7 +117,8 @@ extension PlatformType {
         let percentText = PercentageFormat.toDisplay(fee) + "%"
         let fixed = lockedPaymentProcessingFixed
         if fixed > 0 {
-            return "\(percentText) + $\(fixed)"
+            let fixedStr = String(format: "%.2f", NSDecimalNumber(decimal: fixed).doubleValue)
+            return "\(percentText) + $\(fixedStr)"
         }
         return percentText
     }
