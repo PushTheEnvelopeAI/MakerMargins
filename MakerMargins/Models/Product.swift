@@ -12,6 +12,7 @@ import SwiftData
 @Model
 final class Product {
     var title: String
+    var sku: String              // free-text SKU / part number
     var summary: String         // named 'summary' to avoid conflict with NSObject.description
     var image: Data?
 
@@ -46,6 +47,7 @@ final class Product {
 
     init(
         title: String,
+        sku: String = "",
         summary: String = "",
         image: Data? = nil,
         shippingCost: Decimal = 0,
@@ -54,6 +56,7 @@ final class Product {
         category: Category? = nil
     ) {
         self.title = title
+        self.sku = sku
         self.summary = summary
         self.image = image
         self.shippingCost = shippingCost

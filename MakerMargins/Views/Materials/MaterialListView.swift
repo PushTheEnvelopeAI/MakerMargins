@@ -13,6 +13,7 @@ import SwiftData
 struct MaterialListView: View {
     let product: Product
     var onNewMaterialCreated: ((Material) -> Void)? = nil
+    @Binding var isExpanded: Bool
 
     @Query(sort: \Material.title) private var allMaterials: [Material]
     @Environment(\.modelContext) private var modelContext
@@ -29,8 +30,9 @@ struct MaterialListView: View {
 
     // MARK: - Init
 
-    init(product: Product, onNewMaterialCreated: ((Material) -> Void)? = nil) {
+    init(product: Product, isExpanded: Binding<Bool>, onNewMaterialCreated: ((Material) -> Void)? = nil) {
         self.product = product
+        self._isExpanded = isExpanded
         self.onNewMaterialCreated = onNewMaterialCreated
         _bufferText = State(initialValue: "\(product.materialBuffer * 100)")
     }
@@ -56,7 +58,7 @@ struct MaterialListView: View {
     // MARK: - Body
 
     var body: some View {
-        GroupBox {
+        DisclosureGroup(isExpanded: $isExpanded) {
             if sortedLinks.isEmpty {
                 emptyState
             } else {
@@ -186,9 +188,16 @@ struct MaterialListView: View {
                 Text(material.title)
                     .font(AppTheme.Typography.rowTitle)
                     .lineLimit(1)
-                Text(formatter.format(CostingEngine.materialLineCost(link: link)))
-                    .font(AppTheme.Typography.rowCaption)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    Text(formatter.format(CostingEngine.materialLineCost(link: link)))
+                        .font(AppTheme.Typography.rowCaption)
+                        .foregroundStyle(.secondary)
+                    Text("·")
+                        .foregroundStyle(.tertiary)
+                    Text("\(link.unitsRequiredPerProduct) \(material.unitName)/product")
+                        .font(AppTheme.Typography.rowCaption)
+                        .foregroundStyle(.tertiary)
+                }
             }
 
             Spacer()

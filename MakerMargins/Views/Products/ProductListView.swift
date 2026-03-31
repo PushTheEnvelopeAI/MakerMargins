@@ -249,6 +249,7 @@ struct ProductListView: View {
     private func duplicateProduct(_ source: Product) {
         let copy = Product(
             title: "\(source.title) (Copy)",
+            sku: source.sku,
             summary: source.summary,
             image: source.image,
             shippingCost: source.shippingCost,
@@ -314,10 +315,21 @@ private struct ProductRowView: View {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                 Text(product.title)
                     .font(AppTheme.Typography.rowTitle)
-                if let category = product.category {
-                    Text(category.name)
-                        .font(AppTheme.Typography.rowCaption)
-                        .foregroundStyle(.secondary)
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    if !product.sku.isEmpty {
+                        Text(product.sku)
+                            .font(AppTheme.Typography.rowCaption)
+                            .foregroundStyle(.secondary)
+                    }
+                    if let category = product.category {
+                        if !product.sku.isEmpty {
+                            Text("·")
+                                .foregroundStyle(.tertiary)
+                        }
+                        Text(category.name)
+                            .font(AppTheme.Typography.rowCaption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
         }
@@ -338,10 +350,11 @@ private struct ProductGridCellView: View {
                 Text(product.title)
                     .font(AppTheme.Typography.gridTitle)
                     .lineLimit(2)
-                // Always render category line to keep cells uniform height.
-                Text(product.category?.name ?? " ")
+                // SKU + category subtitle — always render to keep cells uniform height.
+                let subtitle = [product.sku, product.category?.name ?? ""].filter { !$0.isEmpty }.joined(separator: " · ")
+                Text(subtitle.isEmpty ? " " : subtitle)
                     .font(AppTheme.Typography.gridCaption)
-                    .foregroundStyle(product.category != nil ? Color.secondary : Color.clear)
+                    .foregroundStyle(subtitle.isEmpty ? Color.clear : Color.secondary)
                     .lineLimit(1)
             }
             .padding(.horizontal, AppTheme.Spacing.sm)

@@ -84,7 +84,7 @@ struct WorkshopView: View {
                             Text("·")
                                 .foregroundStyle(.tertiary)
 
-                            Text("\(CostingEngine.unitTimeHours(step: step)) hrs/\(step.unitName)")
+                            Text("\(CostingEngine.formatHours(CostingEngine.unitTimeHours(step: step))) hrs/\(step.unitName)")
                                 .font(AppTheme.Typography.rowCaption)
                                 .foregroundStyle(.secondary)
                         }
