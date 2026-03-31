@@ -197,7 +197,7 @@ MakerMargins/                              ← repo root
 │   │
 │   ├── Theme/                             ← design system tokens and reusable view modifiers
 │   │   ├── AppTheme.swift                 ← colors (surface, surfaceElevated, accent, categoryBadge, tabTint, cardBorder, etc.), spacing, corner radii, typography, sizing
-│   │   └── ViewModifiers.swift            ← .cardStyle(), .appBackground(), EditableGroupBoxStyle, CurrencyInputField, PlaceholderImageView, WorkStepThumbnailView, MaterialThumbnailView
+│   │   └── ViewModifiers.swift            ← .cardStyle(), .appBackground(), .editableFieldStyle(), CurrencyInputField, PlaceholderImageView, WorkStepThumbnailView, MaterialThumbnailView
 │   │
 │   └── Views/                             ← SwiftUI views, grouped by feature
 │       ├── Products/                      ← Tab 1 root + all product-owned views
@@ -592,7 +592,7 @@ Runs on every push:
 - **Batch-oriented labels:** WorkStep forms and detail views use "Time to Complete Batch" and "Units per Batch" (not "Recorded Time" / "Units Completed") to clearly convey batch-level semantics.
 - **Conditional delete vs. remove in detail views:** `WorkStepDetailView` and `MaterialDetailView` hide the "Delete" toolbar action when opened from a product context (`product != nil`). Instead, a "Remove from [Product]" button is shown at the bottom, which unlinks the item from the product without deleting it. Global deletion is only available from the library tabs (Labor / Materials).
 - **Auto-navigation after item creation:** When a new WorkStep or Material is created from within `ProductDetailView`, the app auto-navigates to the new item's detail view via `onNewStepCreated`/`onNewMaterialCreated` callbacks and `navigationDestination(item:)`. This lets users immediately adjust product-specific settings (labor rate, units per product).
-- **EditableGroupBoxStyle:** Product Settings sections in detail views use `EditableGroupBoxStyle` (accent-subtle background + accent border) to visually distinguish editable product-specific fields from read-only item info.
+- **`.editableFieldStyle()` modifier:** Applies a subtle rounded `inputBackground` fill (tertiarySystemFill) around individual editable fields to visually distinguish them from read-only values. Applied to: labor rate, units per product, buffer percentages, and shipping cost fields. Defined in `ViewModifiers.swift`.
 - **CurrencyInputField:** Reusable component in `ViewModifiers.swift` that groups currency symbol + TextField + optional suffix into a cohesive input unit. Used for labor rate and bulk cost fields.
 - **CostingEngine.formatHours():** Formats `Decimal` hours to 4 decimal places with trailing zero stripping (minimum 2 decimals). Used for Hours/Unit and Labor Hrs/Product displays. Centralised alongside `formatDuration()`.
 - **Category management is inline-only:** Categories are created from within `ProductFormView`'s category picker. The Settings → Categories navigation link has been removed. `CategoryListView` and `CategoryFormView` are legacy files.

@@ -178,7 +178,7 @@ struct WorkStepDetailView: View {
             VStack(spacing: 0) {
                 DetailRow(label: "Time to Complete Batch", value: CostingEngine.formatDuration(step.recordedTime))
                 Divider()
-                DetailRow(label: "Units per Batch", value: "\(step.batchUnitsCompleted) \(step.unitName)\(step.batchUnitsCompleted == 1 ? "" : "s")")
+                DetailRow(label: "\(step.unitName.capitalized)s per Batch", value: "\(step.batchUnitsCompleted) \(step.unitName)\(step.batchUnitsCompleted == 1 ? "" : "s")")
                 Divider()
                 DerivedRow(label: "Time per \(step.unitName)", value: CostingEngine.formatDuration(unitTimeSeconds))
                 Divider()
@@ -210,6 +210,7 @@ struct WorkStepDetailView: View {
                         text: $laborRateText,
                         suffix: "/hr"
                     )
+                    .editableFieldStyle()
                 }
                 .padding(.vertical, AppTheme.Spacing.sm)
 
@@ -224,6 +225,7 @@ struct WorkStepDetailView: View {
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                         .frame(width: AppTheme.Sizing.inputMedium)
+                        .editableFieldStyle()
                 }
                 .padding(.vertical, AppTheme.Spacing.sm)
 
@@ -257,7 +259,6 @@ struct WorkStepDetailView: View {
                 .padding(.vertical, AppTheme.Spacing.sm)
             }
         }
-        .groupBoxStyle(EditableGroupBoxStyle())
         .padding(.horizontal)
     }
 
