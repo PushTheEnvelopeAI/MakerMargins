@@ -3,7 +3,7 @@
 //
 // Tab 2 root — the shared work step library.
 // Displays all WorkSteps across all products, searchable by title.
-// Each row shows step title, product usage count, and per-step labor cost.
+// Each row shows step title, product usage count, and hours per unit.
 // Tapping a row pushes WorkStepDetailView for quick stopwatch access.
 // Steps can also be created here as standalone library entries (no product link).
 
@@ -84,7 +84,7 @@ struct WorkshopView: View {
                             Text("·")
                                 .foregroundStyle(.tertiary)
 
-                            Text(formatter.format(CostingEngine.stepLaborCost(step: step)))
+                            Text("\(CostingEngine.unitTimeHours(step: step)) hrs/\(step.unitName)")
                                 .font(AppTheme.Typography.rowCaption)
                                 .foregroundStyle(.secondary)
                         }

@@ -34,11 +34,10 @@ struct MaterialFormView: View {
     @State private var bulkCostText: String
     @State private var bulkQuantityText: String
     @State private var unitName: String
-    @State private var unitsPerProductText: String
 
     // Focus tracking for select-on-tap behavior
     enum FocusableField: Hashable {
-        case bulkCost, bulkQuantity, unitName, unitsPerProduct
+        case bulkCost, bulkQuantity, unitName
     }
     @FocusState private var focusedField: FocusableField?
 
@@ -56,7 +55,6 @@ struct MaterialFormView: View {
         _bulkCostText = State(initialValue: "\(material?.bulkCost ?? 0)")
         _bulkQuantityText = State(initialValue: "\(material?.bulkQuantity ?? 1)")
         _unitName = State(initialValue: material?.unitName ?? "unit")
-        _unitsPerProductText = State(initialValue: "\(material?.defaultUnitsPerProduct ?? 1)")
     }
 
     // MARK: - Computed
@@ -67,10 +65,6 @@ struct MaterialFormView: View {
 
     private var bulkQuantity: Decimal {
         Decimal(string: bulkQuantityText) ?? 1
-    }
-
-    private var unitsPerProduct: Decimal {
-        Decimal(string: unitsPerProductText) ?? 1
     }
 
     private var isSaveDisabled: Bool {
@@ -181,20 +175,6 @@ struct MaterialFormView: View {
                     .foregroundStyle(.tertiary)
             }
 
-            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
-                HStack {
-                    Text("Default \(displayUnitName.capitalized)s per Product")
-                    Spacer()
-                    TextField("1", text: $unitsPerProductText)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: AppTheme.Sizing.inputMedium)
-                        .focused($focusedField, equals: .unitsPerProduct)
-                }
-                Text("Default when adding this material to a product. Each product can override.")
-                    .font(AppTheme.Typography.note)
-                    .foregroundStyle(.tertiary)
-            }
         } header: {
             Text("Purchase Info")
         }
@@ -206,36 +186,21 @@ struct MaterialFormView: View {
                 bulkCost: bulkCost,
                 bulkQuantity: bulkQuantity
             )
-            let lineCost = CostingEngine.materialLineCost(
-                bulkCost: bulkCost,
-                bulkQuantity: bulkQuantity,
-                unitsRequiredPerProduct: unitsPerProduct
-            )
 
-            previewRow(label: "Cost per \(displayUnitName)", value: currencyFormatter.format(unitCost))
-
-            HStack {
-                Text("Material cost per product")
-                    .font(AppTheme.Typography.bodyText)
-                Spacer()
-                Text(currencyFormatter.format(lineCost))
-                    .font(AppTheme.Typography.sectionHeader)
-                    .foregroundStyle(AppTheme.Colors.accent)
+            VStack(spacing: AppTheme.Spacing.xs) {
+                HStack {
+                    Text("Cost per \(displayUnitName)")
+                        .font(AppTheme.Typography.bodyText)
+                    Spacer()
+                    Text(currencyFormatter.format(unitCost))
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(AppTheme.Colors.accent)
+                }
+                Text("This is the key cost metric for this material")
+                    .font(AppTheme.Typography.note)
+                    .foregroundStyle(.tertiary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-        }
-    }
-
-    // MARK: - Helpers
-
-    @ViewBuilder
-    private func previewRow(label: String, value: String) -> some View {
-        HStack {
-            Text(label)
-                .font(AppTheme.Typography.bodyText)
-            Spacer()
-            Text(value)
-                .font(AppTheme.Typography.sectionHeader)
-                .foregroundStyle(AppTheme.Colors.accent)
         }
     }
 
@@ -249,8 +214,6 @@ struct MaterialFormView: View {
             FormFieldDefault(get: { bulkQuantityText }, set: { bulkQuantityText = $0 }, defaultValue: "1")
         case .unitName:
             FormFieldDefault(get: { unitName }, set: { unitName = $0 }, defaultValue: "unit")
-        case .unitsPerProduct:
-            FormFieldDefault(get: { unitsPerProductText }, set: { unitsPerProductText = $0 }, defaultValue: "1")
         }
     }
 
@@ -263,7 +226,6 @@ struct MaterialFormView: View {
         let safeCost = bulkCost >= 0 ? bulkCost : 0
         let safeQuantity = bulkQuantity > 0 ? bulkQuantity : 1
         let safeUnitName = unitName.trimmingCharacters(in: .whitespaces).isEmpty ? "unit" : unitName.trimmingCharacters(in: .whitespaces)
-        let safeUnitsPerProduct = unitsPerProduct > 0 ? unitsPerProduct : 1
 
         if let material {
             // Edit existing — changes propagate to all products using this material
@@ -274,7 +236,6 @@ struct MaterialFormView: View {
             material.bulkCost = safeCost
             material.bulkQuantity = safeQuantity
             material.unitName = safeUnitName
-            material.defaultUnitsPerProduct = safeUnitsPerProduct
         } else {
             // Create new material + link to product
             let newMaterial = Material(
@@ -284,8 +245,7 @@ struct MaterialFormView: View {
                 link: trimmedLink,
                 bulkCost: safeCost,
                 bulkQuantity: safeQuantity,
-                unitName: safeUnitName,
-                defaultUnitsPerProduct: safeUnitsPerProduct
+                unitName: safeUnitName
             )
             modelContext.insert(newMaterial)
 

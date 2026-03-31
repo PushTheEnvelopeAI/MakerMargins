@@ -16,9 +16,14 @@ struct WorkStepDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Environment(\.currencyFormatter) private var formatter
+    @Environment(\.laborRateManager) private var laborRateManager
 
     @State private var showingEditForm = false
     @State private var showingDeleteConfirmation = false
+
+    // Product-level editable state (initialized from join model in onAppear)
+    @State private var laborRateText: String = ""
+    @State private var unitsPerProductText: String = ""
 
     // MARK: - Computed
 
@@ -28,22 +33,24 @@ struct WorkStepDetailView: View {
         product ?? step.productWorkSteps.first?.product
     }
 
+    /// The ProductWorkStep join model for this step + product combination.
+    private var activeLink: ProductWorkStep? {
+        guard let product else { return nil }
+        return step.productWorkSteps.first { $0.product?.persistentModelID == product.persistentModelID }
+    }
+
     private var unitTimeSeconds: TimeInterval {
         let batch = Double(truncating: step.batchUnitsCompleted as NSDecimalNumber)
         guard batch > 0 else { return 0 }
         return step.recordedTime / batch
     }
 
-    private var activeUnitsPerProduct: Decimal {
-        if let product {
-            let link = step.productWorkSteps.first { $0.product?.persistentModelID == product.persistentModelID }
-            return link?.unitsRequiredPerProduct ?? step.defaultUnitsPerProduct
-        }
-        return step.defaultUnitsPerProduct
+    private var editableLaborRate: Decimal {
+        Decimal(string: laborRateText) ?? 0
     }
 
-    private var timePerProduct: TimeInterval {
-        unitTimeSeconds * Double(truncating: activeUnitsPerProduct as NSDecimalNumber)
+    private var editableUnitsPerProduct: Decimal {
+        Decimal(string: unitsPerProductText) ?? 1
     }
 
     private var linkedProducts: [Product] {
@@ -56,8 +63,10 @@ struct WorkStepDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xl) {
                 headerSection
-                timeBatchSection
-                costSection
+                stepInfoSection
+                if product != nil {
+                    productSettingsSection
+                }
                 usedBySection
             }
             .padding(.vertical)
@@ -65,6 +74,20 @@ struct WorkStepDetailView: View {
         .appBackground()
         .navigationTitle(step.title)
         .navigationBarTitleDisplayMode(.large)
+        .onAppear {
+            if let link = activeLink {
+                laborRateText = "\(link.laborRate)"
+                unitsPerProductText = "\(link.unitsRequiredPerProduct)"
+            }
+        }
+        .onChange(of: laborRateText) { _, _ in
+            guard let link = activeLink else { return }
+            link.laborRate = editableLaborRate >= 0 ? editableLaborRate : 0
+        }
+        .onChange(of: unitsPerProductText) { _, _ in
+            guard let link = activeLink else { return }
+            link.unitsRequiredPerProduct = editableUnitsPerProduct > 0 ? editableUnitsPerProduct : 1
+        }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 HStack(spacing: AppTheme.Spacing.md) {
@@ -132,8 +155,8 @@ struct WorkStepDetailView: View {
         }
     }
 
-    private var timeBatchSection: some View {
-        GroupBox("Time & Batch") {
+    private var stepInfoSection: some View {
+        GroupBox("Step Info") {
             VStack(spacing: 0) {
                 DetailRow(label: "Recorded Time", value: CostingEngine.formatDuration(step.recordedTime))
                 Divider()
@@ -141,25 +164,80 @@ struct WorkStepDetailView: View {
                 Divider()
                 DerivedRow(label: "Time per \(step.unitName)", value: CostingEngine.formatDuration(unitTimeSeconds))
                 Divider()
-                DetailRow(label: "\(step.unitName.capitalized)s per Product", value: "\(activeUnitsPerProduct)")
-                Divider()
-                DerivedRow(label: "Time per Product", value: CostingEngine.formatDuration(timePerProduct))
+                HStack {
+                    Text("Hours per \(step.unitName)")
+                        .font(AppTheme.Typography.bodyText)
+                    Spacer()
+                    Text("\(CostingEngine.unitTimeHours(step: step))")
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(AppTheme.Colors.accent)
+                }
+                .padding(.vertical, AppTheme.Spacing.sm)
             }
         }
         .padding(.horizontal)
     }
 
-    private var costSection: some View {
-        GroupBox("Cost") {
+    @ViewBuilder
+    private var productSettingsSection: some View {
+        GroupBox("Product Settings") {
             VStack(spacing: 0) {
-                DetailRow(label: "Hourly Rate", value: "\(formatter.format(step.laborRate))/hr")
-                Divider()
+                // Editable: Labor Rate
                 HStack {
-                    Text("Labor Cost per Product")
+                    Text("Labor Rate")
                         .font(AppTheme.Typography.bodyText)
                     Spacer()
-                    Text(formatter.format(CostingEngine.stepLaborCost(step: step)))
-                        .font(AppTheme.Typography.sectionHeader)
+                    Text(formatter.symbol)
+                        .foregroundStyle(.secondary)
+                    TextField("0", text: $laborRateText)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: AppTheme.Sizing.inputMedium)
+                    Text("/hr")
+                        .font(AppTheme.Typography.bodyText)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, AppTheme.Spacing.sm)
+
+                Divider()
+
+                // Editable: Units per Product
+                HStack {
+                    Text("\(step.unitName.capitalized)s per Product")
+                        .font(AppTheme.Typography.bodyText)
+                    Spacer()
+                    TextField("1", text: $unitsPerProductText)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: AppTheme.Sizing.inputMedium)
+                }
+                .padding(.vertical, AppTheme.Spacing.sm)
+
+                Divider()
+
+                // Calculated: Labor Hours per Product
+                let laborHours = CostingEngine.laborHoursPerProduct(
+                    recordedTime: step.recordedTime,
+                    batchUnitsCompleted: step.batchUnitsCompleted,
+                    unitsRequiredPerProduct: editableUnitsPerProduct
+                )
+                DerivedRow(label: "Labor Hrs / Product", value: "\(laborHours)")
+
+                Divider()
+
+                // Calculated: Labor Cost per Product
+                let laborCost = CostingEngine.stepLaborCost(
+                    recordedTime: step.recordedTime,
+                    batchUnitsCompleted: step.batchUnitsCompleted,
+                    unitsRequiredPerProduct: editableUnitsPerProduct,
+                    laborRate: editableLaborRate
+                )
+                HStack {
+                    Text("Labor Cost / Product")
+                        .font(AppTheme.Typography.bodyText)
+                    Spacer()
+                    Text(formatter.format(laborCost))
+                        .font(.title2.weight(.semibold))
                         .foregroundStyle(AppTheme.Colors.accent)
                 }
                 .padding(.vertical, AppTheme.Spacing.sm)

@@ -3,7 +3,7 @@
 //
 // Tab 3 root — the shared material library.
 // Displays all Materials across all products, searchable by title.
-// Each row shows material title, product usage count, and per-material line cost.
+// Each row shows material title, product usage count, and cost per unit.
 // Tapping a row pushes MaterialDetailView for viewing and editing.
 // Materials can also be created here as standalone library entries (no product link).
 
@@ -86,7 +86,7 @@ struct MaterialsLibraryView: View {
                             Text("·")
                                 .foregroundStyle(.tertiary)
 
-                            Text(formatter.format(CostingEngine.materialLineCost(material: material)))
+                            Text("\(formatter.format(CostingEngine.materialUnitCost(material: material)))/\(material.unitName)")
                                 .font(AppTheme.Typography.rowCaption)
                                 .foregroundStyle(.secondary)
                         }

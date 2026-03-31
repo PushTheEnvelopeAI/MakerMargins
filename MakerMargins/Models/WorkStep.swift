@@ -11,7 +11,6 @@
 //
 // CostingEngine derives:
 //   unitTimeHours  = (recordedTime / batchUnitsCompleted) / 3600
-//   stepLaborCost  = unitTimeHours * defaultUnitsPerProduct * laborRate
 
 import Foundation
 import SwiftData
@@ -21,9 +20,6 @@ final class WorkStep {
     var title: String
     var summary: String         // named 'summary' to avoid conflict with NSObject.description
     var image: Data?
-
-    /// Hourly labour rate for this step in the user's chosen currency ($/hr or €/hr).
-    var laborRate: Decimal
 
     /// Total elapsed seconds for the recorded batch run. Set by StopwatchView.
     var recordedTime: TimeInterval
@@ -49,7 +45,6 @@ final class WorkStep {
         title: String,
         summary: String = "",
         image: Data? = nil,
-        laborRate: Decimal = 0,
         recordedTime: TimeInterval = 0,
         batchUnitsCompleted: Decimal = 1,
         unitName: String = "unit",
@@ -58,7 +53,6 @@ final class WorkStep {
         self.title = title
         self.summary = summary
         self.image = image
-        self.laborRate = laborRate
         self.recordedTime = recordedTime
         self.batchUnitsCompleted = batchUnitsCompleted
         self.unitName = unitName

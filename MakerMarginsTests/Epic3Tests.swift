@@ -311,12 +311,11 @@ struct Epic3Tests {
         // One step: 3600s, 1 batch, 1 unit/product, $20/hr → $20 labor
         let step = WorkStep(
             title: "Only Step",
-            laborRate: 20,
             recordedTime: 3600,
             batchUnitsCompleted: 1,
             defaultUnitsPerProduct: 1
         )
-        let stepLink = ProductWorkStep(product: product, workStep: step, sortOrder: 0)
+        let stepLink = ProductWorkStep(product: product, workStep: step, sortOrder: 0, unitsRequiredPerProduct: step.defaultUnitsPerProduct, laborRate: 20)
         product.productWorkSteps.append(stepLink)
         step.productWorkSteps.append(stepLink)
 

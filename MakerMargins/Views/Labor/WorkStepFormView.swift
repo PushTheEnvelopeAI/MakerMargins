@@ -38,10 +38,6 @@ struct WorkStepFormView: View {
     // Batch
     @State private var batchUnitsText: String
     @State private var unitName: String
-    @State private var unitsPerProductText: String
-
-    // Cost
-    @State private var laborRateText: String
 
     // Stopwatch
     @State private var showingStopwatch = false
@@ -49,8 +45,7 @@ struct WorkStepFormView: View {
     // Focus tracking for select-on-tap behavior
     enum FocusableField: Hashable {
         case hours, minutes, seconds
-        case batchUnits, unitName, unitsPerProduct
-        case laborRate
+        case batchUnits, unitName
     }
     @FocusState private var focusedField: FocusableField?
 
@@ -72,11 +67,6 @@ struct WorkStepFormView: View {
 
         _batchUnitsText = State(initialValue: "\(step?.batchUnitsCompleted ?? 1)")
         _unitName = State(initialValue: step?.unitName ?? "unit")
-        _unitsPerProductText = State(initialValue: "\(step?.defaultUnitsPerProduct ?? 1)")
-
-        // Labor rate: for new steps this will be overridden in onAppear
-        // to use the LaborRateManager default
-        _laborRateText = State(initialValue: step != nil ? "\(step!.laborRate)" : "")
     }
 
     // MARK: - Computed
@@ -92,14 +82,6 @@ struct WorkStepFormView: View {
         Decimal(string: batchUnitsText) ?? 1
     }
 
-    private var unitsPerProduct: Decimal {
-        Decimal(string: unitsPerProductText) ?? 1
-    }
-
-    private var laborRate: Decimal {
-        Decimal(string: laborRateText) ?? 0
-    }
-
     private var isSaveDisabled: Bool {
         title.trimmingCharacters(in: .whitespaces).isEmpty
             || batchUnits <= 0
@@ -113,7 +95,6 @@ struct WorkStepFormView: View {
                 PhotoPickerSection(imageData: $imageData, photoItem: $photoItem)
                 detailsSection
                 timeAndBatchSection
-                costSection
                 previewSection
             }
             .navigationTitle(step == nil ? "New Work Step" : "Edit Work Step")
@@ -129,11 +110,6 @@ struct WorkStepFormView: View {
             }
             .onChange(of: photoItem) { _, newItem in
                 loadPhoto(from: newItem)
-            }
-            .onAppear {
-                if step == nil && laborRateText.isEmpty {
-                    laborRateText = "\(laborRateManager.defaultRate)"
-                }
             }
             .onChange(of: focusedField) { oldField, newField in
                 if let oldField { fieldDefault(for: oldField).restoreOnBlur() }
@@ -231,48 +207,8 @@ struct WorkStepFormView: View {
                     .foregroundStyle(.tertiary)
             }
 
-            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
-                HStack {
-                    Text("Default \(displayUnitName.capitalized)s per Product")
-                    Spacer()
-                    TextField("1", text: $unitsPerProductText)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: AppTheme.Sizing.inputMedium)
-                        .focused($focusedField, equals: .unitsPerProduct)
-                }
-                Text("Default when adding this step to a product. Each product can override.")
-                    .font(AppTheme.Typography.note)
-                    .foregroundStyle(.tertiary)
-            }
         } header: {
             Text("Time & Batch")
-        }
-    }
-
-    private var costSection: some View {
-        Section {
-            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
-                HStack {
-                    Text("Hourly Rate")
-                    Spacer()
-                    Text(currencyFormatter.symbol)
-                        .foregroundStyle(.secondary)
-                    TextField("0", text: $laborRateText)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: AppTheme.Sizing.inputMedium)
-                        .focused($focusedField, equals: .laborRate)
-                    Text("/hr")
-                        .font(AppTheme.Typography.bodyText)
-                        .foregroundStyle(.secondary)
-                }
-                Text("Defaults to your rate in Settings; override per step here")
-                    .font(AppTheme.Typography.note)
-                    .foregroundStyle(.tertiary)
-            }
-        } header: {
-            Text("Cost")
         }
     }
 
@@ -281,24 +217,26 @@ struct WorkStepFormView: View {
             let unitTimeSeconds: TimeInterval = batchUnits > 0
                 ? recordedTime / Double(truncating: batchUnits as NSDecimalNumber)
                 : 0
-            let timePerProduct = unitTimeSeconds * Double(truncating: unitsPerProduct as NSDecimalNumber)
-            let cost = CostingEngine.stepLaborCost(
+            let hoursPerUnit = CostingEngine.unitTimeHours(
                 recordedTime: recordedTime,
-                batchUnitsCompleted: batchUnits,
-                unitsRequiredPerProduct: unitsPerProduct,
-                laborRate: laborRate
+                batchUnitsCompleted: batchUnits
             )
 
             previewRow(label: "Time per \(displayUnitName)", value: CostingEngine.formatDuration(unitTimeSeconds))
-            previewRow(label: "Time per product", value: CostingEngine.formatDuration(timePerProduct))
 
-            HStack {
-                Text("Labor cost per product")
-                    .font(AppTheme.Typography.bodyText)
-                Spacer()
-                Text(currencyFormatter.format(cost))
-                    .font(AppTheme.Typography.sectionHeader)
-                    .foregroundStyle(AppTheme.Colors.accent)
+            VStack(spacing: AppTheme.Spacing.xs) {
+                HStack {
+                    Text("Hours per \(displayUnitName)")
+                        .font(AppTheme.Typography.bodyText)
+                    Spacer()
+                    Text("\(hoursPerUnit)")
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(AppTheme.Colors.accent)
+                }
+                Text("This is the key efficiency metric for this step")
+                    .font(AppTheme.Typography.note)
+                    .foregroundStyle(.tertiary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
@@ -345,10 +283,6 @@ struct WorkStepFormView: View {
             FormFieldDefault(get: { batchUnitsText }, set: { batchUnitsText = $0 }, defaultValue: "1")
         case .unitName:
             FormFieldDefault(get: { unitName }, set: { unitName = $0 }, defaultValue: "unit")
-        case .unitsPerProduct:
-            FormFieldDefault(get: { unitsPerProductText }, set: { unitsPerProductText = $0 }, defaultValue: "1")
-        case .laborRate:
-            FormFieldDefault(get: { laborRateText }, set: { laborRateText = $0 }, defaultValue: "0")
         }
     }
 
@@ -368,7 +302,6 @@ struct WorkStepFormView: View {
         let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
         let trimmedSummary = summary.trimmingCharacters(in: .whitespaces)
         let safeBatchUnits = batchUnits > 0 ? batchUnits : 1
-        let safeRate = laborRate >= 0 ? laborRate : 0
 
         if let step {
             // Edit existing — changes propagate to all products using this step
@@ -378,19 +311,15 @@ struct WorkStepFormView: View {
             step.recordedTime = recordedTime
             step.batchUnitsCompleted = safeBatchUnits
             step.unitName = unitName.trimmingCharacters(in: .whitespaces).isEmpty ? "unit" : unitName.trimmingCharacters(in: .whitespaces)
-            step.defaultUnitsPerProduct = unitsPerProduct > 0 ? unitsPerProduct : 1
-            step.laborRate = safeRate
         } else {
             // Create new step + link to product
             let newStep = WorkStep(
                 title: trimmedTitle,
                 summary: trimmedSummary,
                 image: imageData,
-                laborRate: safeRate,
                 recordedTime: recordedTime,
                 batchUnitsCompleted: safeBatchUnits,
-                unitName: unitName.trimmingCharacters(in: .whitespaces).isEmpty ? "unit" : unitName.trimmingCharacters(in: .whitespaces),
-                defaultUnitsPerProduct: unitsPerProduct > 0 ? unitsPerProduct : 1
+                unitName: unitName.trimmingCharacters(in: .whitespaces).isEmpty ? "unit" : unitName.trimmingCharacters(in: .whitespaces)
             )
             modelContext.insert(newStep)
 
@@ -399,7 +328,8 @@ struct WorkStepFormView: View {
                     product: product,
                     workStep: newStep,
                     sortOrder: product.productWorkSteps.count,
-                    unitsRequiredPerProduct: newStep.defaultUnitsPerProduct
+                    unitsRequiredPerProduct: newStep.defaultUnitsPerProduct,
+                    laborRate: laborRateManager.defaultRate
                 )
                 modelContext.insert(link)
                 product.productWorkSteps.append(link)

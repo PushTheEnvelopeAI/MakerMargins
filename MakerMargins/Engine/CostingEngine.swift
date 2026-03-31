@@ -34,25 +34,37 @@ enum CostingEngine {
         return seconds / batchUnitsCompleted / 3600
     }
 
-    /// Labor cost for a single step per finished product.
-    /// stepLaborCost = unitTimeHours * unitsRequiredPerProduct * laborRate
-    static func stepLaborCost(step: WorkStep) -> Decimal {
-        stepLaborCost(
+    // MARK: - Per-Step Product-Context Calculations
+
+    /// Total labor hours for this step per finished product.
+    static func laborHoursPerProduct(link: ProductWorkStep) -> Decimal {
+        guard let step = link.workStep else { return 0 }
+        return laborHoursPerProduct(
             recordedTime: step.recordedTime,
             batchUnitsCompleted: step.batchUnitsCompleted,
-            unitsRequiredPerProduct: step.defaultUnitsPerProduct,
-            laborRate: step.laborRate
+            unitsRequiredPerProduct: link.unitsRequiredPerProduct
         )
     }
 
-    /// Product-context overload — uses the join model's per-product units.
+    /// Raw-value overload for product-context previews.
+    static func laborHoursPerProduct(
+        recordedTime: TimeInterval,
+        batchUnitsCompleted: Decimal,
+        unitsRequiredPerProduct: Decimal
+    ) -> Decimal {
+        unitTimeHours(recordedTime: recordedTime, batchUnitsCompleted: batchUnitsCompleted)
+            * unitsRequiredPerProduct
+    }
+
+    /// Labor cost for a single step per finished product.
+    /// Uses laborRate from the ProductWorkStep join model (per-product rate).
     static func stepLaborCost(link: ProductWorkStep) -> Decimal {
         guard let step = link.workStep else { return 0 }
         return stepLaborCost(
             recordedTime: step.recordedTime,
             batchUnitsCompleted: step.batchUnitsCompleted,
             unitsRequiredPerProduct: link.unitsRequiredPerProduct,
-            laborRate: step.laborRate
+            laborRate: link.laborRate
         )
     }
 

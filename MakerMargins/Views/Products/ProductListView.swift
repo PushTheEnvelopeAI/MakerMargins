@@ -265,7 +265,8 @@ struct ProductListView: View {
                 product: copy,
                 workStep: step,
                 sortOrder: link.sortOrder,
-                unitsRequiredPerProduct: link.unitsRequiredPerProduct
+                unitsRequiredPerProduct: link.unitsRequiredPerProduct,
+                laborRate: link.laborRate
             )
             modelContext.insert(newLink)
             copy.productWorkSteps.append(newLink)

@@ -28,15 +28,20 @@ final class ProductWorkStep {
     /// Per-product override — pre-filled from WorkStep.defaultUnitsPerProduct on creation.
     var unitsRequiredPerProduct: Decimal = 1
 
+    /// Per-product labor rate ($/hr). Pre-filled from LaborRateManager on creation.
+    var laborRate: Decimal = 0
+
     init(
         product: Product? = nil,
         workStep: WorkStep? = nil,
         sortOrder: Int = 0,
-        unitsRequiredPerProduct: Decimal = 1
+        unitsRequiredPerProduct: Decimal = 1,
+        laborRate: Decimal = 0
     ) {
         self.product = product
         self.workStep = workStep
         self.sortOrder = sortOrder
         self.unitsRequiredPerProduct = unitsRequiredPerProduct
+        self.laborRate = laborRate
     }
 }
