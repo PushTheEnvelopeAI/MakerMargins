@@ -1,10 +1,10 @@
 // PlatformFeeProfile.swift
 // MakerMargins
 //
-// Stores user-configurable default pricing values per platform type.
-// One record per PlatformType, managed in Settings. Created lazily on first access.
-// Platform-imposed fees (transaction %, fixed $, marketing rate) are hardcoded
-// constants on PlatformType — only user-configurable values are persisted here.
+// Stores user-configurable default pricing values as a single universal record.
+// Managed in Settings. Created lazily on first access.
+// Platform-imposed fees are hardcoded constants on PlatformType — only
+// user-configurable values are persisted here.
 
 import Foundation
 import SwiftData
@@ -22,40 +22,31 @@ enum PlatformType: String, Codable, CaseIterable {
 
 @Model
 final class PlatformFeeProfile {
-    /// Which platform this defaults record covers. One per PlatformType.
-    var platformType: PlatformType
+    /// Default platform fee percentage (fraction, e.g. 0.05 = 5%).
+    var platformFee: Decimal
 
-    /// Default transaction fee percentage (fraction, e.g. 0.05 = 5%).
-    /// Only used by the General tab — specific platforms have locked values.
-    var transactionFeePercentage: Decimal
+    /// Default payment processing fee percentage (fraction, e.g. 0.03 = 3%).
+    var paymentProcessingFee: Decimal
 
-    /// Default fixed fee per sale ($).
-    /// Only used by the General tab — specific platforms have locked values.
-    var fixedFeePerSale: Decimal
+    /// Default marketing fee rate (fraction, e.g. 0.10 = 10%).
+    var marketingFee: Decimal
 
-    /// Default marketing fee rate (fraction, e.g. 0.15 = 15%).
-    /// Editable on General, Shopify, Amazon. Etsy locks this at 15% (offsite ads).
-    var marketingFeeRate: Decimal
-
-    /// Default fraction of sales that come from marketing (fraction, e.g. 0.20 = 20%).
-    /// Editable on all platforms.
+    /// Default fraction of sales that come from marketing/ads (fraction, e.g. 0.20 = 20%).
     var percentSalesFromMarketing: Decimal
 
     /// Default target profit margin (fraction, e.g. 0.30 = 30%).
     var profitMargin: Decimal
 
     init(
-        platformType: PlatformType = .general,
-        transactionFeePercentage: Decimal = 0,
-        fixedFeePerSale: Decimal = 0,
-        marketingFeeRate: Decimal = 0,
+        platformFee: Decimal = 0,
+        paymentProcessingFee: Decimal = 0,
+        marketingFee: Decimal = 0,
         percentSalesFromMarketing: Decimal = 0,
         profitMargin: Decimal = 0.30
     ) {
-        self.platformType = platformType
-        self.transactionFeePercentage = transactionFeePercentage
-        self.fixedFeePerSale = fixedFeePerSale
-        self.marketingFeeRate = marketingFeeRate
+        self.platformFee = platformFee
+        self.paymentProcessingFee = paymentProcessingFee
+        self.marketingFee = marketingFee
         self.percentSalesFromMarketing = percentSalesFromMarketing
         self.profitMargin = profitMargin
     }
@@ -67,31 +58,38 @@ extension PlatformType {
 
     // MARK: Locked Fee Constants
 
-    /// Total percentage-based transaction fee locked for this platform (fraction).
-    /// Returns nil for General (user-entered).
-    var lockedTransactionFee: Decimal? {
+    /// Platform's per-sale commission percentage (fraction). nil = user-editable.
+    var lockedPlatformFee: Decimal? {
         switch self {
         case .general:  return nil
-        case .etsy:     return Decimal(string: "0.095")!   // 6.5% transaction + 3% payment processing
-        case .shopify:  return Decimal(string: "0.029")!   // 2.9% payment processing
+        case .etsy:     return Decimal(string: "0.065")!   // 6.5% transaction fee
+        case .shopify:  return Decimal(0)                  // No per-sale commission
         case .amazon:   return Decimal(string: "0.15")!    // 15% referral fee
         }
     }
 
-    /// Fixed dollar fee per sale locked for this platform.
-    /// Returns nil for General (user-entered).
-    var lockedFixedFee: Decimal? {
+    /// Payment processing percentage (fraction). nil = user-editable.
+    var lockedPaymentProcessingFee: Decimal? {
         switch self {
         case .general:  return nil
-        case .etsy:     return Decimal(string: "0.45")!    // $0.20 listing + $0.25 processing
-        case .shopify:  return Decimal(string: "0.30")!    // $0.30 per-transaction
-        case .amazon:   return Decimal(0)                  // No fixed per-sale fee for Handmade
+        case .etsy:     return Decimal(string: "0.03")!    // 3% payment processing
+        case .shopify:  return Decimal(string: "0.029")!   // 2.9% Shopify Payments
+        case .amazon:   return Decimal(0)                  // Bundled into referral fee
         }
     }
 
-    /// Marketing/advertising fee rate locked for this platform (fraction).
-    /// Returns nil when user-editable.
-    var lockedMarketingFeeRate: Decimal? {
+    /// Fixed dollar fee per transaction. Always a constant (never user-editable).
+    var lockedPaymentProcessingFixed: Decimal {
+        switch self {
+        case .general:  return 0
+        case .etsy:     return Decimal(string: "0.25")!    // $0.25 per transaction
+        case .shopify:  return Decimal(string: "0.30")!    // $0.30 per transaction
+        case .amazon:   return 0
+        }
+    }
+
+    /// Marketing/advertising fee rate (fraction). nil = user-editable.
+    var lockedMarketingFee: Decimal? {
         switch self {
         case .etsy:     return Decimal(string: "0.15")!    // 15% offsite ads rate
         case .general, .shopify, .amazon: return nil
@@ -100,46 +98,34 @@ extension PlatformType {
 
     // MARK: Editability Flags
 
-    /// Whether the transaction fee percentage is user-editable for this platform.
-    var isTransactionFeeEditable: Bool { self == .general }
-
-    /// Whether the fixed fee per sale is user-editable for this platform.
-    var isFixedFeeEditable: Bool { self == .general }
-
-    /// Whether the marketing fee rate is user-editable for this platform.
-    var isMarketingFeeRateEditable: Bool { self != .etsy }
+    var isPlatformFeeEditable: Bool { lockedPlatformFee == nil }
+    var isPaymentProcessingFeeEditable: Bool { lockedPaymentProcessingFee == nil }
+    var isMarketingFeeEditable: Bool { lockedMarketingFee == nil }
 
     // MARK: Display Helpers
 
-    /// Human-readable label for the marketing frequency field.
-    var marketingFeeLabel: String {
-        switch self {
-        case .etsy: return "% Sales from Offsite Ads"
-        default:    return "% Sales from Marketing"
-        }
+    /// Formatted display string for locked platform fee, or nil if editable.
+    var platformFeeDisplay: String? {
+        guard let fee = lockedPlatformFee else { return nil }
+        return PercentageFormat.toDisplay(fee) + "%"
     }
 
-    /// Human-readable locked fee descriptions for display as read-only rows.
-    var lockedFeeDescriptions: [(label: String, value: String)] {
-        switch self {
-        case .general:
-            return []
-        case .etsy:
-            return [
-                ("Transaction Fee", "6.5%"),
-                ("Payment Processing", "3% + $0.25"),
-                ("Listing Fee", "$0.20"),
-                ("Offsite Ads Rate", "15%"),
-            ]
-        case .shopify:
-            return [
-                ("Payment Processing", "2.9% + $0.30"),
-            ]
-        case .amazon:
-            return [
-                ("Referral Fee", "15%"),
-            ]
+    /// Formatted display string for locked payment processing, or nil if editable.
+    /// Combines percentage and fixed fee when both exist (e.g. "3% + $0.25").
+    var paymentProcessingDisplay: String? {
+        guard let fee = lockedPaymentProcessingFee else { return nil }
+        let percentText = PercentageFormat.toDisplay(fee) + "%"
+        let fixed = lockedPaymentProcessingFixed
+        if fixed > 0 {
+            return "\(percentText) + $\(fixed)"
         }
+        return percentText
+    }
+
+    /// Formatted display string for locked marketing fee, or nil if editable.
+    var marketingFeeDisplay: String? {
+        guard let fee = lockedMarketingFee else { return nil }
+        return PercentageFormat.toDisplay(fee) + "%"
     }
 
     /// SF Symbol name for this platform.

@@ -170,31 +170,33 @@ enum CostingEngine {
 
     // MARK: - Target Price Calculations
 
-    /// Effective marketing cost rate per sale.
-    /// Formula: marketingFeeRate × percentSalesFromMarketing
+    /// Effective marketing cost rate per sale (used internally by targetRetailPrice).
+    /// Formula: marketingFee × percentSalesFromMarketing
     static func effectiveMarketingRate(
-        marketingFeeRate: Decimal,
+        marketingFee: Decimal,
         percentSalesFromMarketing: Decimal
     ) -> Decimal {
-        marketingFeeRate * percentSalesFromMarketing
+        marketingFee * percentSalesFromMarketing
     }
 
     /// Resolves the effective fee values for a platform, applying locked constants
     /// where the platform mandates them and user values where editable.
+    /// Also returns the platform's fixed processing fee (always a locked constant).
     static func resolvedFees(
         platformType: PlatformType,
-        userTransactionFee: Decimal,
-        userFixedFee: Decimal,
-        userMarketingFeeRate: Decimal,
+        userPlatformFee: Decimal,
+        userPaymentProcessingFee: Decimal,
+        userMarketingFee: Decimal,
         userPercentSalesFromMarketing: Decimal,
         userProfitMargin: Decimal
-    ) -> (transactionFee: Decimal, fixedFee: Decimal,
-          marketingFeeRate: Decimal, percentSalesFromMarketing: Decimal,
-          profitMargin: Decimal) {
+    ) -> (platformFee: Decimal, paymentProcessingFee: Decimal,
+          paymentProcessingFixed: Decimal, marketingFee: Decimal,
+          percentSalesFromMarketing: Decimal, profitMargin: Decimal) {
         (
-            transactionFee: platformType.lockedTransactionFee ?? userTransactionFee,
-            fixedFee: platformType.lockedFixedFee ?? userFixedFee,
-            marketingFeeRate: platformType.lockedMarketingFeeRate ?? userMarketingFeeRate,
+            platformFee: platformType.lockedPlatformFee ?? userPlatformFee,
+            paymentProcessingFee: platformType.lockedPaymentProcessingFee ?? userPaymentProcessingFee,
+            paymentProcessingFixed: platformType.lockedPaymentProcessingFixed,
+            marketingFee: platformType.lockedMarketingFee ?? userMarketingFee,
             percentSalesFromMarketing: userPercentSalesFromMarketing,
             profitMargin: userProfitMargin
         )
@@ -203,44 +205,47 @@ enum CostingEngine {
     /// Target retail price given raw cost and fee values.
     ///
     /// Formula:
-    ///   effectiveMarketing = marketingFeeRate × percentSalesFromMarketing
-    ///   totalPercentFees = transactionFee + effectiveMarketing
-    ///   targetPrice = (productionCost + fixedFee) / (1 - (totalPercentFees + profitMargin))
+    ///   effectiveMarketing = marketingFee × percentSalesFromMarketing
+    ///   totalPercentFees = platformFee + paymentProcessingFee + effectiveMarketing
+    ///   targetPrice = (productionCost + paymentProcessingFixed) / (1 - (totalPercentFees + profitMargin))
     ///
     /// Returns nil if the denominator is zero or negative (fees + margin ≥ 100%).
     static func targetRetailPrice(
         productionCost: Decimal,
-        transactionFee: Decimal,
-        fixedFee: Decimal,
-        marketingFeeRate: Decimal,
+        platformFee: Decimal,
+        paymentProcessingFee: Decimal,
+        paymentProcessingFixed: Decimal,
+        marketingFee: Decimal,
         percentSalesFromMarketing: Decimal,
         profitMargin: Decimal
     ) -> Decimal? {
         let marketing = effectiveMarketingRate(
-            marketingFeeRate: marketingFeeRate,
+            marketingFee: marketingFee,
             percentSalesFromMarketing: percentSalesFromMarketing
         )
-        let totalPercentFees = transactionFee + marketing
+        let totalPercentFees = platformFee + paymentProcessingFee + marketing
         let denominator = 1 - (totalPercentFees + profitMargin)
         guard denominator > 0 else { return nil }
-        return (productionCost + fixedFee) / denominator
+        return (productionCost + paymentProcessingFixed) / denominator
     }
 
     /// Target retail price for a product given fee values.
     /// Computes production cost from the product, then delegates to the raw-value overload.
     static func targetRetailPrice(
         product: Product,
-        transactionFee: Decimal,
-        fixedFee: Decimal,
-        marketingFeeRate: Decimal,
+        platformFee: Decimal,
+        paymentProcessingFee: Decimal,
+        paymentProcessingFixed: Decimal,
+        marketingFee: Decimal,
         percentSalesFromMarketing: Decimal,
         profitMargin: Decimal
     ) -> Decimal? {
         targetRetailPrice(
             productionCost: totalProductionCost(product: product),
-            transactionFee: transactionFee,
-            fixedFee: fixedFee,
-            marketingFeeRate: marketingFeeRate,
+            platformFee: platformFee,
+            paymentProcessingFee: paymentProcessingFee,
+            paymentProcessingFixed: paymentProcessingFixed,
+            marketingFee: marketingFee,
             percentSalesFromMarketing: percentSalesFromMarketing,
             profitMargin: profitMargin
         )

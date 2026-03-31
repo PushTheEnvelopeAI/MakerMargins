@@ -23,15 +23,14 @@ struct PricingCalculatorView: View {
     @State private var selectedPlatform: PlatformType = .general
     @State private var currentPricing: ProductPricing?
 
-    // Text fields for editable values (displayed as whole numbers for percentages)
-    @State private var transactionFeeText: String = ""
-    @State private var fixedFeeText: String = ""
-    @State private var marketingFeeRateText: String = ""
+    @State private var platformFeeText: String = ""
+    @State private var paymentProcessingFeeText: String = ""
+    @State private var marketingFeeText: String = ""
     @State private var percentSalesFromMarketingText: String = ""
     @State private var profitMarginText: String = ""
 
     private enum FocusableField: Hashable {
-        case transactionFee, fixedFee, marketingFeeRate, percentSalesFromMarketing, profitMargin
+        case platformFee, paymentProcessingFee, marketingFee, percentSalesFromMarketing, profitMargin
     }
     @FocusState private var focusedField: FocusableField?
 
@@ -41,36 +40,30 @@ struct PricingCalculatorView: View {
         CostingEngine.totalProductionCost(product: product)
     }
 
-    private var fees: (transactionFee: Decimal, fixedFee: Decimal,
-                       marketingFeeRate: Decimal, percentSalesFromMarketing: Decimal,
-                       profitMargin: Decimal) {
+    private var resolved: (platformFee: Decimal, paymentProcessingFee: Decimal,
+                           paymentProcessingFixed: Decimal, marketingFee: Decimal,
+                           percentSalesFromMarketing: Decimal, profitMargin: Decimal) {
         guard let pricing = currentPricing else {
-            return (0, 0, 0, 0, Decimal(string: "0.30")!)
+            return (0, 0, 0, 0, 0, Decimal(string: "0.30")!)
         }
         return CostingEngine.resolvedFees(
             platformType: selectedPlatform,
-            userTransactionFee: pricing.transactionFeePercentage,
-            userFixedFee: pricing.fixedFeePerSale,
-            userMarketingFeeRate: pricing.marketingFeeRate,
+            userPlatformFee: pricing.platformFee,
+            userPaymentProcessingFee: pricing.paymentProcessingFee,
+            userMarketingFee: pricing.marketingFee,
             userPercentSalesFromMarketing: pricing.percentSalesFromMarketing,
             userProfitMargin: pricing.profitMargin
         )
     }
 
-    private var effectiveMarketing: Decimal {
-        CostingEngine.effectiveMarketingRate(
-            marketingFeeRate: fees.marketingFeeRate,
-            percentSalesFromMarketing: fees.percentSalesFromMarketing
-        )
-    }
-
     private var computedTargetPrice: Decimal? {
-        let f = fees
+        let f = resolved
         return CostingEngine.targetRetailPrice(
             product: product,
-            transactionFee: f.transactionFee,
-            fixedFee: f.fixedFee,
-            marketingFeeRate: f.marketingFeeRate,
+            platformFee: f.platformFee,
+            paymentProcessingFee: f.paymentProcessingFee,
+            paymentProcessingFixed: f.paymentProcessingFixed,
+            marketingFee: f.marketingFee,
             percentSalesFromMarketing: f.percentSalesFromMarketing,
             profitMargin: f.profitMargin
         )
@@ -84,22 +77,18 @@ struct PricingCalculatorView: View {
                 VStack(spacing: 0) {
                     platformPicker
                     Divider()
-
-                    if productionCost == 0 {
-                        emptyCostHint
-                    } else {
-                        costSection
-                    }
-
+                    productionCostSection
                     Divider()
-                    lockedFeesSection
-                    editableFieldsSection
+                    shippingCostRow
                     Divider()
-                    effectiveMarketingRow
+                    marketingAndFeesSection
+                    Divider()
+                    profitMarginRow
                     Divider()
                     targetPriceRow
                 }
             }
+            .backgroundStyle(AppTheme.Colors.pricingSurface)
 
             Text("Select a platform to see your target price based on production costs, fees, and profit margin. Switch tabs to compare across platforms.")
                 .font(AppTheme.Typography.note)
@@ -110,10 +99,6 @@ struct PricingCalculatorView: View {
         .onAppear { loadPricing() }
         .onChange(of: selectedPlatform) { _, _ in
             loadPricing()
-        }
-        .onChange(of: fixedFeeText) { _, newValue in
-            let value = Decimal(string: newValue) ?? 0
-            currentPricing?.fixedFeePerSale = value >= 0 ? value : 0
         }
         .onChange(of: focusedField) { _, newField in
             handleFocusChange(newField)
@@ -132,6 +117,34 @@ struct PricingCalculatorView: View {
         .padding(.vertical, AppTheme.Spacing.sm)
     }
 
+    // MARK: Production Cost
+
+    private var productionCostSection: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Production Cost")
+                    .font(AppTheme.Typography.note)
+                    .foregroundStyle(.tertiary)
+                Spacer()
+            }
+            .padding(.top, AppTheme.Spacing.sm)
+
+            if productionCost == 0 {
+                emptyCostHint
+            } else {
+                DetailRow(
+                    label: "Material Cost",
+                    value: formatter.format(CostingEngine.totalMaterialCostBuffered(product: product))
+                )
+                Divider()
+                DetailRow(
+                    label: "Labor Cost",
+                    value: formatter.format(CostingEngine.totalLaborCostBuffered(product: product))
+                )
+            }
+        }
+    }
+
     private var emptyCostHint: some View {
         HStack {
             Spacer()
@@ -139,7 +152,7 @@ struct PricingCalculatorView: View {
                 Image(systemName: "exclamationmark.triangle")
                     .font(.title3)
                     .foregroundStyle(.secondary)
-                Text("Add materials, labor, or shipping costs to calculate pricing.")
+                Text("Add materials or labor costs to calculate pricing.")
                     .font(AppTheme.Typography.note)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -149,147 +162,112 @@ struct PricingCalculatorView: View {
         }
     }
 
-    private var costSection: some View {
-        VStack(spacing: 0) {
-            DetailRow(
-                label: "Material Cost",
-                value: formatter.format(CostingEngine.totalMaterialCostBuffered(product: product))
-            )
-            Divider()
-            DetailRow(
-                label: "Labor Cost",
-                value: formatter.format(CostingEngine.totalLaborCostBuffered(product: product))
-            )
-            Divider()
-            DetailRow(
-                label: "Shipping Cost",
-                value: formatter.format(product.shippingCost)
-            )
-            Divider()
-            DerivedRow(
-                label: "Production Cost",
-                value: formatter.format(productionCost)
-            )
-        }
+    // MARK: Shipping Cost
+
+    private var shippingCostRow: some View {
+        DetailRow(
+            label: "Shipping Cost",
+            value: formatter.format(product.shippingCost)
+        )
     }
 
-    @ViewBuilder
-    private var lockedFeesSection: some View {
-        let descriptions = selectedPlatform.lockedFeeDescriptions
-        if !descriptions.isEmpty {
-            Divider()
-            VStack(spacing: 0) {
-                HStack {
-                    Text("Platform Fees")
-                        .font(AppTheme.Typography.note)
-                        .foregroundStyle(.tertiary)
-                    Spacer()
-                }
-                .padding(.top, AppTheme.Spacing.sm)
+    // MARK: Marketing and Fees
 
-                ForEach(descriptions, id: \.label) { fee in
-                    HStack {
-                        Text(fee.label)
-                            .font(AppTheme.Typography.bodyText)
-                            .foregroundStyle(.tertiary)
-                        Spacer()
-                        Text(fee.value)
-                            .font(AppTheme.Typography.bodyText)
-                            .foregroundStyle(.tertiary)
-                    }
-                    .padding(.vertical, AppTheme.Spacing.xs)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var editableFieldsSection: some View {
+    private var marketingAndFeesSection: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Your Settings")
+                Text("Marketing and Fees")
                     .font(AppTheme.Typography.note)
                     .foregroundStyle(.tertiary)
                 Spacer()
             }
             .padding(.top, AppTheme.Spacing.sm)
 
-            if selectedPlatform.isTransactionFeeEditable {
-                PercentageInputField(
-                    label: "Transaction Fee",
-                    text: $transactionFeeText,
-                    field: FocusableField.transactionFee,
-                    focusBinding: $focusedField,
-                    writeBack: { currentPricing?.transactionFeePercentage = $0 }
-                )
-                .padding(.vertical, AppTheme.Spacing.xs)
-            }
+            // Platform Fee
+            feeRow(
+                label: "Platform Fee",
+                lockedDisplay: selectedPlatform.platformFeeDisplay,
+                text: $platformFeeText,
+                field: .platformFee,
+                writeBack: { currentPricing?.platformFee = $0 }
+            )
 
-            if selectedPlatform.isFixedFeeEditable {
-                HStack {
-                    Text("Fixed Fee / Sale")
-                        .font(AppTheme.Typography.bodyText)
-                    Spacer()
-                    CurrencyInputField(
-                        symbol: formatter.symbol,
-                        text: $fixedFeeText
-                    )
-                    .editableFieldStyle()
-                    .focused($focusedField, equals: .fixedFee)
-                }
-                .padding(.vertical, AppTheme.Spacing.xs)
-            }
+            // Payment Processing
+            feeRow(
+                label: "Payment Processing",
+                lockedDisplay: selectedPlatform.paymentProcessingDisplay,
+                text: $paymentProcessingFeeText,
+                field: .paymentProcessingFee,
+                writeBack: { currentPricing?.paymentProcessingFee = $0 }
+            )
 
-            if selectedPlatform.isMarketingFeeRateEditable {
-                PercentageInputField(
-                    label: "Marketing Fee",
-                    text: $marketingFeeRateText,
-                    field: FocusableField.marketingFeeRate,
-                    focusBinding: $focusedField,
-                    writeBack: { currentPricing?.marketingFeeRate = $0 }
-                )
-                .padding(.vertical, AppTheme.Spacing.xs)
-            }
+            // Marketing Fees
+            feeRow(
+                label: "Marketing Fees",
+                lockedDisplay: selectedPlatform.marketingFeeDisplay,
+                text: $marketingFeeText,
+                field: .marketingFee,
+                writeBack: { currentPricing?.marketingFee = $0 }
+            )
 
+            // % Sales from Ads — always editable
             PercentageInputField(
-                label: selectedPlatform.marketingFeeLabel,
+                label: "% Sales from Ads",
                 text: $percentSalesFromMarketingText,
                 field: FocusableField.percentSalesFromMarketing,
                 focusBinding: $focusedField,
                 writeBack: { currentPricing?.percentSalesFromMarketing = $0 }
             )
             .padding(.vertical, AppTheme.Spacing.xs)
+        }
+    }
 
+    /// Renders a fee row as either a locked display string or an editable PercentageInputField.
+    @ViewBuilder
+    private func feeRow(
+        label: String,
+        lockedDisplay: String?,
+        text: Binding<String>,
+        field: FocusableField,
+        writeBack: @escaping (Decimal) -> Void
+    ) -> some View {
+        if let display = lockedDisplay {
+            HStack {
+                Text(label)
+                    .font(AppTheme.Typography.bodyText)
+                    .foregroundStyle(.tertiary)
+                Spacer()
+                Text(display)
+                    .font(AppTheme.Typography.bodyText)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.vertical, AppTheme.Spacing.xs)
+        } else {
             PercentageInputField(
-                label: "Profit Margin",
-                text: $profitMarginText,
-                field: FocusableField.profitMargin,
+                label: label,
+                text: text,
+                field: field,
                 focusBinding: $focusedField,
-                writeBack: { currentPricing?.profitMargin = $0 }
+                writeBack: writeBack
             )
             .padding(.vertical, AppTheme.Spacing.xs)
         }
     }
 
-    private var effectiveMarketingRow: some View {
-        VStack(spacing: AppTheme.Spacing.xxs) {
-            HStack {
-                Text("Effective Marketing")
-                    .font(AppTheme.Typography.bodyText)
-                Spacer()
-                Text(PercentageFormat.toDisplay(effectiveMarketing) + "%")
-                    .font(AppTheme.Typography.sectionHeader)
-                    .foregroundStyle(AppTheme.Colors.accent)
-            }
-            .padding(.vertical, AppTheme.Spacing.sm)
+    // MARK: Profit Margin
 
-            Text("Marketing fee rate × % of sales from marketing")
-                .font(AppTheme.Typography.note)
-                .foregroundStyle(.tertiary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.bottom, AppTheme.Spacing.xs)
-        }
+    private var profitMarginRow: some View {
+        PercentageInputField(
+            label: "Profit Margin",
+            text: $profitMarginText,
+            field: FocusableField.profitMargin,
+            focusBinding: $focusedField,
+            writeBack: { currentPricing?.profitMargin = $0 }
+        )
+        .padding(.vertical, AppTheme.Spacing.xs)
     }
+
+    // MARK: Target Price
 
     private var targetPriceRow: some View {
         HStack {
@@ -316,13 +294,13 @@ struct PricingCalculatorView: View {
         if let existing = product.productPricings.first(where: { $0.platformType == selectedPlatform }) {
             currentPricing = existing
         } else {
-            let defaults = fetchDefaults(for: selectedPlatform)
+            let defaults = fetchDefaults()
             let pricing = ProductPricing(
                 product: product,
                 platformType: selectedPlatform,
-                transactionFeePercentage: defaults.transactionFeePercentage,
-                fixedFeePerSale: defaults.fixedFeePerSale,
-                marketingFeeRate: defaults.marketingFeeRate,
+                platformFee: defaults.platformFee,
+                paymentProcessingFee: defaults.paymentProcessingFee,
+                marketingFee: defaults.marketingFee,
                 percentSalesFromMarketing: defaults.percentSalesFromMarketing,
                 profitMargin: defaults.profitMargin
             )
@@ -332,33 +310,29 @@ struct PricingCalculatorView: View {
         loadFieldTexts()
     }
 
-    /// Fetches the PlatformFeeProfile defaults for a platform, or returns system defaults.
-    private func fetchDefaults(for platform: PlatformType) -> PlatformFeeProfile {
+    /// Fetches the single PlatformFeeProfile defaults record, or returns system defaults.
+    private func fetchDefaults() -> PlatformFeeProfile {
         let allProfiles = (try? modelContext.fetch(FetchDescriptor<PlatformFeeProfile>())) ?? []
-        if let existing = allProfiles.first(where: { $0.platformType == platform }) {
-            return existing
-        }
-        return PlatformFeeProfile(platformType: platform)
+        return allProfiles.first ?? PlatformFeeProfile()
     }
 
     /// Populates text fields from the current pricing record.
     private func loadFieldTexts() {
         guard let pricing = currentPricing else { return }
-        transactionFeeText = PercentageFormat.toDisplay(pricing.transactionFeePercentage)
-        fixedFeeText = "\(pricing.fixedFeePerSale)"
-        marketingFeeRateText = PercentageFormat.toDisplay(pricing.marketingFeeRate)
+        platformFeeText = PercentageFormat.toDisplay(pricing.platformFee)
+        paymentProcessingFeeText = PercentageFormat.toDisplay(pricing.paymentProcessingFee)
+        marketingFeeText = PercentageFormat.toDisplay(pricing.marketingFee)
         percentSalesFromMarketingText = PercentageFormat.toDisplay(pricing.percentSalesFromMarketing)
         profitMarginText = PercentageFormat.toDisplay(pricing.profitMargin)
     }
 
     // MARK: - Focus Handling
 
-    /// Handles clear-on-focus and restore-on-blur for all fields.
     private func handleFocusChange(_ newField: FocusableField?) {
         let fields: [(text: Binding<String>, defaultValue: String, field: FocusableField)] = [
-            ($transactionFeeText, "0", .transactionFee),
-            ($fixedFeeText, "0", .fixedFee),
-            ($marketingFeeRateText, "0", .marketingFeeRate),
+            ($platformFeeText, "0", .platformFee),
+            ($paymentProcessingFeeText, "0", .paymentProcessingFee),
+            ($marketingFeeText, "0", .marketingFee),
             ($percentSalesFromMarketingText, "0", .percentSalesFromMarketing),
             ($profitMarginText, "0", .profitMargin),
         ]

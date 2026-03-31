@@ -43,10 +43,9 @@ struct Epic4Tests {
         let ctx = ModelContext(container)
 
         let profile = PlatformFeeProfile(
-            platformType: .etsy,
-            transactionFeePercentage: Decimal(string: "0.05")!,
-            fixedFeePerSale: Decimal(string: "0.45")!,
-            marketingFeeRate: Decimal(string: "0.15")!,
+            platformFee: Decimal(string: "0.05")!,
+            paymentProcessingFee: Decimal(string: "0.03")!,
+            marketingFee: Decimal(string: "0.10")!,
             percentSalesFromMarketing: Decimal(string: "0.20")!,
             profitMargin: Decimal(string: "0.35")!
         )
@@ -55,12 +54,27 @@ struct Epic4Tests {
 
         let fetched = try ctx.fetch(FetchDescriptor<PlatformFeeProfile>())
         #expect(fetched.count == 1)
-        #expect(fetched[0].platformType == .etsy)
-        #expect(fetched[0].transactionFeePercentage == Decimal(string: "0.05")!)
-        #expect(fetched[0].fixedFeePerSale == Decimal(string: "0.45")!)
-        #expect(fetched[0].marketingFeeRate == Decimal(string: "0.15")!)
+        #expect(fetched[0].platformFee == Decimal(string: "0.05")!)
+        #expect(fetched[0].paymentProcessingFee == Decimal(string: "0.03")!)
+        #expect(fetched[0].marketingFee == Decimal(string: "0.10")!)
         #expect(fetched[0].percentSalesFromMarketing == Decimal(string: "0.20")!)
         #expect(fetched[0].profitMargin == Decimal(string: "0.35")!)
+    }
+
+    @Test("PlatformFeeProfile defaults are correct")
+    func platformFeeProfileDefaults() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+
+        let profile = PlatformFeeProfile()
+        ctx.insert(profile)
+        try ctx.save()
+
+        #expect(profile.platformFee == 0)
+        #expect(profile.paymentProcessingFee == 0)
+        #expect(profile.marketingFee == 0)
+        #expect(profile.percentSalesFromMarketing == 0)
+        #expect(profile.profitMargin == Decimal(string: "0.30")!)
     }
 
     // MARK: - Model CRUD: ProductPricing
@@ -74,9 +88,9 @@ struct Epic4Tests {
         let pricing = ProductPricing(
             product: product,
             platformType: .shopify,
-            transactionFeePercentage: Decimal(string: "0.03")!,
-            fixedFeePerSale: Decimal(string: "0.30")!,
-            marketingFeeRate: Decimal(string: "0.10")!,
+            platformFee: Decimal(string: "0.03")!,
+            paymentProcessingFee: Decimal(string: "0.029")!,
+            marketingFee: Decimal(string: "0.10")!,
             percentSalesFromMarketing: Decimal(string: "0.25")!,
             profitMargin: Decimal(string: "0.40")!
         )
@@ -89,9 +103,9 @@ struct Epic4Tests {
         let fetched = try ctx.fetch(FetchDescriptor<ProductPricing>())
         #expect(fetched.count == 1)
         #expect(fetched[0].platformType == .shopify)
-        #expect(fetched[0].transactionFeePercentage == Decimal(string: "0.03")!)
-        #expect(fetched[0].fixedFeePerSale == Decimal(string: "0.30")!)
-        #expect(fetched[0].marketingFeeRate == Decimal(string: "0.10")!)
+        #expect(fetched[0].platformFee == Decimal(string: "0.03")!)
+        #expect(fetched[0].paymentProcessingFee == Decimal(string: "0.029")!)
+        #expect(fetched[0].marketingFee == Decimal(string: "0.10")!)
         #expect(fetched[0].percentSalesFromMarketing == Decimal(string: "0.25")!)
         #expect(fetched[0].profitMargin == Decimal(string: "0.40")!)
         #expect(fetched[0].product?.title == "Test Product")
@@ -104,7 +118,7 @@ struct Epic4Tests {
 
         let product = Product(title: "Test Product")
         let pricing = ProductPricing(product: product, platformType: .etsy, profitMargin: Decimal(string: "0.30")!)
-        let profile = PlatformFeeProfile(platformType: .etsy)
+        let profile = PlatformFeeProfile()
 
         ctx.insert(product)
         ctx.insert(pricing)
@@ -138,7 +152,6 @@ struct Epic4Tests {
         product.productPricings.append(etsyPricing)
         try ctx.save()
 
-        // Change General margin — Etsy should be unaffected
         generalPricing.profitMargin = Decimal(string: "0.40")!
         try ctx.save()
 
@@ -150,37 +163,78 @@ struct Epic4Tests {
 
     @Test("Etsy locked fees are correct")
     func etsyLockedFees() {
-        #expect(PlatformType.etsy.lockedTransactionFee == Decimal(string: "0.095")!)
-        #expect(PlatformType.etsy.lockedFixedFee == Decimal(string: "0.45")!)
-        #expect(PlatformType.etsy.lockedMarketingFeeRate == Decimal(string: "0.15")!)
+        #expect(PlatformType.etsy.lockedPlatformFee == Decimal(string: "0.065")!)
+        #expect(PlatformType.etsy.lockedPaymentProcessingFee == Decimal(string: "0.03")!)
+        #expect(PlatformType.etsy.lockedPaymentProcessingFixed == Decimal(string: "0.25")!)
+        #expect(PlatformType.etsy.lockedMarketingFee == Decimal(string: "0.15")!)
+    }
+
+    @Test("Shopify locked fees are correct")
+    func shopifyLockedFees() {
+        #expect(PlatformType.shopify.lockedPlatformFee == Decimal(0))
+        #expect(PlatformType.shopify.lockedPaymentProcessingFee == Decimal(string: "0.029")!)
+        #expect(PlatformType.shopify.lockedPaymentProcessingFixed == Decimal(string: "0.30")!)
+        #expect(PlatformType.shopify.lockedMarketingFee == nil)
+    }
+
+    @Test("Amazon locked fees are correct")
+    func amazonLockedFees() {
+        #expect(PlatformType.amazon.lockedPlatformFee == Decimal(string: "0.15")!)
+        #expect(PlatformType.amazon.lockedPaymentProcessingFee == Decimal(0))
+        #expect(PlatformType.amazon.lockedPaymentProcessingFixed == Decimal(0))
+        #expect(PlatformType.amazon.lockedMarketingFee == nil)
     }
 
     @Test("General has no locked fees — all return nil")
     func generalHasNoLockedFees() {
-        #expect(PlatformType.general.lockedTransactionFee == nil)
-        #expect(PlatformType.general.lockedFixedFee == nil)
-        #expect(PlatformType.general.lockedMarketingFeeRate == nil)
+        #expect(PlatformType.general.lockedPlatformFee == nil)
+        #expect(PlatformType.general.lockedPaymentProcessingFee == nil)
+        #expect(PlatformType.general.lockedPaymentProcessingFixed == Decimal(0))
+        #expect(PlatformType.general.lockedMarketingFee == nil)
     }
 
     @Test("Editability flags are correct per platform")
     func editabilityFlags() {
-        // Transaction fee: only General is editable
-        #expect(PlatformType.general.isTransactionFeeEditable == true)
-        #expect(PlatformType.etsy.isTransactionFeeEditable == false)
-        #expect(PlatformType.shopify.isTransactionFeeEditable == false)
-        #expect(PlatformType.amazon.isTransactionFeeEditable == false)
+        // Platform fee: only General editable
+        #expect(PlatformType.general.isPlatformFeeEditable == true)
+        #expect(PlatformType.etsy.isPlatformFeeEditable == false)
+        #expect(PlatformType.shopify.isPlatformFeeEditable == false)
+        #expect(PlatformType.amazon.isPlatformFeeEditable == false)
 
-        // Fixed fee: only General is editable
-        #expect(PlatformType.general.isFixedFeeEditable == true)
-        #expect(PlatformType.etsy.isFixedFeeEditable == false)
-        #expect(PlatformType.shopify.isFixedFeeEditable == false)
-        #expect(PlatformType.amazon.isFixedFeeEditable == false)
+        // Payment processing: only General editable
+        #expect(PlatformType.general.isPaymentProcessingFeeEditable == true)
+        #expect(PlatformType.etsy.isPaymentProcessingFeeEditable == false)
+        #expect(PlatformType.shopify.isPaymentProcessingFeeEditable == false)
+        #expect(PlatformType.amazon.isPaymentProcessingFeeEditable == false)
 
-        // Marketing fee rate: editable on all except Etsy
-        #expect(PlatformType.general.isMarketingFeeRateEditable == true)
-        #expect(PlatformType.etsy.isMarketingFeeRateEditable == false)
-        #expect(PlatformType.shopify.isMarketingFeeRateEditable == true)
-        #expect(PlatformType.amazon.isMarketingFeeRateEditable == true)
+        // Marketing fee: editable on all except Etsy
+        #expect(PlatformType.general.isMarketingFeeEditable == true)
+        #expect(PlatformType.etsy.isMarketingFeeEditable == false)
+        #expect(PlatformType.shopify.isMarketingFeeEditable == true)
+        #expect(PlatformType.amazon.isMarketingFeeEditable == true)
+    }
+
+    @Test("Display helpers format locked fees correctly")
+    func displayHelpers() {
+        // Etsy: all three display strings present
+        #expect(PlatformType.etsy.platformFeeDisplay == "6.5%")
+        #expect(PlatformType.etsy.paymentProcessingDisplay == "3% + $0.25")
+        #expect(PlatformType.etsy.marketingFeeDisplay == "15%")
+
+        // Shopify: platform fee 0%, processing with fixed, no marketing display
+        #expect(PlatformType.shopify.platformFeeDisplay == "0%")
+        #expect(PlatformType.shopify.paymentProcessingDisplay == "2.9% + $0.30")
+        #expect(PlatformType.shopify.marketingFeeDisplay == nil)
+
+        // Amazon: platform fee 15%, processing 0%, no marketing display
+        #expect(PlatformType.amazon.platformFeeDisplay == "15%")
+        #expect(PlatformType.amazon.paymentProcessingDisplay == "0%")
+        #expect(PlatformType.amazon.marketingFeeDisplay == nil)
+
+        // General: all nil (all editable)
+        #expect(PlatformType.general.platformFeeDisplay == nil)
+        #expect(PlatformType.general.paymentProcessingDisplay == nil)
+        #expect(PlatformType.general.marketingFeeDisplay == nil)
     }
 
     // MARK: - CostingEngine: effectiveMarketingRate
@@ -188,7 +242,7 @@ struct Epic4Tests {
     @Test("effectiveMarketingRate calculates rate × frequency")
     func effectiveMarketingRateCalculation() {
         let result = CostingEngine.effectiveMarketingRate(
-            marketingFeeRate: Decimal(string: "0.15")!,
+            marketingFee: Decimal(string: "0.15")!,
             percentSalesFromMarketing: Decimal(string: "0.20")!
         )
         #expect(result == Decimal(string: "0.03")!)
@@ -198,72 +252,65 @@ struct Epic4Tests {
 
     @Test("targetRetailPrice General — known inputs produce expected output")
     func targetRetailPriceGeneral() {
-        // Production cost $20, no fixed fee, 5% transaction, 0% marketing, 30% margin
-        // Denominator = 1 - (0.05 + 0 + 0.30) = 0.65
-        // Target = $20 / 0.65 = $30.769230...
+        // Production cost $20, 3% platform + 2% processing + $0 fixed, 0% marketing, 30% margin
+        // Total % fees = 0.03 + 0.02 = 0.05
+        // Denominator = 1 - (0.05 + 0.30) = 0.65
+        // Target = $20 / 0.65
         let result = CostingEngine.targetRetailPrice(
             productionCost: 20,
-            transactionFee: Decimal(string: "0.05")!,
-            fixedFee: 0,
-            marketingFeeRate: 0,
+            platformFee: Decimal(string: "0.03")!,
+            paymentProcessingFee: Decimal(string: "0.02")!,
+            paymentProcessingFixed: 0,
+            marketingFee: 0,
             percentSalesFromMarketing: 0,
             profitMargin: Decimal(string: "0.30")!
         )
         #expect(result != nil)
-        // 20 / 0.65 = 400/13
         let expected = Decimal(20) / Decimal(string: "0.65")!
         #expect(result == expected)
     }
 
     @Test("targetRetailPrice Etsy — locked fees with marketing frequency")
     func targetRetailPriceEtsy() {
-        // Production cost $20, fixed $0.45, transaction 9.5%, marketing 15% × 20% = 3%, margin 30%
-        // Total % fees = 0.095 + 0.03 = 0.125
+        // Production cost $20, Etsy: 6.5% platform + 3% processing + $0.25 fixed, 15% marketing × 20% = 3%, 30% margin
+        // Total % fees = 0.065 + 0.03 + 0.03 = 0.125
         // Denominator = 1 - (0.125 + 0.30) = 0.575
-        // Target = ($20 + $0.45) / 0.575 = $20.45 / 0.575
+        // Target = ($20 + $0.25) / 0.575 = $20.25 / 0.575
         let result = CostingEngine.targetRetailPrice(
             productionCost: 20,
-            transactionFee: Decimal(string: "0.095")!,
-            fixedFee: Decimal(string: "0.45")!,
-            marketingFeeRate: Decimal(string: "0.15")!,
+            platformFee: Decimal(string: "0.065")!,
+            paymentProcessingFee: Decimal(string: "0.03")!,
+            paymentProcessingFixed: Decimal(string: "0.25")!,
+            marketingFee: Decimal(string: "0.15")!,
             percentSalesFromMarketing: Decimal(string: "0.20")!,
             profitMargin: Decimal(string: "0.30")!
         )
         #expect(result != nil)
-        let expected = Decimal(string: "20.45")! / Decimal(string: "0.575")!
+        let expected = Decimal(string: "20.25")! / Decimal(string: "0.575")!
         #expect(result == expected)
     }
 
     @Test("targetRetailPrice returns nil when fees + margin ≥ 100%")
     func targetRetailPriceOverflow() {
-        // 70% transaction + 30% margin = 100% → denominator = 0 → nil
+        // 40% platform + 30% processing + 0% marketing + 30% margin = 100% → nil
         let atExact = CostingEngine.targetRetailPrice(
             productionCost: 20,
-            transactionFee: Decimal(string: "0.70")!,
-            fixedFee: 0,
-            marketingFeeRate: 0,
+            platformFee: Decimal(string: "0.40")!,
+            paymentProcessingFee: Decimal(string: "0.30")!,
+            paymentProcessingFixed: 0,
+            marketingFee: 0,
             percentSalesFromMarketing: 0,
             profitMargin: Decimal(string: "0.30")!
         )
         #expect(atExact == nil)
 
-        // 80% transaction + 30% margin = 110% → denominator < 0 → nil
-        let over = CostingEngine.targetRetailPrice(
-            productionCost: 20,
-            transactionFee: Decimal(string: "0.80")!,
-            fixedFee: 0,
-            marketingFeeRate: 0,
-            percentSalesFromMarketing: 0,
-            profitMargin: Decimal(string: "0.30")!
-        )
-        #expect(over == nil)
-
-        // 69% + 30% = 99% → should succeed
+        // 39% + 30% + 30% = 99% → should succeed
         let under = CostingEngine.targetRetailPrice(
             productionCost: 20,
-            transactionFee: Decimal(string: "0.69")!,
-            fixedFee: 0,
-            marketingFeeRate: 0,
+            platformFee: Decimal(string: "0.39")!,
+            paymentProcessingFee: Decimal(string: "0.30")!,
+            paymentProcessingFixed: 0,
+            marketingFee: 0,
             percentSalesFromMarketing: 0,
             profitMargin: Decimal(string: "0.30")!
         )
@@ -272,21 +319,42 @@ struct Epic4Tests {
 
     @Test("resolvedFees uses locked constants over user values for Etsy")
     func resolvedFeesAppliesLockedConstants() {
-        // Pass user values that differ from Etsy's locked constants
         let fees = CostingEngine.resolvedFees(
             platformType: .etsy,
-            userTransactionFee: Decimal(string: "0.01")!,       // should be overridden to 0.095
-            userFixedFee: Decimal(string: "0.10")!,             // should be overridden to 0.45
-            userMarketingFeeRate: Decimal(string: "0.05")!,     // should be overridden to 0.15
-            userPercentSalesFromMarketing: Decimal(string: "0.25")!, // stays as-is
-            userProfitMargin: Decimal(string: "0.35")!          // stays as-is
+            userPlatformFee: Decimal(string: "0.01")!,
+            userPaymentProcessingFee: Decimal(string: "0.01")!,
+            userMarketingFee: Decimal(string: "0.05")!,
+            userPercentSalesFromMarketing: Decimal(string: "0.25")!,
+            userProfitMargin: Decimal(string: "0.35")!
         )
 
-        #expect(fees.transactionFee == Decimal(string: "0.095")!)
-        #expect(fees.fixedFee == Decimal(string: "0.45")!)
-        #expect(fees.marketingFeeRate == Decimal(string: "0.15")!)
+        // Locked values override user values
+        #expect(fees.platformFee == Decimal(string: "0.065")!)
+        #expect(fees.paymentProcessingFee == Decimal(string: "0.03")!)
+        #expect(fees.paymentProcessingFixed == Decimal(string: "0.25")!)
+        #expect(fees.marketingFee == Decimal(string: "0.15")!)
+        // User values pass through
         #expect(fees.percentSalesFromMarketing == Decimal(string: "0.25")!)
         #expect(fees.profitMargin == Decimal(string: "0.35")!)
+    }
+
+    @Test("resolvedFees uses user values for General (no locked constants)")
+    func resolvedFeesUsesUserValuesForGeneral() {
+        let fees = CostingEngine.resolvedFees(
+            platformType: .general,
+            userPlatformFee: Decimal(string: "0.05")!,
+            userPaymentProcessingFee: Decimal(string: "0.03")!,
+            userMarketingFee: Decimal(string: "0.08")!,
+            userPercentSalesFromMarketing: Decimal(string: "0.15")!,
+            userProfitMargin: Decimal(string: "0.25")!
+        )
+
+        #expect(fees.platformFee == Decimal(string: "0.05")!)
+        #expect(fees.paymentProcessingFee == Decimal(string: "0.03")!)
+        #expect(fees.paymentProcessingFixed == Decimal(0))
+        #expect(fees.marketingFee == Decimal(string: "0.08")!)
+        #expect(fees.percentSalesFromMarketing == Decimal(string: "0.15")!)
+        #expect(fees.profitMargin == Decimal(string: "0.25")!)
     }
 
     // MARK: - Product Duplication Copies ProductPricing
@@ -300,9 +368,9 @@ struct Epic4Tests {
         let pricing = ProductPricing(
             product: source,
             platformType: .general,
-            transactionFeePercentage: Decimal(string: "0.05")!,
-            fixedFeePerSale: Decimal(string: "1.00")!,
-            marketingFeeRate: Decimal(string: "0.08")!,
+            platformFee: Decimal(string: "0.05")!,
+            paymentProcessingFee: Decimal(string: "0.03")!,
+            marketingFee: Decimal(string: "0.08")!,
             percentSalesFromMarketing: Decimal(string: "0.30")!,
             profitMargin: Decimal(string: "0.35")!
         )
@@ -320,9 +388,9 @@ struct Epic4Tests {
             let newPricing = ProductPricing(
                 product: copy,
                 platformType: srcPricing.platformType,
-                transactionFeePercentage: srcPricing.transactionFeePercentage,
-                fixedFeePerSale: srcPricing.fixedFeePerSale,
-                marketingFeeRate: srcPricing.marketingFeeRate,
+                platformFee: srcPricing.platformFee,
+                paymentProcessingFee: srcPricing.paymentProcessingFee,
+                marketingFee: srcPricing.marketingFee,
                 percentSalesFromMarketing: srcPricing.percentSalesFromMarketing,
                 profitMargin: srcPricing.profitMargin
             )
@@ -336,9 +404,9 @@ struct Epic4Tests {
 
         let copiedPricing = copied.productPricings[0]
         #expect(copiedPricing.platformType == .general)
-        #expect(copiedPricing.transactionFeePercentage == Decimal(string: "0.05")!)
-        #expect(copiedPricing.fixedFeePerSale == Decimal(string: "1.00")!)
-        #expect(copiedPricing.marketingFeeRate == Decimal(string: "0.08")!)
+        #expect(copiedPricing.platformFee == Decimal(string: "0.05")!)
+        #expect(copiedPricing.paymentProcessingFee == Decimal(string: "0.03")!)
+        #expect(copiedPricing.marketingFee == Decimal(string: "0.08")!)
         #expect(copiedPricing.percentSalesFromMarketing == Decimal(string: "0.30")!)
         #expect(copiedPricing.profitMargin == Decimal(string: "0.35")!)
 
@@ -361,7 +429,6 @@ struct Epic4Tests {
 
         #expect(source.productPricings.isEmpty)
 
-        // Duplicate — no pricing to copy
         let copy = Product(title: "\(source.title) (Copy)")
         ctx.insert(copy)
 
@@ -369,9 +436,9 @@ struct Epic4Tests {
             let newPricing = ProductPricing(
                 product: copy,
                 platformType: srcPricing.platformType,
-                transactionFeePercentage: srcPricing.transactionFeePercentage,
-                fixedFeePerSale: srcPricing.fixedFeePerSale,
-                marketingFeeRate: srcPricing.marketingFeeRate,
+                platformFee: srcPricing.platformFee,
+                paymentProcessingFee: srcPricing.paymentProcessingFee,
+                marketingFee: srcPricing.marketingFee,
                 percentSalesFromMarketing: srcPricing.percentSalesFromMarketing,
                 profitMargin: srcPricing.profitMargin
             )
@@ -390,7 +457,7 @@ struct Epic4Tests {
         let container = try makeContainer()
         let ctx = ModelContext(container)
 
-        // Product with known costs: $10 labor (buffered) + $5 material (buffered) + $3 shipping = $18
+        // Product with known costs: $10 labor + $5 material + $3 shipping = $18
         let product = Product(title: "Test", shippingCost: 3, materialBuffer: 0, laborBuffer: 0)
         let step = WorkStep(title: "Step", recordedTime: 3600, batchUnitsCompleted: 1)
         let link = ProductWorkStep(product: product, workStep: step, sortOrder: 0, unitsRequiredPerProduct: 1, laborRate: 10)
@@ -409,24 +476,25 @@ struct Epic4Tests {
         ctx.insert(matLink)
         try ctx.save()
 
-        let productionCost = CostingEngine.totalProductionCost(product: product)
-        // $10 labor + $5 material + $3 shipping = $18
-        #expect(productionCost == 18)
+        let cost = CostingEngine.totalProductionCost(product: product)
+        #expect(cost == 18)
 
         let rawResult = CostingEngine.targetRetailPrice(
-            productionCost: productionCost,
-            transactionFee: Decimal(string: "0.095")!,
-            fixedFee: Decimal(string: "0.45")!,
-            marketingFeeRate: Decimal(string: "0.15")!,
+            productionCost: cost,
+            platformFee: Decimal(string: "0.065")!,
+            paymentProcessingFee: Decimal(string: "0.03")!,
+            paymentProcessingFixed: Decimal(string: "0.25")!,
+            marketingFee: Decimal(string: "0.15")!,
             percentSalesFromMarketing: Decimal(string: "0.20")!,
             profitMargin: Decimal(string: "0.30")!
         )
 
         let modelResult = CostingEngine.targetRetailPrice(
             product: product,
-            transactionFee: Decimal(string: "0.095")!,
-            fixedFee: Decimal(string: "0.45")!,
-            marketingFeeRate: Decimal(string: "0.15")!,
+            platformFee: Decimal(string: "0.065")!,
+            paymentProcessingFee: Decimal(string: "0.03")!,
+            paymentProcessingFixed: Decimal(string: "0.25")!,
+            marketingFee: Decimal(string: "0.15")!,
             percentSalesFromMarketing: Decimal(string: "0.20")!,
             profitMargin: Decimal(string: "0.30")!
         )

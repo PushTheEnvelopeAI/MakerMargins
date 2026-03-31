@@ -292,9 +292,9 @@ struct ProductListView: View {
             let newPricing = ProductPricing(
                 product: copy,
                 platformType: srcPricing.platformType,
-                transactionFeePercentage: srcPricing.transactionFeePercentage,
-                fixedFeePerSale: srcPricing.fixedFeePerSale,
-                marketingFeeRate: srcPricing.marketingFeeRate,
+                platformFee: srcPricing.platformFee,
+                paymentProcessingFee: srcPricing.paymentProcessingFee,
+                marketingFee: srcPricing.marketingFee,
                 percentSalesFromMarketing: srcPricing.percentSalesFromMarketing,
                 profitMargin: srcPricing.profitMargin
             )
