@@ -293,8 +293,8 @@ struct Epic1Tests {
         )
 
         // Add a shared WorkStep
-        let step = WorkStep(title: "Sand edges", laborRate: 20, recordedTime: 1800)
-        let stepLink = ProductWorkStep(product: source, workStep: step, sortOrder: 0)
+        let step = WorkStep(title: "Sand edges", recordedTime: 1800)
+        let stepLink = ProductWorkStep(product: source, workStep: step, sortOrder: 0, laborRate: 20)
         source.productWorkSteps.append(stepLink)
         step.productWorkSteps.append(stepLink)
 
@@ -332,7 +332,7 @@ struct Epic1Tests {
 
         for srcLink in source.productWorkSteps {
             guard let ws = srcLink.workStep else { continue }
-            let newLink = ProductWorkStep(product: copy, workStep: ws, sortOrder: srcLink.sortOrder)
+            let newLink = ProductWorkStep(product: copy, workStep: ws, sortOrder: srcLink.sortOrder, unitsRequiredPerProduct: srcLink.unitsRequiredPerProduct, laborRate: srcLink.laborRate)
             ctx.insert(newLink)
             copy.productWorkSteps.append(newLink)
             ws.productWorkSteps.append(newLink)

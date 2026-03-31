@@ -33,6 +33,7 @@ iOS 26 is the minimum. The Liquid Glass design language is a first-class iOS 26 
 | 1 | Product & Category Management + E2E Tests | **Complete** |
 | 2 | Labor Engine & Stopwatch + E2E Tests | **Complete** |
 | 3 | Material Ledger & Costing + E2E Tests | **Complete** |
+| 3.5 | Item vs Product Cost Separation + E2E Tests | **Complete** |
 | 4 | Pricing Calculator & Platform Tabs + E2E Tests | Pending |
 | 5 | Batch Forecasting Widgets + E2E Tests | Pending |
 | 6 | Production Readiness & App Store Launch | Pending |
@@ -71,21 +72,22 @@ WorkSteps are **shared entities** — they can be reused across multiple product
 | title | String | |
 | summary | String | Conceptual field name is "description" |
 | image | Data? | Optional |
-| laborRate | Decimal | $/hour. Defaults to LaborRateManager.defaultRate for new steps |
 | recordedTime | TimeInterval | Seconds — total time for the batch run. Set manually or via StopwatchView |
 | batchUnitsCompleted | Decimal | Units produced in that batch. **Default: 1** (guards against division by zero) |
 | unitName | String | e.g. "piece", "board". **Default: "unit"** |
-| unitsRequiredPerProduct | Decimal | Steps per finished product. **Default: 1** |
+| defaultUnitsPerProduct | Decimal | Default units per product, pre-fills join model. **Default: 1** |
 | productWorkSteps | [ProductWorkStep] | One-to-many to join model, cascade delete (deleting a step removes all its associations) |
 
 ### ProductWorkStep
-Join model enabling many-to-many between Product and WorkStep with per-product ordering.
+Join model enabling many-to-many between Product and WorkStep with per-product ordering and per-product cost settings.
 
 | Swift Property | Type | Notes |
 |----------------|------|-------|
 | product | Product? | Many-to-one |
 | workStep | WorkStep? | Many-to-one |
 | sortOrder | Int | Per-product display order. **Default: 0** |
+| unitsRequiredPerProduct | Decimal | Per-product override of units needed. **Default: 1** |
+| laborRate | Decimal | $/hour, per-product context. Pre-filled from LaborRateManager.defaultRate. **Default: 0** |
 
 ### ProductMaterial
 Join model enabling many-to-many between Product and Material with per-product ordering.
@@ -127,16 +129,16 @@ Materials are **shared entities** — they can be reused across multiple product
 
 All calculations are implemented in `Engine/CostingEngine.swift` — **not** as computed properties on the models. Models are pure data; CostingEngine is pure logic. `CostingEngine` is a caseless `enum` (pure namespace) with `static` functions. Labor calculations implemented (Epic 2); material calculations implemented (Epic 3).
 
-Each function has a model-based overload (accepts `WorkStep`/`Product`) and a raw-value overload (accepts `TimeInterval`/`Decimal` primitives) for real-time form previews before a model is saved.
+Each function has a model-based overload (accepts `ProductWorkStep`/`Product`) and a raw-value overload (accepts `TimeInterval`/`Decimal` primitives) for real-time form previews before a model is saved.
 
 ```
-// WorkStep level
+// WorkStep level (item-level — no labor rate)
 unitTime      = recordedTime / batchUnitsCompleted      // seconds per unit
-unitTimeHours = unitTime / 3600                          // convert to hours
+unitTimeHours = unitTime / 3600                          // convert to hours (key output of a WorkStep)
 
-// Product Labor (per WorkStep)
-// laborRate is $/hour — MUST use unitTimeHours, never raw seconds
-stepLaborCost = (unitTimeHours * unitsRequiredPerProduct) * laborRate
+// Product Labor (per ProductWorkStep — laborRate lives on the join model)
+laborHoursPerProduct = unitTimeHours * unitsRequiredPerProduct
+stepLaborCost        = laborHoursPerProduct * laborRate   // laborRate from ProductWorkStep
 
 // Product total labor
 totalLaborCost = sum of stepLaborCost across all WorkSteps
@@ -230,6 +232,7 @@ MakerMargins/                              ← repo root
 │   ├── Epic1Tests.swift                   ← Complete: Product/Category CRUD, cascade, CurrencyFormatter, product duplication (13 tests)
 │   ├── Epic2Tests.swift                   ← Complete: WorkStep/join CRUD, CostingEngine, reorder, LaborRateManager (12 tests)
 │   ├── Epic3Tests.swift                   ← Complete: Material/join CRUD, CostingEngine material calcs, per-section buffers, duplication (12 tests)
+│   ├── Epic3_5Tests.swift                 ← Complete: Item/product separation, laborRate on join, per-product independence, laborHoursPerProduct (12 tests)
 │   ├── Epic4Tests.swift                   ← STUB
 │   └── Epic5Tests.swift                   ← STUB
 │
@@ -446,6 +449,66 @@ SettingsView                              [ROOT — currency, appearance, labor 
 
 ---
 
+## Epic 3.5 — Acceptance Criteria ✅
+
+**Item vs Product Separation — Core Principle: "One Item, One Number"**
+- WorkStep → Hours/Unit (item-level); Material → Cost/Unit (item-level)
+- Labor rate, units per product, and derived costs are product-level (on join models)
+
+**Schema Migration**
+- [x] `laborRate` moved from WorkStep to ProductWorkStep join model
+- [x] ProductWorkStep.laborRate defaults from LaborRateManager when creating associations
+- [x] WorkStep no longer has a laborRate property
+
+**WorkStep Form Simplification**
+- [x] Form fields: image, title, description, time (h/m/s + stopwatch), batch units, unit name — only
+- [x] No labor rate or units per product fields on the form
+- [x] Hours/Unit displayed as hero preview value (accent, large font)
+
+**Material Form Simplification**
+- [x] Form fields: image, title, description, link, bulk cost, bulk quantity, unit name — only
+- [x] No units per product field on the form
+- [x] Cost/Unit displayed as hero preview value (accent, large font)
+
+**WorkStep Detail View — Two-Zone Layout**
+- [x] Step Info section (always shown): recorded time, batch units, time per unit, Hours/Unit hero
+- [x] Product Settings section (product context only): editable labor rate, editable units per product
+- [x] Calculated Labor Hrs/Product and Labor Cost/Product update in real-time
+- [x] Changes save immediately to ProductWorkStep join model
+
+**Material Detail View — Two-Zone Layout**
+- [x] Material Info section (always shown): bulk cost, quantity, unit name, Cost/Unit hero
+- [x] Product Settings section (product context only): editable units per product
+- [x] Calculated Material Cost/Product updates in real-time
+- [x] Changes save immediately to ProductMaterial join model
+
+**Library Tab Updates**
+- [x] Labor tab rows show Hours/Unit (item-level metric, not cost)
+- [x] Materials tab rows show Cost/Unit (item-level metric, not line cost)
+
+**Product Duplication**
+- [x] Duplicated products copy laborRate from ProductWorkStep join models
+
+**CostingEngine**
+- [x] `stepLaborCost(step:)` removed — no labor rate on step
+- [x] `stepLaborCost(link:)` reads laborRate from ProductWorkStep
+- [x] `laborHoursPerProduct(link:)` and raw-value overload added
+- [x] All product-level aggregate functions use join model data
+
+**E2E Tests (Epic3_5Tests.swift)**
+- [x] Test: ProductWorkStep stores and persists laborRate
+- [x] Test: ProductWorkStep laborRate defaults to zero
+- [x] Test: per-product laborRate independence (same step, different rates)
+- [x] Test: per-product unitsRequiredPerProduct independence
+- [x] Test: laborHoursPerProduct calculation (known values, zero guard, model overload)
+- [x] Test: stepLaborCost uses link.laborRate, not step-level rate
+- [x] Test: same step, different rates → different costs
+- [x] Test: product duplication copies laborRate
+- [x] Test: unitTimeHours is purely item-level
+- [x] Test: materialUnitCost is purely item-level
+
+---
+
 ## Build & Development Workflow
 
 **Development machine:** Windows 11. No local Mac. Xcode is not available locally.
@@ -507,7 +570,7 @@ Runs on every push:
 ## Key Decisions & Notes
 
 - **`summary` not `description`:** The schema's "description" field is `summary` in all Swift models to avoid shadowing `NSObject.description`. This applies to `Product.summary`, `WorkStep.summary`, `Material.summary`.
-- **Labor rate on WorkStep, not Product:** Supports mixed-skill workflows (e.g. machining at $25/hr vs. finishing at $15/hr).
+- **Labor rate on ProductWorkStep (join model), not WorkStep:** Allows the same step to have different rates in different product contexts (e.g. shop rate vs. commissioned rate). Defaults from LaborRateManager. Supports mixed-skill workflows (e.g. machining at $25/hr vs. finishing at $15/hr) while also allowing per-product overrides.
 - **`batchUnitsCompleted` defaults to 1:** Prevents division-by-zero in `CostingEngine`. Never allow 0. Validate in forms.
 - **`bulkQuantity` defaults to 1:** Same reason.
 - **PlatformFeeProfiles are global:** Not per-product. One profile can be reused across all products.

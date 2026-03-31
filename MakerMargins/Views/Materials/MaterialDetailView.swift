@@ -20,18 +20,23 @@ struct MaterialDetailView: View {
     @State private var showingEditForm = false
     @State private var showingDeleteConfirmation = false
 
+    // Product-level editable state (initialized from join model in onAppear)
+    @State private var unitsPerProductText: String = ""
+
     // MARK: - Computed
 
     private var editProduct: Product? {
         product ?? material.productMaterials.first?.product
     }
 
-    private var activeUnitsPerProduct: Decimal {
-        if let product {
-            let link = material.productMaterials.first { $0.product?.persistentModelID == product.persistentModelID }
-            return link?.unitsRequiredPerProduct ?? material.defaultUnitsPerProduct
-        }
-        return material.defaultUnitsPerProduct
+    /// The ProductMaterial join model for this material + product combination.
+    private var activeLink: ProductMaterial? {
+        guard let product else { return nil }
+        return material.productMaterials.first { $0.product?.persistentModelID == product.persistentModelID }
+    }
+
+    private var editableUnitsPerProduct: Decimal {
+        Decimal(string: unitsPerProductText) ?? 1
     }
 
     private var linkedProducts: [Product] {
@@ -44,8 +49,10 @@ struct MaterialDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xl) {
                 headerSection
-                purchaseSection
-                costSection
+                materialInfoSection
+                if product != nil {
+                    productSettingsSection
+                }
                 usedBySection
             }
             .padding(.vertical)
@@ -53,6 +60,15 @@ struct MaterialDetailView: View {
         .appBackground()
         .navigationTitle(material.title)
         .navigationBarTitleDisplayMode(.large)
+        .onAppear {
+            if let link = activeLink {
+                unitsPerProductText = "\(link.unitsRequiredPerProduct)"
+            }
+        }
+        .onChange(of: unitsPerProductText) { _, _ in
+            guard let link = activeLink else { return }
+            link.unitsRequiredPerProduct = editableUnitsPerProduct > 0 ? editableUnitsPerProduct : 1
+        }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 HStack(spacing: AppTheme.Spacing.md) {
@@ -138,8 +154,8 @@ struct MaterialDetailView: View {
         }
     }
 
-    private var purchaseSection: some View {
-        GroupBox("Purchase") {
+    private var materialInfoSection: some View {
+        GroupBox("Material Info") {
             VStack(spacing: 0) {
                 DetailRow(label: "Bulk Cost", value: formatter.format(material.bulkCost))
                 Divider()
@@ -147,23 +163,50 @@ struct MaterialDetailView: View {
                 Divider()
                 DetailRow(label: "Unit Name", value: material.unitName)
                 Divider()
-                DetailRow(label: "\(material.unitName.capitalized)s per Product", value: "\(activeUnitsPerProduct)")
+                HStack {
+                    Text("Cost per \(material.unitName)")
+                        .font(AppTheme.Typography.bodyText)
+                    Spacer()
+                    Text(formatter.format(CostingEngine.materialUnitCost(material: material)))
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(AppTheme.Colors.accent)
+                }
+                .padding(.vertical, AppTheme.Spacing.sm)
             }
         }
         .padding(.horizontal)
     }
 
-    private var costSection: some View {
-        GroupBox("Cost") {
+    @ViewBuilder
+    private var productSettingsSection: some View {
+        GroupBox("Product Settings") {
             VStack(spacing: 0) {
-                DerivedRow(label: "Cost per \(material.unitName)", value: formatter.format(CostingEngine.materialUnitCost(material: material)))
-                Divider()
+                // Editable: Units per Product
                 HStack {
-                    Text("Material Cost per Product")
+                    Text("\(material.unitName.capitalized)s per Product")
                         .font(AppTheme.Typography.bodyText)
                     Spacer()
-                    Text(formatter.format(CostingEngine.materialLineCost(material: material)))
-                        .font(AppTheme.Typography.sectionHeader)
+                    TextField("1", text: $unitsPerProductText)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: AppTheme.Sizing.inputMedium)
+                }
+                .padding(.vertical, AppTheme.Spacing.sm)
+
+                Divider()
+
+                // Calculated: Material Cost per Product
+                let materialCost = CostingEngine.materialLineCost(
+                    bulkCost: material.bulkCost,
+                    bulkQuantity: material.bulkQuantity,
+                    unitsRequiredPerProduct: editableUnitsPerProduct
+                )
+                HStack {
+                    Text("Material Cost / Product")
+                        .font(AppTheme.Typography.bodyText)
+                    Spacer()
+                    Text(formatter.format(materialCost))
+                        .font(.title2.weight(.semibold))
                         .foregroundStyle(AppTheme.Colors.accent)
                 }
                 .padding(.vertical, AppTheme.Spacing.sm)

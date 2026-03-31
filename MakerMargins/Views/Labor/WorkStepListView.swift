@@ -16,6 +16,7 @@ struct WorkStepListView: View {
     @Query(sort: \WorkStep.title) private var allSteps: [WorkStep]
     @Environment(\.modelContext) private var modelContext
     @Environment(\.currencyFormatter) private var formatter
+    @Environment(\.laborRateManager) private var laborRateManager
 
     @State private var showingNewStepForm = false
     @State private var showingExistingStepPicker = false
@@ -347,7 +348,8 @@ struct WorkStepListView: View {
             product: product,
             workStep: step,
             sortOrder: product.productWorkSteps.count,
-            unitsRequiredPerProduct: step.defaultUnitsPerProduct
+            unitsRequiredPerProduct: step.defaultUnitsPerProduct,
+            laborRate: laborRateManager.defaultRate
         )
         modelContext.insert(link)
         product.productWorkSteps.append(link)
