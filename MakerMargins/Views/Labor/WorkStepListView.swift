@@ -69,6 +69,8 @@ struct WorkStepListView: View {
         } label: {
             groupBoxLabel
         }
+        .padding()
+        .cardStyle()
         .padding(.horizontal)
         .sheet(isPresented: $showingNewStepForm, onDismiss: {
             if product.productWorkSteps.count > stepCountBeforeSheet,

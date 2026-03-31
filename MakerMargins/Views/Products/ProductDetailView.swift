@@ -184,6 +184,8 @@ struct ProductDetailView: View {
             }
             .padding(.vertical, AppTheme.Spacing.sm)
         }
+        .padding()
+        .cardStyle()
         .padding(.horizontal)
         .onChange(of: shippingCostText) { _, _ in
             let value = Decimal(string: shippingCostText) ?? 0

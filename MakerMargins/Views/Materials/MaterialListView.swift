@@ -68,6 +68,8 @@ struct MaterialListView: View {
         } label: {
             groupBoxLabel
         }
+        .padding()
+        .cardStyle()
         .padding(.horizontal)
         .sheet(isPresented: $showingNewMaterialForm, onDismiss: {
             if product.productMaterials.count > materialCountBeforeSheet,
