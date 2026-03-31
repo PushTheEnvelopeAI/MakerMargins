@@ -19,6 +19,7 @@ struct MaterialDetailView: View {
 
     @State private var showingEditForm = false
     @State private var showingDeleteConfirmation = false
+    @State private var showingRemoveConfirmation = false
 
     // Product-level editable state (initialized from join model in onAppear)
     @State private var unitsPerProductText: String = ""
@@ -54,6 +55,9 @@ struct MaterialDetailView: View {
                     productSettingsSection
                 }
                 usedBySection
+                if product != nil {
+                    removeFromProductSection
+                }
             }
             .padding(.vertical)
         }
@@ -77,12 +81,14 @@ struct MaterialDetailView: View {
                     } label: {
                         Image(systemName: "pencil")
                     }
-                    Menu {
-                        Button("Delete Material", role: .destructive) {
-                            showingDeleteConfirmation = true
+                    if product == nil {
+                        Menu {
+                            Button("Delete Material", role: .destructive) {
+                                showingDeleteConfirmation = true
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
                         }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
                     }
                 }
             }
@@ -102,6 +108,18 @@ struct MaterialDetailView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This will permanently delete this material and remove it from all products that use it. This action cannot be undone.")
+        }
+        .confirmationDialog(
+            "Remove from \"\(product?.title ?? "")\"?",
+            isPresented: $showingRemoveConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Remove Material", role: .destructive) {
+                removeFromProduct()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will remove the material from this product only. It will remain available in the material library.")
         }
     }
 
@@ -212,6 +230,7 @@ struct MaterialDetailView: View {
                 .padding(.vertical, AppTheme.Spacing.sm)
             }
         }
+        .groupBoxStyle(EditableGroupBoxStyle())
         .padding(.horizontal)
     }
 
@@ -244,6 +263,49 @@ struct MaterialDetailView: View {
             }
         }
         .padding(.horizontal)
+    }
+
+    @ViewBuilder
+    private var removeFromProductSection: some View {
+        if let product {
+            Button(role: .destructive) {
+                showingRemoveConfirmation = true
+            } label: {
+                HStack {
+                    Spacer()
+                    Label("Remove from \(product.title)", systemImage: "minus.circle")
+                        .font(AppTheme.Typography.bodyText)
+                    Spacer()
+                }
+                .padding(.vertical, AppTheme.Spacing.md)
+                .background(
+                    Color.red.opacity(0.1),
+                    in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
+                        .strokeBorder(Color.red.opacity(0.3), lineWidth: 0.5)
+                )
+            }
+            .padding(.horizontal)
+        }
+    }
+
+    // MARK: - Actions
+
+    private func removeFromProduct() {
+        guard let link = activeLink, let product else { return }
+        let linkID = link.persistentModelID
+        modelContext.delete(link)
+
+        // Reindex remaining links
+        let remaining = product.productMaterials
+            .filter { $0.persistentModelID != linkID }
+            .sorted { $0.sortOrder < $1.sortOrder }
+        for (index, remainingLink) in remaining.enumerated() {
+            remainingLink.sortOrder = index
+        }
+        dismiss()
     }
 
 }

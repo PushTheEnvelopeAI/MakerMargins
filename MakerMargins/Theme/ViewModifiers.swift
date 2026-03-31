@@ -139,6 +139,57 @@ struct PlaceholderImageView: View {
     }
 }
 
+// MARK: - Editable GroupBox Style
+
+/// GroupBox style with a warm accent background to signal editable/interactive content.
+/// Used for "Product Settings" sections in detail views.
+struct EditableGroupBoxStyle: GroupBoxStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+            configuration.label
+                .font(AppTheme.Typography.sectionHeader)
+            configuration.content
+        }
+        .padding()
+        .background(
+            AppTheme.Colors.accentSubtle,
+            in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
+                .strokeBorder(AppTheme.Colors.accent.opacity(0.3), lineWidth: 0.5)
+        )
+    }
+}
+
+// MARK: - Currency Input Field
+
+/// Reusable currency input that groups symbol + TextField + optional suffix
+/// into a visually cohesive unit. Used for labor rate, bulk cost, etc.
+struct CurrencyInputField: View {
+    let symbol: String
+    @Binding var text: String
+    var suffix: String? = nil
+    var width: CGFloat = AppTheme.Sizing.inputMedium
+    var focusBinding: FocusState<Bool>.Binding? = nil
+
+    var body: some View {
+        HStack(spacing: AppTheme.Spacing.xxs) {
+            Text(symbol)
+                .foregroundStyle(.secondary)
+            TextField("0", text: $text)
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+                .frame(width: width)
+            if let suffix {
+                Text(suffix)
+                    .font(AppTheme.Typography.bodyText)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
 // MARK: - Detail Rows
 
 /// Standard detail row for displaying a label–value pair in a GroupBox.

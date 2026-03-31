@@ -133,13 +133,15 @@ struct MaterialFormView: View {
                 HStack {
                     Text("Bulk Cost")
                     Spacer()
-                    Text(currencyFormatter.symbol)
-                        .foregroundStyle(.secondary)
-                    TextField("0", text: $bulkCostText)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: AppTheme.Sizing.inputMedium)
-                        .focused($focusedField, equals: .bulkCost)
+                    HStack(spacing: AppTheme.Spacing.xxs) {
+                        Text(currencyFormatter.symbol)
+                            .foregroundStyle(.secondary)
+                        TextField("0", text: $bulkCostText)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: AppTheme.Sizing.inputMedium)
+                            .focused($focusedField, equals: .bulkCost)
+                    }
                 }
                 Text("Total cost of the bulk purchase")
                     .font(AppTheme.Typography.note)

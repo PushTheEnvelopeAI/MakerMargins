@@ -8,14 +8,41 @@
 import SwiftUI
 import SwiftData
 
+/// Wrapper types to avoid conflicting with existing navigationDestination(for:) registrations.
+private struct NewWorkStepNav: Hashable {
+    let step: WorkStep
+    static func == (lhs: NewWorkStepNav, rhs: NewWorkStepNav) -> Bool {
+        lhs.step.persistentModelID == rhs.step.persistentModelID
+    }
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(step.persistentModelID)
+    }
+}
+
+private struct NewMaterialNav: Hashable {
+    let material: Material
+    static func == (lhs: NewMaterialNav, rhs: NewMaterialNav) -> Bool {
+        lhs.material.persistentModelID == rhs.material.persistentModelID
+    }
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(material.persistentModelID)
+    }
+}
+
 struct ProductDetailView: View {
     let product: Product
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
+    @Environment(\.currencyFormatter) private var formatter
+
     @State private var showingEditForm = false
     @State private var showingDeleteConfirmation = false
+    @State private var pendingWorkStep: NewWorkStepNav?
+    @State private var pendingMaterial: NewMaterialNav?
+    @State private var shippingCostText: String = ""
+    @FocusState private var shippingFocused: Bool
 
     var body: some View {
         ScrollView {
@@ -25,15 +52,25 @@ struct ProductDetailView: View {
                     .padding(.horizontal)
                 laborSection
                 materialsSection
+                shippingSection
             }
             .padding(.vertical)
         }
         .appBackground()
+        .onAppear {
+            shippingCostText = "\(product.shippingCost)"
+        }
         .navigationDestination(for: WorkStep.self) { step in
             WorkStepDetailView(step: step, product: product)
         }
         .navigationDestination(for: Material.self) { material in
             MaterialDetailView(material: material, product: product)
+        }
+        .navigationDestination(item: $pendingWorkStep) { nav in
+            WorkStepDetailView(step: nav.step, product: product)
+        }
+        .navigationDestination(item: $pendingMaterial) { nav in
+            MaterialDetailView(material: nav.material, product: product)
         }
         .navigationTitle(product.title)
         .navigationBarTitleDisplayMode(.large)
@@ -112,10 +149,42 @@ struct ProductDetailView: View {
     }
 
     private var laborSection: some View {
-        WorkStepListView(product: product)
+        WorkStepListView(product: product) { newStep in
+            pendingWorkStep = NewWorkStepNav(step: newStep)
+        }
     }
 
     private var materialsSection: some View {
-        MaterialListView(product: product)
+        MaterialListView(product: product) { newMaterial in
+            pendingMaterial = NewMaterialNav(material: newMaterial)
+        }
+    }
+
+    private var shippingSection: some View {
+        GroupBox("Shipping") {
+            HStack {
+                Text("Average Shipping Cost")
+                    .font(AppTheme.Typography.bodyText)
+                Spacer()
+                CurrencyInputField(
+                    symbol: formatter.symbol,
+                    text: $shippingCostText
+                )
+                .focused($shippingFocused)
+            }
+            .padding(.vertical, AppTheme.Spacing.sm)
+        }
+        .padding(.horizontal)
+        .onChange(of: shippingCostText) { _, _ in
+            let value = Decimal(string: shippingCostText) ?? 0
+            product.shippingCost = value >= 0 ? value : 0
+        }
+        .onChange(of: shippingFocused) { _, focused in
+            if focused {
+                if shippingCostText == "0" { shippingCostText = "" }
+            } else {
+                if shippingCostText.trimmingCharacters(in: .whitespaces).isEmpty { shippingCostText = "0" }
+            }
+        }
     }
 }

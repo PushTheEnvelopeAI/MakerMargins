@@ -20,6 +20,7 @@ struct WorkStepDetailView: View {
 
     @State private var showingEditForm = false
     @State private var showingDeleteConfirmation = false
+    @State private var showingRemoveConfirmation = false
 
     // Product-level editable state (initialized from join model in onAppear)
     @State private var laborRateText: String = ""
@@ -68,6 +69,9 @@ struct WorkStepDetailView: View {
                     productSettingsSection
                 }
                 usedBySection
+                if product != nil {
+                    removeFromProductSection
+                }
             }
             .padding(.vertical)
         }
@@ -96,12 +100,14 @@ struct WorkStepDetailView: View {
                     } label: {
                         Image(systemName: "pencil")
                     }
-                    Menu {
-                        Button("Delete Step", role: .destructive) {
-                            showingDeleteConfirmation = true
+                    if product == nil {
+                        Menu {
+                            Button("Delete Step", role: .destructive) {
+                                showingDeleteConfirmation = true
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
                         }
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
                     }
                 }
             }
@@ -121,6 +127,18 @@ struct WorkStepDetailView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This will permanently delete this step and remove it from all products that use it. This action cannot be undone.")
+        }
+        .confirmationDialog(
+            "Remove from \"\(product?.title ?? "")\"?",
+            isPresented: $showingRemoveConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Remove Step", role: .destructive) {
+                removeFromProduct()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will remove the step from this product only. It will remain available in the step library.")
         }
     }
 
@@ -158,9 +176,9 @@ struct WorkStepDetailView: View {
     private var stepInfoSection: some View {
         GroupBox("Step Info") {
             VStack(spacing: 0) {
-                DetailRow(label: "Recorded Time", value: CostingEngine.formatDuration(step.recordedTime))
+                DetailRow(label: "Time to Complete Batch", value: CostingEngine.formatDuration(step.recordedTime))
                 Divider()
-                DetailRow(label: "\(step.unitName.capitalized)s Completed", value: "\(step.batchUnitsCompleted) \(step.unitName)\(step.batchUnitsCompleted == 1 ? "" : "s")")
+                DetailRow(label: "Units per Batch", value: "\(step.batchUnitsCompleted) \(step.unitName)\(step.batchUnitsCompleted == 1 ? "" : "s")")
                 Divider()
                 DerivedRow(label: "Time per \(step.unitName)", value: CostingEngine.formatDuration(unitTimeSeconds))
                 Divider()
@@ -168,7 +186,7 @@ struct WorkStepDetailView: View {
                     Text("Hours per \(step.unitName)")
                         .font(AppTheme.Typography.bodyText)
                     Spacer()
-                    Text("\(CostingEngine.unitTimeHours(step: step))")
+                    Text(CostingEngine.formatHours(CostingEngine.unitTimeHours(step: step)))
                         .font(.title2.weight(.semibold))
                         .foregroundStyle(AppTheme.Colors.accent)
                 }
@@ -187,15 +205,11 @@ struct WorkStepDetailView: View {
                     Text("Labor Rate")
                         .font(AppTheme.Typography.bodyText)
                     Spacer()
-                    Text(formatter.symbol)
-                        .foregroundStyle(.secondary)
-                    TextField("0", text: $laborRateText)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: AppTheme.Sizing.inputMedium)
-                    Text("/hr")
-                        .font(AppTheme.Typography.bodyText)
-                        .foregroundStyle(.secondary)
+                    CurrencyInputField(
+                        symbol: formatter.symbol,
+                        text: $laborRateText,
+                        suffix: "/hr"
+                    )
                 }
                 .padding(.vertical, AppTheme.Spacing.sm)
 
@@ -221,7 +235,7 @@ struct WorkStepDetailView: View {
                     batchUnitsCompleted: step.batchUnitsCompleted,
                     unitsRequiredPerProduct: editableUnitsPerProduct
                 )
-                DerivedRow(label: "Labor Hrs / Product", value: "\(laborHours)")
+                DerivedRow(label: "Labor Hrs / Product", value: CostingEngine.formatHours(laborHours))
 
                 Divider()
 
@@ -243,6 +257,7 @@ struct WorkStepDetailView: View {
                 .padding(.vertical, AppTheme.Spacing.sm)
             }
         }
+        .groupBoxStyle(EditableGroupBoxStyle())
         .padding(.horizontal)
     }
 
@@ -275,6 +290,49 @@ struct WorkStepDetailView: View {
             }
         }
         .padding(.horizontal)
+    }
+
+    @ViewBuilder
+    private var removeFromProductSection: some View {
+        if let product {
+            Button(role: .destructive) {
+                showingRemoveConfirmation = true
+            } label: {
+                HStack {
+                    Spacer()
+                    Label("Remove from \(product.title)", systemImage: "minus.circle")
+                        .font(AppTheme.Typography.bodyText)
+                    Spacer()
+                }
+                .padding(.vertical, AppTheme.Spacing.md)
+                .background(
+                    Color.red.opacity(0.1),
+                    in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
+                        .strokeBorder(Color.red.opacity(0.3), lineWidth: 0.5)
+                )
+            }
+            .padding(.horizontal)
+        }
+    }
+
+    // MARK: - Actions
+
+    private func removeFromProduct() {
+        guard let link = activeLink, let product else { return }
+        let linkID = link.persistentModelID
+        modelContext.delete(link)
+
+        // Reindex remaining links
+        let remaining = product.productWorkSteps
+            .filter { $0.persistentModelID != linkID }
+            .sorted { $0.sortOrder < $1.sortOrder }
+        for (index, remainingLink) in remaining.enumerated() {
+            remainingLink.sortOrder = index
+        }
+        dismiss()
     }
 
 }

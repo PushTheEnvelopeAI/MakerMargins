@@ -12,6 +12,7 @@ import SwiftData
 
 struct WorkStepListView: View {
     let product: Product
+    var onNewStepCreated: ((WorkStep) -> Void)? = nil
 
     @Query(sort: \WorkStep.title) private var allSteps: [WorkStep]
     @Environment(\.modelContext) private var modelContext
@@ -24,12 +25,14 @@ struct WorkStepListView: View {
     @State private var isReordering = false
     @State private var selectedStepIDs: [PersistentIdentifier] = []
     @State private var bufferText: String
+    @State private var stepCountBeforeSheet = 0
     @FocusState private var bufferFocused: Bool
 
     // MARK: - Init
 
-    init(product: Product) {
+    init(product: Product, onNewStepCreated: ((WorkStep) -> Void)? = nil) {
         self.product = product
+        self.onNewStepCreated = onNewStepCreated
         _bufferText = State(initialValue: "\(product.laborBuffer * 100)")
     }
 
@@ -65,7 +68,14 @@ struct WorkStepListView: View {
             groupBoxLabel
         }
         .padding(.horizontal)
-        .sheet(isPresented: $showingNewStepForm) {
+        .sheet(isPresented: $showingNewStepForm, onDismiss: {
+            if product.productWorkSteps.count > stepCountBeforeSheet,
+               let newestLink = product.productWorkSteps
+                   .sorted(by: { $0.sortOrder < $1.sortOrder }).last,
+               let newStep = newestLink.workStep {
+                onNewStepCreated?(newStep)
+            }
+        }) {
             WorkStepFormView(step: nil, product: product)
         }
         .sheet(isPresented: $showingExistingStepPicker) {
@@ -110,6 +120,7 @@ struct WorkStepListView: View {
             if !isReordering {
                 Menu {
                     Button {
+                        stepCountBeforeSheet = product.productWorkSteps.count
                         showingNewStepForm = true
                     } label: {
                         Label("New Step", systemImage: "plus")
