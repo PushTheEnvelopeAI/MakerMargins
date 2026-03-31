@@ -17,6 +17,7 @@ struct ProductListView: View {
     @State private var selectedCategory: Category? = nil
     @State private var isGridMode = false
     @State private var showingCreateForm = false
+    @State private var showingTemplatePicker = false
     @State private var productToDelete: Product? = nil
     @State private var navigationPath = NavigationPath()
     @State private var newlyCreatedProduct: Product?
@@ -54,8 +55,17 @@ struct ProductListView: View {
         .searchable(text: $searchText, prompt: "Search products")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showingCreateForm = true
+                Menu {
+                    Button {
+                        showingCreateForm = true
+                    } label: {
+                        Label("Blank Product", systemImage: "doc")
+                    }
+                    Button {
+                        showingTemplatePicker = true
+                    } label: {
+                        Label("From Template", systemImage: "doc.on.doc.fill")
+                    }
                 } label: {
                     Image(systemName: "plus")
                 }
@@ -75,6 +85,16 @@ struct ProductListView: View {
             }
         }) {
             ProductFormView(product: nil, onCreate: { product in
+                newlyCreatedProduct = product
+            })
+        }
+        .sheet(isPresented: $showingTemplatePicker, onDismiss: {
+            if let product = newlyCreatedProduct {
+                navigationPath.append(product)
+                newlyCreatedProduct = nil
+            }
+        }) {
+            TemplatePickerView(onProductCreated: { product in
                 newlyCreatedProduct = product
             })
         }
@@ -237,7 +257,7 @@ struct ProductListView: View {
             ContentUnavailableView(
                 "No Products Yet",
                 systemImage: "square.grid.2x2",
-                description: Text("Tap + to add your first product.")
+                description: Text("Tap + to create a blank product or start from a template.")
             )
         } else {
             ContentUnavailableView.search(text: searchText)
