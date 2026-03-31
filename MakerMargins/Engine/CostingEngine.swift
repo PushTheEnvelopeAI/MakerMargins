@@ -168,6 +168,84 @@ enum CostingEngine {
         return laborBuffered + materialBuffered + product.shippingCost
     }
 
+    // MARK: - Target Price Calculations
+
+    /// Effective marketing cost rate per sale.
+    /// Formula: marketingFeeRate × percentSalesFromMarketing
+    static func effectiveMarketingRate(
+        marketingFeeRate: Decimal,
+        percentSalesFromMarketing: Decimal
+    ) -> Decimal {
+        marketingFeeRate * percentSalesFromMarketing
+    }
+
+    /// Resolves the effective fee values for a platform, applying locked constants
+    /// where the platform mandates them and user values where editable.
+    static func resolvedFees(
+        platformType: PlatformType,
+        userTransactionFee: Decimal,
+        userFixedFee: Decimal,
+        userMarketingFeeRate: Decimal,
+        userPercentSalesFromMarketing: Decimal,
+        userProfitMargin: Decimal
+    ) -> (transactionFee: Decimal, fixedFee: Decimal,
+          marketingFeeRate: Decimal, percentSalesFromMarketing: Decimal,
+          profitMargin: Decimal) {
+        (
+            transactionFee: platformType.lockedTransactionFee ?? userTransactionFee,
+            fixedFee: platformType.lockedFixedFee ?? userFixedFee,
+            marketingFeeRate: platformType.lockedMarketingFeeRate ?? userMarketingFeeRate,
+            percentSalesFromMarketing: userPercentSalesFromMarketing,
+            profitMargin: userProfitMargin
+        )
+    }
+
+    /// Target retail price given raw cost and fee values.
+    ///
+    /// Formula:
+    ///   effectiveMarketing = marketingFeeRate × percentSalesFromMarketing
+    ///   totalPercentFees = transactionFee + effectiveMarketing
+    ///   targetPrice = (productionCost + fixedFee) / (1 - (totalPercentFees + profitMargin))
+    ///
+    /// Returns nil if the denominator is zero or negative (fees + margin ≥ 100%).
+    static func targetRetailPrice(
+        productionCost: Decimal,
+        transactionFee: Decimal,
+        fixedFee: Decimal,
+        marketingFeeRate: Decimal,
+        percentSalesFromMarketing: Decimal,
+        profitMargin: Decimal
+    ) -> Decimal? {
+        let marketing = effectiveMarketingRate(
+            marketingFeeRate: marketingFeeRate,
+            percentSalesFromMarketing: percentSalesFromMarketing
+        )
+        let totalPercentFees = transactionFee + marketing
+        let denominator = 1 - (totalPercentFees + profitMargin)
+        guard denominator > 0 else { return nil }
+        return (productionCost + fixedFee) / denominator
+    }
+
+    /// Target retail price for a product given fee values.
+    /// Computes production cost from the product, then delegates to the raw-value overload.
+    static func targetRetailPrice(
+        product: Product,
+        transactionFee: Decimal,
+        fixedFee: Decimal,
+        marketingFeeRate: Decimal,
+        percentSalesFromMarketing: Decimal,
+        profitMargin: Decimal
+    ) -> Decimal? {
+        targetRetailPrice(
+            productionCost: totalProductionCost(product: product),
+            transactionFee: transactionFee,
+            fixedFee: fixedFee,
+            marketingFeeRate: marketingFeeRate,
+            percentSalesFromMarketing: percentSalesFromMarketing,
+            profitMargin: profitMargin
+        )
+    }
+
     // MARK: - Time Formatting
 
     /// Formats a Decimal hours value to a readable string.

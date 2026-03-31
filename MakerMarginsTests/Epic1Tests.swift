@@ -29,6 +29,7 @@ struct Epic1Tests {
             PlatformFeeProfile.self,
             ProductWorkStep.self,
             ProductMaterial.self,
+            ProductPricing.self,
         ])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         return try ModelContainer(for: schema, configurations: [config])

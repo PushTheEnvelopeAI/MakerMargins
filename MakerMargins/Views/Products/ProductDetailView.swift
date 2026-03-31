@@ -53,6 +53,7 @@ struct ProductDetailView: View {
                 laborSection
                 materialsSection
                 shippingSection
+                PricingCalculatorView(product: product)
             }
             .padding(.vertical)
         }

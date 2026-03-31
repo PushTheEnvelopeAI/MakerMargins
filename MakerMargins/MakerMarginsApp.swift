@@ -19,6 +19,7 @@ struct MakerMarginsApp: App {
             PlatformFeeProfile.self,
             ProductWorkStep.self,
             ProductMaterial.self,
+            ProductPricing.self,
         ])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         do {

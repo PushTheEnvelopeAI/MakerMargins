@@ -1,12 +1,10 @@
 // PlatformFeeProfile.swift
 // MakerMargins
 //
-// A selling platform's fee structure and profit margin goal.
-// Global — not tied to any specific product. Used by CostingEngine to compute
-// targetRetailPrice = totalProductionCost / (1 - (feePercentage + marginGoal))
-//
-// Multiple profiles of the same platform type are allowed (e.g. two Etsy shops
-// with different margin goals), differentiated by the user-facing `name` field.
+// Stores user-configurable default pricing values per platform type.
+// One record per PlatformType, managed in Settings. Created lazily on first access.
+// Platform-imposed fees (transaction %, fixed $, marketing rate) are hardcoded
+// constants on PlatformType — only user-configurable values are persisted here.
 
 import Foundation
 import SwiftData
@@ -24,28 +22,133 @@ enum PlatformType: String, Codable, CaseIterable {
 
 @Model
 final class PlatformFeeProfile {
-    /// User-facing label, e.g. "My Etsy Shop" or "Amazon FBA".
-    var name: String
-
-    /// Which selling platform this profile represents.
+    /// Which platform this defaults record covers. One per PlatformType.
     var platformType: PlatformType
 
-    /// Combined platform fee as a fraction. e.g. 0.065 = 6.5%.
-    /// Includes all transaction and listing fees for the platform.
-    var feePercentage: Decimal
+    /// Default transaction fee percentage (fraction, e.g. 0.05 = 5%).
+    /// Only used by the General tab — specific platforms have locked values.
+    var transactionFeePercentage: Decimal
 
-    /// Target profit margin as a fraction. e.g. 0.30 = 30% margin goal.
-    var marginGoal: Decimal
+    /// Default fixed fee per sale ($).
+    /// Only used by the General tab — specific platforms have locked values.
+    var fixedFeePerSale: Decimal
+
+    /// Default marketing fee rate (fraction, e.g. 0.15 = 15%).
+    /// Editable on General, Shopify, Amazon. Etsy locks this at 15% (offsite ads).
+    var marketingFeeRate: Decimal
+
+    /// Default fraction of sales that come from marketing (fraction, e.g. 0.20 = 20%).
+    /// Editable on all platforms.
+    var percentSalesFromMarketing: Decimal
+
+    /// Default target profit margin (fraction, e.g. 0.30 = 30%).
+    var profitMargin: Decimal
 
     init(
-        name: String,
         platformType: PlatformType = .general,
-        feePercentage: Decimal = 0,
-        marginGoal: Decimal = 0.30
+        transactionFeePercentage: Decimal = 0,
+        fixedFeePerSale: Decimal = 0,
+        marketingFeeRate: Decimal = 0,
+        percentSalesFromMarketing: Decimal = 0,
+        profitMargin: Decimal = 0.30
     ) {
-        self.name = name
         self.platformType = platformType
-        self.feePercentage = feePercentage
-        self.marginGoal = marginGoal
+        self.transactionFeePercentage = transactionFeePercentage
+        self.fixedFeePerSale = fixedFeePerSale
+        self.marketingFeeRate = marketingFeeRate
+        self.percentSalesFromMarketing = percentSalesFromMarketing
+        self.profitMargin = profitMargin
+    }
+}
+
+// MARK: - Platform Fee Constants & Editability
+
+extension PlatformType {
+
+    // MARK: Locked Fee Constants
+
+    /// Total percentage-based transaction fee locked for this platform (fraction).
+    /// Returns nil for General (user-entered).
+    var lockedTransactionFee: Decimal? {
+        switch self {
+        case .general:  return nil
+        case .etsy:     return Decimal(string: "0.095")!   // 6.5% transaction + 3% payment processing
+        case .shopify:  return Decimal(string: "0.029")!   // 2.9% payment processing
+        case .amazon:   return Decimal(string: "0.15")!    // 15% referral fee
+        }
+    }
+
+    /// Fixed dollar fee per sale locked for this platform.
+    /// Returns nil for General (user-entered).
+    var lockedFixedFee: Decimal? {
+        switch self {
+        case .general:  return nil
+        case .etsy:     return Decimal(string: "0.45")!    // $0.20 listing + $0.25 processing
+        case .shopify:  return Decimal(string: "0.30")!    // $0.30 per-transaction
+        case .amazon:   return Decimal(0)                  // No fixed per-sale fee for Handmade
+        }
+    }
+
+    /// Marketing/advertising fee rate locked for this platform (fraction).
+    /// Returns nil when user-editable.
+    var lockedMarketingFeeRate: Decimal? {
+        switch self {
+        case .etsy:     return Decimal(string: "0.15")!    // 15% offsite ads rate
+        case .general, .shopify, .amazon: return nil
+        }
+    }
+
+    // MARK: Editability Flags
+
+    /// Whether the transaction fee percentage is user-editable for this platform.
+    var isTransactionFeeEditable: Bool { self == .general }
+
+    /// Whether the fixed fee per sale is user-editable for this platform.
+    var isFixedFeeEditable: Bool { self == .general }
+
+    /// Whether the marketing fee rate is user-editable for this platform.
+    var isMarketingFeeRateEditable: Bool { self != .etsy }
+
+    // MARK: Display Helpers
+
+    /// Human-readable label for the marketing frequency field.
+    var marketingFeeLabel: String {
+        switch self {
+        case .etsy: return "% Sales from Offsite Ads"
+        default:    return "% Sales from Marketing"
+        }
+    }
+
+    /// Human-readable locked fee descriptions for display as read-only rows.
+    var lockedFeeDescriptions: [(label: String, value: String)] {
+        switch self {
+        case .general:
+            return []
+        case .etsy:
+            return [
+                ("Transaction Fee", "6.5%"),
+                ("Payment Processing", "3% + $0.25"),
+                ("Listing Fee", "$0.20"),
+                ("Offsite Ads Rate", "15%"),
+            ]
+        case .shopify:
+            return [
+                ("Payment Processing", "2.9% + $0.30"),
+            ]
+        case .amazon:
+            return [
+                ("Referral Fee", "15%"),
+            ]
+        }
+    }
+
+    /// SF Symbol name for this platform.
+    var iconName: String {
+        switch self {
+        case .general:  return "storefront"
+        case .etsy:     return "bag"
+        case .shopify:  return "cart"
+        case .amazon:   return "shippingbox"
+        }
     }
 }

@@ -34,7 +34,7 @@ iOS 26 is the minimum. The Liquid Glass design language is a first-class iOS 26 
 | 2 | Labor Engine & Stopwatch + E2E Tests | **Complete** |
 | 3 | Material Ledger & Costing + E2E Tests | **Complete** |
 | 3.5 | Item vs Product Cost Separation + E2E Tests | **Complete** |
-| 4 | Pricing Calculator & Platform Tabs + E2E Tests | Pending |
+| 4 | Pricing Calculator & Platform Tabs + E2E Tests | **Complete** |
 | 5 | Batch Forecasting Widgets + E2E Tests | Pending |
 | 6 | Production Readiness & App Store Launch | Pending |
 
@@ -57,6 +57,7 @@ iOS 26 is the minimum. The Liquid Glass design language is a first-class iOS 26 
 | category | Category? | Many-to-one, optional |
 | productWorkSteps | [ProductWorkStep] | One-to-many to join model, cascade delete (removes associations, NOT the shared WorkSteps) |
 | productMaterials | [ProductMaterial] | One-to-many to join model, cascade delete (removes associations, NOT the shared Materials) |
+| productPricings | [ProductPricing] | One-to-many, cascade delete. Up to 4 (one per PlatformType), created lazily. |
 
 ### Category
 | Swift Property | Type | Notes |
@@ -114,14 +115,31 @@ Materials are **shared entities** — they can be reused across multiple product
 | productMaterials | [ProductMaterial] | One-to-many to join model, cascade delete (deleting a material removes all its associations) |
 
 ### PlatformFeeProfile
+Stores user-configurable default pricing values per platform type. One record per `PlatformType`, managed in Settings. Created lazily on first access. Platform-imposed fees (transaction %, fixed $, marketing rate) are hardcoded constants on `PlatformType` — only user-configurable values are persisted here.
+
 | Swift Property | Type | Notes |
 |----------------|------|-------|
-| name | String | User-facing label e.g. "My Etsy Shop" |
-| platformType | PlatformType | Enum: `.general` `.etsy` `.shopify` `.amazon` |
-| feePercentage | Decimal | Platform fee as a fraction e.g. 0.065 = 6.5% |
-| marginGoal | Decimal | Target profit margin as a fraction. **Default: 0.30** |
+| platformType | PlatformType | Enum: `.general` `.etsy` `.shopify` `.amazon`. One per type. |
+| transactionFeePercentage | Decimal | Default transaction fee % (fraction). General only. **Default: 0** |
+| fixedFeePerSale | Decimal | Default fixed fee per sale ($). General only. **Default: 0** |
+| marketingFeeRate | Decimal | Default marketing fee rate (fraction). General/Shopify/Amazon. **Default: 0** |
+| percentSalesFromMarketing | Decimal | Default fraction of sales from marketing. All platforms. **Default: 0** |
+| profitMargin | Decimal | Default target profit margin (fraction). **Default: 0.30** |
 
-> `PlatformType` is a `String`-backed `Codable` enum defined in `PlatformFeeProfile.swift`. Fee structure defaults per platform to be defined in Epic 4.
+> `PlatformType` is a `String`-backed `Codable` enum defined in `PlatformFeeProfile.swift`. Has an extension with locked fee constants (`lockedTransactionFee`, `lockedFixedFee`, `lockedMarketingFeeRate`), editability flags, and display helpers.
+
+### ProductPricing
+Join model enabling per-product per-platform pricing overrides. Up to 4 per product (one per `PlatformType`). Created lazily from `PlatformFeeProfile` defaults when user first visits a platform tab.
+
+| Swift Property | Type | Notes |
+|----------------|------|-------|
+| product | Product? | Many-to-one |
+| platformType | PlatformType | Which platform these overrides are for |
+| transactionFeePercentage | Decimal | Transaction fee % override (fraction). General only. **Default: 0** |
+| fixedFeePerSale | Decimal | Fixed fee per sale override ($). General only. **Default: 0** |
+| marketingFeeRate | Decimal | Marketing fee rate override (fraction). **Default: 0** |
+| percentSalesFromMarketing | Decimal | Fraction of sales from marketing. **Default: 0** |
+| profitMargin | Decimal | Target profit margin (fraction). **Default: 0.30** |
 
 ---
 
@@ -157,11 +175,16 @@ totalLaborCostBuffered    = totalLaborCost * (1 + laborBuffer)
 totalMaterialCostBuffered = totalMaterialCost * (1 + materialBuffer)
 totalProductionCost       = totalLaborCostBuffered + totalMaterialCostBuffered + shippingCost
 
-// Target Retail Price (given a PlatformFeeProfile)
-targetRetailPrice = totalProductionCost / (1 - (feePercentage + marginGoal))
+// Target Retail Price (per platform — Epic 4)
+// Locked fees come from PlatformType constants; user fees from ProductPricing.
+// resolvedFees() centralises locked-vs-user logic.
+effectiveMarketing    = marketingFeeRate * percentSalesFromMarketing
+totalPercentFees      = transactionFee + effectiveMarketing
+targetRetailPrice     = (totalProductionCost + fixedFee) / (1 - (totalPercentFees + profitMargin))
+// Returns nil if denominator ≤ 0 (fees + margin ≥ 100%)
 ```
 
-**Division-by-zero guards:** `batchUnitsCompleted` and `bulkQuantity` both default to 1. CostingEngine must still guard against zero before dividing.
+**Division-by-zero guards:** `batchUnitsCompleted` and `bulkQuantity` both default to 1. CostingEngine must still guard against zero before dividing. `targetRetailPrice` returns `nil` when the denominator is not positive.
 
 ---
 
@@ -177,7 +200,7 @@ MakerMargins/                              ← repo root
 │       └── ci.yml                         ← GitHub Actions: XcodeGen → build → test
 │
 ├── MakerMargins/                          ← main app target
-│   ├── MakerMarginsApp.swift              ← @main entry point, ModelContainer with all 7 models
+│   ├── MakerMarginsApp.swift              ← @main entry point, ModelContainer with all 8 models
 │   ├── ContentView.swift                  ← 4-tab TabView shell (Products, Labor, Materials, Settings)
 │   │
 │   ├── Models/                            ← SwiftData @Model types (all implemented)
@@ -187,17 +210,18 @@ MakerMargins/                              ← repo root
 │   │   ├── ProductWorkStep.swift          ← join model: Product ↔ WorkStep with sortOrder
 │   │   ├── Material.swift                 ← shared entity (many-to-many via ProductMaterial)
 │   │   ├── ProductMaterial.swift          ← join model: Product ↔ Material with sortOrder
-│   │   └── PlatformFeeProfile.swift       ← also contains PlatformType enum
+│   │   ├── PlatformFeeProfile.swift       ← defaults per platform type + PlatformType enum & extension
+│   │   └── ProductPricing.swift          ← join model: Product ↔ PlatformType with pricing overrides
 │   │
 │   ├── Engine/                            ← calculation, formatting & app-level managers
-│   │   ├── CostingEngine.swift            ← labor + material calculations implemented (Epic 2-3)
+│   │   ├── CostingEngine.swift            ← labor + material + target price calculations (Epic 2-4)
 │   │   ├── CurrencyFormatter.swift        ← implemented Epic 1
 │   │   ├── AppearanceManager.swift        ← System/Light/Dark toggle, UserDefaults-persisted
 │   │   └── LaborRateManager.swift         ← default hourly rate, UserDefaults-persisted (Epic 2)
 │   │
 │   ├── Theme/                             ← design system tokens and reusable view modifiers
 │   │   ├── AppTheme.swift                 ← colors (surface, surfaceElevated, accent, categoryBadge, tabTint, cardBorder, etc.), spacing, corner radii, typography, sizing
-│   │   └── ViewModifiers.swift            ← .cardStyle(), .appBackground(), .editableFieldStyle(), CurrencyInputField, PlaceholderImageView, WorkStepThumbnailView, MaterialThumbnailView
+│   │   └── ViewModifiers.swift            ← .cardStyle(), .appBackground(), .editableFieldStyle(), CurrencyInputField, PercentageInputField, PercentageFormat, PlaceholderImageView, WorkStepThumbnailView, MaterialThumbnailView
 │   │
 │   └── Views/                             ← SwiftUI views, grouped by feature
 │       ├── Products/                      ← Tab 1 root + all product-owned views
@@ -205,7 +229,7 @@ MakerMargins/                              ← repo root
 │       │   ├── ProductDetailView.swift    ← scrollable hub: header, cost summary, labor, materials — Epic 1+2
 │       │   ├── ProductFormView.swift      ← create/edit sheet, inline category creation — Epic 1
 │       │   ├── ProductCostSummaryCard.swift ← cost breakdown card (labor + materials live) — Epic 2+3
-│       │   ├── PricingCalculatorView.swift  ← inline section in ProductDetailView — STUB
+│       │   ├── PricingCalculatorView.swift  ← inline tabbed target price calculator in ProductDetailView — Epic 4
 │       │   └── BatchForecastView.swift      ← inline section in ProductDetailView — STUB
 │       ├── Workshop/                      ← Tab 2 (Labor): shared step library
 │       │   └── WorkshopView.swift         ← searchable list of all WorkSteps, titled "Labor" — Epic 2
@@ -223,9 +247,9 @@ MakerMargins/                              ← repo root
 │       │   ├── CategoryListView.swift     ← legacy, no longer navigated to from Settings — Epic 1
 │       │   └── CategoryFormView.swift     ← legacy, categories now created inline in ProductFormView — Epic 1
 │       └── Settings/                      ← Tab 4 root + config views
-│           ├── SettingsView.swift         ← Tab 4 root: currency, appearance, labor rate, nav rows — Epic 1+2
-│           ├── PlatformFeeProfileListView.swift ← pushed from SettingsView — STUB
-│           └── PlatformFeeProfileFormView.swift ← create/edit sheet — STUB
+│           ├── SettingsView.swift         ← Tab 4 root: currency, appearance, labor rate, platform pricing — Epic 1+2+4
+│           ├── PlatformPricingDefaultsView.swift ← list of 4 platform types, pushed from SettingsView — Epic 4
+│           └── PlatformPricingDefaultFormView.swift ← editable defaults per platform type — Epic 4
 │
 ├── MakerMarginsTests/                     ← Swift Testing suite (import Testing, @Test)
 │   ├── Epic0Tests.swift                   ← Complete: test harness smoke test
@@ -233,7 +257,7 @@ MakerMargins/                              ← repo root
 │   ├── Epic2Tests.swift                   ← Complete: WorkStep/join CRUD, CostingEngine, reorder, LaborRateManager (12 tests)
 │   ├── Epic3Tests.swift                   ← Complete: Material/join CRUD, CostingEngine material calcs, per-section buffers, duplication (12 tests)
 │   ├── Epic3_5Tests.swift                 ← Complete: Item/product separation, laborRate on join, per-product independence, laborHoursPerProduct (12 tests)
-│   ├── Epic4Tests.swift                   ← STUB
+│   ├── Epic4Tests.swift                   ← Complete: PlatformFeeProfile/ProductPricing CRUD, PlatformType constants, targetRetailPrice calcs, duplication (15 tests)
 │   └── Epic5Tests.swift                   ← STUB
 │
 └── MakerMarginsUITests/                   ← UI automation (XCUITest)
@@ -261,7 +285,7 @@ ProductListView                            [ROOT — context menu: Duplicate, De
     │   Labor Workflow section (inline WorkStepListView — VStack, not List)
     │   Materials section (inline MaterialListView content)
     │   Shipping section (inline GroupBox with editable Average Shipping Cost)
-    │   Pricing section (inline PricingCalculatorView content)
+    │   Pricing section (inline PricingCalculatorView — tabbed by platform, target price calculator)
     │   Forecast section (inline BatchForecastView content)
     ├── [push] WorkStepDetailView          [Level 2 — edit in toolbar; delete only from library; "Remove from Product" button in product context]
     │   └── [fullScreenCover] StopwatchView  [Level 3 — MAX DEPTH, pause/resume]
@@ -291,9 +315,9 @@ MaterialsLibraryView                      [ROOT — titled "Materials", searchab
 
 ### Tab 4 — Settings (one-time config)
 ```
-SettingsView                              [ROOT — currency, appearance, labor rate]
-└── [push] PlatformFeeProfileListView     [Level 1]
-    └── [sheet] PlatformFeeProfileFormView  [create / edit]
+SettingsView                              [ROOT — currency, appearance, labor rate, platform pricing]
+└── [push] PlatformPricingDefaultsView    [Level 1 — list of 4 platform types]
+    └── [push] PlatformPricingDefaultFormView  [Level 2 — editable defaults per platform]
 ```
 **Note:** Category management has moved to inline creation within `ProductFormView`. The Settings → Categories navigation link has been removed.
 
@@ -510,6 +534,71 @@ SettingsView                              [ROOT — currency, appearance, labor 
 
 ---
 
+## Epic 4 — Acceptance Criteria ✅
+
+**PlatformFeeProfile (Defaults)**
+- [x] PlatformFeeProfile repurposed as per-platform defaults store (one per PlatformType)
+- [x] Stores: transactionFeePercentage, fixedFeePerSale, marketingFeeRate, percentSalesFromMarketing, profitMargin
+- [x] Created lazily on first access in Settings or calculator
+
+**PlatformType Constants**
+- [x] Locked fee constants on PlatformType extension: Etsy (9.5% + $0.45 + 15% offsite ads), Shopify (2.9% + $0.30), Amazon (15%), General (all nil/editable)
+- [x] Editability flags per platform: isTransactionFeeEditable, isFixedFeeEditable, isMarketingFeeRateEditable
+- [x] Display helpers: lockedFeeDescriptions, marketingFeeLabel, iconName
+
+**ProductPricing (Per-Product Overrides)**
+- [x] New join model: per-product per-platform pricing overrides (up to 4 per product)
+- [x] Created lazily from PlatformFeeProfile defaults when user first visits a platform tab
+- [x] Product cascade-deletes its ProductPricing entries
+
+**CostingEngine — Target Price**
+- [x] `effectiveMarketingRate` = marketingFeeRate × percentSalesFromMarketing
+- [x] `resolvedFees` centralises locked-vs-user fee resolution
+- [x] `targetRetailPrice` raw-value + model overloads, returns nil when fees + margin ≥ 100%
+
+**PricingCalculatorView (Inline in ProductDetailView)**
+- [x] Segmented platform picker (General | Etsy | Shopify | Amazon)
+- [x] Auto-pulls product costs: material (buffered), labor (buffered), shipping, production total
+- [x] Locked platform fees shown as read-only rows (tertiary styling)
+- [x] Editable user settings: transaction fee, fixed fee, marketing fee, % sales from marketing, profit margin (varies by platform)
+- [x] Effective Marketing derived row with explanation text
+- [x] Target Price hero output (bold, large, accent) or "— (fees too high)" warning
+- [x] Empty-state hint when production cost is $0
+- [x] Section footer explaining the calculator
+- [x] Per-product overrides persist across app launches
+
+**Settings — Platform Pricing Defaults**
+- [x] SettingsView "Selling" section with icon + footer, links to PlatformPricingDefaultsView
+- [x] PlatformPricingDefaultsView shows all 4 platform types (no add/delete)
+- [x] PlatformPricingDefaultFormView shows locked fees as read-only, editable fields per platform
+- [x] Changes save immediately; footer explains defaults behavior
+
+**Product Duplication**
+- [x] Duplicated products copy ProductPricing overrides
+
+**Shared Components**
+- [x] PercentageFormat (toDisplay/fromDisplay) in ViewModifiers.swift
+- [x] PercentageInputField reusable component in ViewModifiers.swift
+
+**E2E Tests (Epic4Tests.swift)**
+- [x] Test: PlatformFeeProfile create + fetch all fields
+- [x] Test: ProductPricing create + fetch with product relationship
+- [x] Test: delete Product cascades ProductPricing, PlatformFeeProfile survives
+- [x] Test: per-platform pricing independence (same product, two platforms)
+- [x] Test: Etsy locked fees correct
+- [x] Test: General has no locked fees
+- [x] Test: editability flags correct per platform
+- [x] Test: effectiveMarketingRate calculation
+- [x] Test: targetRetailPrice General known inputs
+- [x] Test: targetRetailPrice Etsy with locked fees + marketing frequency
+- [x] Test: targetRetailPrice returns nil when fees + margin ≥ 100%
+- [x] Test: resolvedFees applies locked constants over user values
+- [x] Test: product duplication copies ProductPricing
+- [x] Test: product duplication with no pricing overrides
+- [x] Test: targetRetailPrice model overload matches raw-value overload
+
+---
+
 ## Build & Development Workflow
 
 **Development machine:** Windows 11. No local Mac. Xcode is not available locally.
@@ -596,4 +685,9 @@ Runs on every push:
 - **CurrencyInputField:** Reusable component in `ViewModifiers.swift` that groups currency symbol + TextField + optional suffix into a cohesive input unit. Used for labor rate and bulk cost fields.
 - **CostingEngine.formatHours():** Formats `Decimal` hours to 4 decimal places with trailing zero stripping (minimum 2 decimals). Used for Hours/Unit and Labor Hrs/Product displays. Centralised alongside `formatDuration()`.
 - **Category management is inline-only:** Categories are created from within `ProductFormView`'s category picker. The Settings → Categories navigation link has been removed. `CategoryListView` and `CategoryFormView` are legacy files.
+- **Platform pricing uses fixed tabs, not named profiles:** The original spec had user-created named profiles ("My Etsy Shop"). Epic 4 uses fixed platform tabs (General, Etsy, Shopify, Amazon) with locked fees. Simpler UX, no profile management.
+- **Marketing fee frequency model:** `effectiveMarketing = rate × % of sales`. Handles Etsy offsite ads (15% on ~20% of sales = 3% effective). Generalises to other platforms where users enter their own ad cost rate and conversion frequency.
+- **Locked vs editable platform fees:** Platform-imposed fees are hardcoded constants on `PlatformType` (not persisted). Only user-configurable values (profit margin, marketing frequency) are stored in `PlatformFeeProfile` (defaults) and `ProductPricing` (per-product overrides).
+- **Lazy creation for pricing records:** Both `PlatformFeeProfile` and `ProductPricing` are created on first access, not eagerly. Avoids creating records for platforms the user never uses.
+- **PercentageInputField + PercentageFormat:** Shared components in `ViewModifiers.swift`. Users type whole numbers (30 for 30%), models store fractions (0.30). Conversion centralised in `PercentageFormat.toDisplay()`/`fromDisplay()`.
 - **No CloudKit, no authentication, no sync.** Single-user, local-only.
