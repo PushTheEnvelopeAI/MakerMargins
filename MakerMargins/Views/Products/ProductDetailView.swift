@@ -170,22 +170,22 @@ struct ProductDetailView: View {
     }
 
     private var shippingSection: some View {
-        DisclosureGroup("Shipping", isExpanded: $shippingExpanded) {
-            HStack {
-                Text("Average Shipping Cost")
-                    .font(AppTheme.Typography.bodyText)
-                Spacer()
-                CurrencyInputField(
-                    symbol: formatter.symbol,
-                    text: $shippingCostText
-                )
-                .editableFieldStyle()
-                .focused($shippingFocused)
+        GroupBox {
+            DisclosureGroup("Shipping", isExpanded: $shippingExpanded) {
+                HStack {
+                    Text("Average Shipping Cost")
+                        .font(AppTheme.Typography.bodyText)
+                    Spacer()
+                    CurrencyInputField(
+                        symbol: formatter.symbol,
+                        text: $shippingCostText
+                    )
+                    .editableFieldStyle()
+                    .focused($shippingFocused)
+                }
+                .padding(.vertical, AppTheme.Spacing.sm)
             }
-            .padding(.vertical, AppTheme.Spacing.sm)
         }
-        .padding()
-        .cardStyle()
         .padding(.horizontal)
         .onChange(of: shippingCostText) { _, _ in
             let value = Decimal(string: shippingCostText) ?? 0
