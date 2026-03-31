@@ -170,6 +170,23 @@ enum CostingEngine {
 
     // MARK: - Time Formatting
 
+    /// Formats a Decimal hours value to a readable string.
+    /// Shows up to 4 decimal places, strips trailing zeros, keeps minimum 2.
+    /// Examples: 0.002777… → "0.0028", 1.5 → "1.50", 0.25 → "0.25"
+    static func formatHours(_ value: Decimal) -> String {
+        let double = NSDecimalNumber(decimal: value).doubleValue
+        let full = String(format: "%.4f", double)
+        // Strip trailing zeros but keep at least 2 decimal places
+        let parts = full.split(separator: ".", maxSplits: 1)
+        guard parts.count == 2 else { return full }
+        let intPart = parts[0]
+        var decPart = String(parts[1])
+        while decPart.count > 2 && decPart.hasSuffix("0") {
+            decPart.removeLast()
+        }
+        return "\(intPart).\(decPart)"
+    }
+
     /// Formats a duration in seconds to a human-readable string.
     /// Examples: "1h 23m 45s", "5m 30s", "0m 0s"
     static func formatDuration(_ seconds: TimeInterval) -> String {

@@ -197,7 +197,7 @@ MakerMargins/                              ← repo root
 │   │
 │   ├── Theme/                             ← design system tokens and reusable view modifiers
 │   │   ├── AppTheme.swift                 ← colors (surface, surfaceElevated, accent, categoryBadge, tabTint, cardBorder, etc.), spacing, corner radii, typography, sizing
-│   │   └── ViewModifiers.swift            ← .cardStyle(), .appBackground(), PlaceholderImageView, WorkStepThumbnailView, MaterialThumbnailView
+│   │   └── ViewModifiers.swift            ← .cardStyle(), .appBackground(), EditableGroupBoxStyle, CurrencyInputField, PlaceholderImageView, WorkStepThumbnailView, MaterialThumbnailView
 │   │
 │   └── Views/                             ← SwiftUI views, grouped by feature
 │       ├── Products/                      ← Tab 1 root + all product-owned views
@@ -256,15 +256,16 @@ MakerMargins/                              ← repo root
 ### Tab 1 — Products (primary workspace)
 ```
 ProductListView                            [ROOT — context menu: Duplicate, Delete]
-└── [push] ProductDetailView               [Level 1 — scrollable hub]
+└── [push] ProductDetailView               [Level 1 — scrollable hub; auto-navigates to newly created steps/materials]
     │   Cost Summary (ProductCostSummaryCard)
     │   Labor Workflow section (inline WorkStepListView — VStack, not List)
     │   Materials section (inline MaterialListView content)
+    │   Shipping section (inline GroupBox with editable Average Shipping Cost)
     │   Pricing section (inline PricingCalculatorView content)
     │   Forecast section (inline BatchForecastView content)
-    ├── [push] WorkStepDetailView          [Level 2 — edit/stopwatch buttons in toolbar]
+    ├── [push] WorkStepDetailView          [Level 2 — edit in toolbar; delete only from library; "Remove from Product" button in product context]
     │   └── [fullScreenCover] StopwatchView  [Level 3 — MAX DEPTH, pause/resume]
-    ├── [push] MaterialDetailView          [Level 2 — edit/delete buttons in toolbar]
+    ├── [push] MaterialDetailView          [Level 2 — edit in toolbar; delete only from library; "Remove from Product" button in product context]
     │   └── [sheet] MaterialFormView       [edit]
     ├── [sheet] ProductFormView            [create / edit, inline category creation]
     ├── [sheet] WorkStepFormView           [create / edit, FocusState, time validation]
@@ -587,6 +588,12 @@ Runs on every push:
 - **Reusable thumbnail components:** `ProductThumbnailView` (Epic 1, private to ProductListView) and `WorkStepThumbnailView` (Epic 2) in `ViewModifiers.swift`. Use these instead of duplicating image/placeholder logic in list rows.
 - **Labor list uses VStack, not List:** `WorkStepListView` renders steps in a plain `VStack` + `ForEach` (not `List`) to avoid nested-scrollable-container issues. NavigationLinks work normally; reorder uses a toggle button with up/down arrows; remove uses context menu.
 - **Form input behavior:** All numeric fields in `WorkStepFormView` use `@FocusState` to clear default values on focus and restore them on blur. Time fields (minutes/seconds) are clamped to 0–59 with digit-only validation.
-- **Dynamic unit labels:** Form and detail views use the step's `unitName` dynamically in labels (e.g. "Boards Completed", "Boards per Product", "Time per board").
+- **Dynamic unit labels:** Form and detail views use the step's `unitName` dynamically in labels (e.g. "Units per Batch", "Boards per Product", "Time per board").
+- **Batch-oriented labels:** WorkStep forms and detail views use "Time to Complete Batch" and "Units per Batch" (not "Recorded Time" / "Units Completed") to clearly convey batch-level semantics.
+- **Conditional delete vs. remove in detail views:** `WorkStepDetailView` and `MaterialDetailView` hide the "Delete" toolbar action when opened from a product context (`product != nil`). Instead, a "Remove from [Product]" button is shown at the bottom, which unlinks the item from the product without deleting it. Global deletion is only available from the library tabs (Labor / Materials).
+- **Auto-navigation after item creation:** When a new WorkStep or Material is created from within `ProductDetailView`, the app auto-navigates to the new item's detail view via `onNewStepCreated`/`onNewMaterialCreated` callbacks and `navigationDestination(item:)`. This lets users immediately adjust product-specific settings (labor rate, units per product).
+- **EditableGroupBoxStyle:** Product Settings sections in detail views use `EditableGroupBoxStyle` (accent-subtle background + accent border) to visually distinguish editable product-specific fields from read-only item info.
+- **CurrencyInputField:** Reusable component in `ViewModifiers.swift` that groups currency symbol + TextField + optional suffix into a cohesive input unit. Used for labor rate and bulk cost fields.
+- **CostingEngine.formatHours():** Formats `Decimal` hours to 4 decimal places with trailing zero stripping (minimum 2 decimals). Used for Hours/Unit and Labor Hrs/Product displays. Centralised alongside `formatDuration()`.
 - **Category management is inline-only:** Categories are created from within `ProductFormView`'s category picker. The Settings → Categories navigation link has been removed. `CategoryListView` and `CategoryFormView` are legacy files.
 - **No CloudKit, no authentication, no sync.** Single-user, local-only.

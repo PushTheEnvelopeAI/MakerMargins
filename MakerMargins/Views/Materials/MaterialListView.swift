@@ -12,6 +12,7 @@ import SwiftData
 
 struct MaterialListView: View {
     let product: Product
+    var onNewMaterialCreated: ((Material) -> Void)? = nil
 
     @Query(sort: \Material.title) private var allMaterials: [Material]
     @Environment(\.modelContext) private var modelContext
@@ -23,12 +24,14 @@ struct MaterialListView: View {
     @State private var isReordering = false
     @State private var selectedMaterialIDs: [PersistentIdentifier] = []
     @State private var bufferText: String
+    @State private var materialCountBeforeSheet = 0
     @FocusState private var bufferFocused: Bool
 
     // MARK: - Init
 
-    init(product: Product) {
+    init(product: Product, onNewMaterialCreated: ((Material) -> Void)? = nil) {
         self.product = product
+        self.onNewMaterialCreated = onNewMaterialCreated
         _bufferText = State(initialValue: "\(product.materialBuffer * 100)")
     }
 
@@ -64,7 +67,14 @@ struct MaterialListView: View {
             groupBoxLabel
         }
         .padding(.horizontal)
-        .sheet(isPresented: $showingNewMaterialForm) {
+        .sheet(isPresented: $showingNewMaterialForm, onDismiss: {
+            if product.productMaterials.count > materialCountBeforeSheet,
+               let newestLink = product.productMaterials
+                   .sorted(by: { $0.sortOrder < $1.sortOrder }).last,
+               let newMaterial = newestLink.material {
+                onNewMaterialCreated?(newMaterial)
+            }
+        }) {
             MaterialFormView(material: nil, product: product)
         }
         .sheet(isPresented: $showingExistingMaterialPicker) {
@@ -109,6 +119,7 @@ struct MaterialListView: View {
             if !isReordering {
                 Menu {
                     Button {
+                        materialCountBeforeSheet = product.productMaterials.count
                         showingNewMaterialForm = true
                     } label: {
                         Label("New Material", systemImage: "plus")

@@ -153,7 +153,7 @@ struct WorkStepFormView: View {
     private var timeAndBatchSection: some View {
         Section {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-                Text("Recorded Time")
+                Text("Time to Complete Batch")
                     .font(AppTheme.Typography.bodyText)
                     .foregroundStyle(.secondary)
                 HStack(spacing: AppTheme.Spacing.xs) {
@@ -180,7 +180,7 @@ struct WorkStepFormView: View {
 
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                 HStack {
-                    Text("\(displayUnitName.capitalized)s Completed")
+                    Text("Units per Batch")
                     Spacer()
                     TextField("1", text: $batchUnitsText)
                         .keyboardType(.decimalPad)
@@ -188,7 +188,7 @@ struct WorkStepFormView: View {
                         .frame(width: AppTheme.Sizing.inputMedium)
                         .focused($focusedField, equals: .batchUnits)
                 }
-                Text("How many \(displayUnitName)s were produced in this timed batch")
+                Text("Number of \(displayUnitName)s produced in this batch")
                     .font(AppTheme.Typography.note)
                     .foregroundStyle(.tertiary)
             }
@@ -229,7 +229,7 @@ struct WorkStepFormView: View {
                     Text("Hours per \(displayUnitName)")
                         .font(AppTheme.Typography.bodyText)
                     Spacer()
-                    Text("\(hoursPerUnit)")
+                    Text(CostingEngine.formatHours(hoursPerUnit))
                         .font(.title2.weight(.semibold))
                         .foregroundStyle(AppTheme.Colors.accent)
                 }
