@@ -58,18 +58,18 @@ struct MaterialListView: View {
     // MARK: - Body
 
     var body: some View {
-        DisclosureGroup(isExpanded: $isExpanded) {
-            if sortedLinks.isEmpty {
-                emptyState
-            } else {
-                materialList
+        GroupBox {
+            DisclosureGroup(isExpanded: $isExpanded) {
+                if sortedLinks.isEmpty {
+                    emptyState
+                } else {
+                    materialList
+                }
+                bufferSection
+            } label: {
+                groupBoxLabel
             }
-            bufferSection
-        } label: {
-            groupBoxLabel
         }
-        .padding()
-        .cardStyle()
         .padding(.horizontal)
         .sheet(isPresented: $showingNewMaterialForm, onDismiss: {
             if product.productMaterials.count > materialCountBeforeSheet,

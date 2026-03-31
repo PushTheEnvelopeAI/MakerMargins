@@ -59,18 +59,18 @@ struct WorkStepListView: View {
     // MARK: - Body
 
     var body: some View {
-        DisclosureGroup(isExpanded: $isExpanded) {
-            if sortedLinks.isEmpty {
-                emptyState
-            } else {
-                stepList
+        GroupBox {
+            DisclosureGroup(isExpanded: $isExpanded) {
+                if sortedLinks.isEmpty {
+                    emptyState
+                } else {
+                    stepList
+                }
+                bufferSection
+            } label: {
+                groupBoxLabel
             }
-            bufferSection
-        } label: {
-            groupBoxLabel
         }
-        .padding()
-        .cardStyle()
         .padding(.horizontal)
         .sheet(isPresented: $showingNewStepForm, onDismiss: {
             if product.productWorkSteps.count > stepCountBeforeSheet,
