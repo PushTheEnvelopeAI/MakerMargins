@@ -25,7 +25,20 @@ struct MakerMarginsApp: App {
         do {
             return try ModelContainer(for: schema, configurations: [config])
         } catch {
-            fatalError("Failed to create ModelContainer: \(error)")
+            // Pre-release: if the schema changed incompatibly, delete the old store and retry.
+            let storeURL = config.url
+            let related = [
+                storeURL.appendingPathExtension("wal"),
+                storeURL.appendingPathExtension("shm"),
+            ]
+            for url in [storeURL] + related {
+                try? FileManager.default.removeItem(at: url)
+            }
+            do {
+                return try ModelContainer(for: schema, configurations: [config])
+            } catch {
+                fatalError("Failed to create ModelContainer after store reset: \(error)")
+            }
         }
     }()
 
