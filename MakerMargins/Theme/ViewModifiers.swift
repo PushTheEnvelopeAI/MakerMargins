@@ -283,6 +283,60 @@ enum UsageText {
     }
 }
 
+// MARK: - Percentage Helpers
+
+/// Converts a stored fraction (e.g. 0.30) to a display string (e.g. "30").
+/// Strips unnecessary trailing zeros; returns whole number when possible.
+enum PercentageFormat {
+    static func toDisplay(_ value: Decimal) -> String {
+        let whole = value * 100
+        let double = NSDecimalNumber(decimal: whole).doubleValue
+        if double == double.rounded(.towardZero) {
+            return "\(Int(double))"
+        }
+        return "\(whole)"
+    }
+
+    /// Converts a display string (e.g. "30") to a stored fraction (e.g. 0.30).
+    /// Returns 0 for invalid or negative input.
+    static func fromDisplay(_ text: String) -> Decimal {
+        guard let value = Decimal(string: text), value >= 0 else { return 0 }
+        return value / 100
+    }
+}
+
+/// Reusable percentage input that groups TextField + "%" suffix into a cohesive unit.
+/// Mirrors CurrencyInputField but for percentage values.
+struct PercentageInputField<Field: Hashable>: View {
+    let label: String
+    @Binding var text: String
+    let field: Field
+    var focusBinding: FocusState<Field?>.Binding
+    let writeBack: (Decimal) -> Void
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(AppTheme.Typography.bodyText)
+            Spacer()
+            HStack(spacing: AppTheme.Spacing.xxs) {
+                TextField("0", text: $text)
+                    .keyboardType(.decimalPad)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: AppTheme.Sizing.inputMedium)
+                    .focused(focusBinding, equals: field)
+                Text("%")
+                    .font(AppTheme.Typography.bodyText)
+                    .foregroundStyle(.secondary)
+            }
+            .editableFieldStyle()
+        }
+        .onChange(of: text) { _, newValue in
+            writeBack(PercentageFormat.fromDisplay(newValue))
+        }
+    }
+}
+
 // MARK: - Form Field Default
 
 /// Encapsulates clear-on-focus / restore-on-blur behavior for a form text field.

@@ -286,6 +286,20 @@ struct ProductListView: View {
             copy.productMaterials.append(newLink)
             mat.productMaterials.append(newLink)
         }
+
+        // Copy per-product pricing overrides
+        for srcPricing in source.productPricings {
+            let newPricing = ProductPricing(
+                product: copy,
+                platformType: srcPricing.platformType,
+                transactionFeePercentage: srcPricing.transactionFeePercentage,
+                fixedFeePerSale: srcPricing.fixedFeePerSale,
+                marketingFeeRate: srcPricing.marketingFeeRate,
+                percentSalesFromMarketing: srcPricing.percentSalesFromMarketing,
+                profitMargin: srcPricing.profitMargin
+            )
+            modelContext.insert(newPricing)
+        }
     }
 }
 

@@ -63,15 +63,16 @@ struct SettingsView: View {
                 Text("New work steps will default to this rate. You can adjust the rate per step.")
             }
 
-            Section("Selling") {
-                NavigationLink("Platform Fee Profiles") {
-                    ContentUnavailableView(
-                        "Platform Fee Profiles",
-                        systemImage: "percent",
-                        description: Text("Configure selling platform fees and margin goals. Coming soon.")
-                    )
-                    .navigationTitle("Platform Fee Profiles")
+            Section {
+                NavigationLink {
+                    PlatformPricingDefaultsView()
+                } label: {
+                    Label("Platform Pricing Defaults", systemImage: "dollarsign.circle")
                 }
+            } header: {
+                Text("Selling")
+            } footer: {
+                Text("Set default fees and profit margins for each selling platform. You can override these per product.")
             }
         }
         .onAppear {

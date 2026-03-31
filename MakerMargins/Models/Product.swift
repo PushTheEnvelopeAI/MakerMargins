@@ -39,6 +39,11 @@ final class Product {
     @Relationship(deleteRule: .cascade)
     var productMaterials: [ProductMaterial] = []
 
+    /// Per-platform pricing overrides for this product. Cascade-deleted with the product.
+    /// Up to 4 entries (one per PlatformType), created lazily from PlatformFeeProfile defaults.
+    @Relationship(deleteRule: .cascade)
+    var productPricings: [ProductPricing] = []
+
     init(
         title: String,
         summary: String = "",
