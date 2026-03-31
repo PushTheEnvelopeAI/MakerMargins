@@ -170,6 +170,7 @@ struct ProductDetailView: View {
                     symbol: formatter.symbol,
                     text: $shippingCostText
                 )
+                .editableFieldStyle()
                 .focused($shippingFocused)
             }
             .padding(.vertical, AppTheme.Spacing.sm)

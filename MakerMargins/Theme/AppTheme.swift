@@ -90,6 +90,9 @@ enum AppTheme {
         /// Unselected chip / filter background.
         static let chipBackground = Color(.secondarySystemFill)
 
+        /// Editable input field background — subtle fill to indicate tappable/editable fields.
+        static let inputBackground = Color(.tertiarySystemFill)
+
         /// Destructive action color — stop, delete, discard.
         static let destructive = Color.red
         /// Secondary button color — muted actions.

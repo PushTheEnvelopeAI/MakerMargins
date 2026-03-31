@@ -139,26 +139,19 @@ struct PlaceholderImageView: View {
     }
 }
 
-// MARK: - Editable GroupBox Style
+// MARK: - Editable Field Style
 
-/// GroupBox style with a warm accent background to signal editable/interactive content.
-/// Used for "Product Settings" sections in detail views.
-struct EditableGroupBoxStyle: GroupBoxStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            configuration.label
-                .font(AppTheme.Typography.sectionHeader)
-            configuration.content
-        }
-        .padding()
-        .background(
-            AppTheme.Colors.accentSubtle,
-            in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
-                .strokeBorder(AppTheme.Colors.accent.opacity(0.3), lineWidth: 0.5)
-        )
+extension View {
+    /// Applies a subtle rounded background to indicate an editable/tappable input field.
+    /// Use on inline TextFields and CurrencyInputFields in detail views and product sections.
+    func editableFieldStyle() -> some View {
+        self
+            .padding(.horizontal, AppTheme.Spacing.sm)
+            .padding(.vertical, AppTheme.Spacing.smd)
+            .background(
+                AppTheme.Colors.inputBackground,
+                in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small)
+            )
     }
 }
 

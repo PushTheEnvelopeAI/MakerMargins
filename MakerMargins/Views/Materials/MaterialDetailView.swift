@@ -208,6 +208,7 @@ struct MaterialDetailView: View {
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                         .frame(width: AppTheme.Sizing.inputMedium)
+                        .editableFieldStyle()
                 }
                 .padding(.vertical, AppTheme.Spacing.sm)
 
@@ -230,7 +231,6 @@ struct MaterialDetailView: View {
                 .padding(.vertical, AppTheme.Spacing.sm)
             }
         }
-        .groupBoxStyle(EditableGroupBoxStyle())
         .padding(.horizontal)
     }
 
