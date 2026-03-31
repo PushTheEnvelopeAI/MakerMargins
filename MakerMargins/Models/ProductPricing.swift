@@ -18,19 +18,19 @@ final class ProductPricing {
     /// Which platform these pricing overrides are for.
     var platformType: PlatformType
 
-    /// Transaction fee percentage override (fraction, e.g. 0.05 = 5%).
-    /// Used by General tab only — specific platforms use locked constants.
-    var transactionFeePercentage: Decimal
+    /// Platform fee percentage override (fraction, e.g. 0.05 = 5%).
+    /// Only editable on General — specific platforms use locked constants.
+    var platformFee: Decimal
 
-    /// Fixed fee per sale override ($).
-    /// Used by General tab only — specific platforms use locked constants.
-    var fixedFeePerSale: Decimal
+    /// Payment processing fee percentage override (fraction, e.g. 0.03 = 3%).
+    /// Only editable on General — specific platforms use locked constants.
+    var paymentProcessingFee: Decimal
 
     /// Marketing fee rate override (fraction, e.g. 0.15 = 15%).
     /// Editable on General, Shopify, Amazon. Etsy locks this at 15%.
-    var marketingFeeRate: Decimal
+    var marketingFee: Decimal
 
-    /// Fraction of sales that come from marketing (fraction, e.g. 0.20 = 20%).
+    /// Fraction of sales that come from marketing/ads (fraction, e.g. 0.20 = 20%).
     /// Editable on all platforms.
     var percentSalesFromMarketing: Decimal
 
@@ -40,17 +40,17 @@ final class ProductPricing {
     init(
         product: Product? = nil,
         platformType: PlatformType = .general,
-        transactionFeePercentage: Decimal = 0,
-        fixedFeePerSale: Decimal = 0,
-        marketingFeeRate: Decimal = 0,
+        platformFee: Decimal = 0,
+        paymentProcessingFee: Decimal = 0,
+        marketingFee: Decimal = 0,
         percentSalesFromMarketing: Decimal = 0,
         profitMargin: Decimal = 0.30
     ) {
         self.product = product
         self.platformType = platformType
-        self.transactionFeePercentage = transactionFeePercentage
-        self.fixedFeePerSale = fixedFeePerSale
-        self.marketingFeeRate = marketingFeeRate
+        self.platformFee = platformFee
+        self.paymentProcessingFee = paymentProcessingFee
+        self.marketingFee = marketingFee
         self.percentSalesFromMarketing = percentSalesFromMarketing
         self.profitMargin = profitMargin
     }

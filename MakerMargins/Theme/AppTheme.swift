@@ -93,6 +93,15 @@ enum AppTheme {
         /// Editable input field background — subtle fill to indicate tappable/editable fields.
         static let inputBackground = Color(.tertiarySystemFill)
 
+        /// Pricing calculator background — subtle warm tint to distinguish from product-building sections.
+        static let pricingSurface = Color(
+            UIColor { traits in
+                traits.userInterfaceStyle == .dark
+                    ? UIColor(red: 0.10, green: 0.09, blue: 0.07, alpha: 1)   // slightly warmer than surface
+                    : UIColor(red: 0.97, green: 0.96, blue: 0.93, alpha: 1)   // faint warm cream
+            }
+        )
+
         /// Destructive action color — stop, delete, discard.
         static let destructive = Color.red
         /// Secondary button color — muted actions.

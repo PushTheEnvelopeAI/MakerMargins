@@ -115,30 +115,29 @@ Materials are **shared entities** — they can be reused across multiple product
 | productMaterials | [ProductMaterial] | One-to-many to join model, cascade delete (deleting a material removes all its associations) |
 
 ### PlatformFeeProfile
-Stores user-configurable default pricing values per platform type. One record per `PlatformType`, managed in Settings. Created lazily on first access. Platform-imposed fees (transaction %, fixed $, marketing rate) are hardcoded constants on `PlatformType` — only user-configurable values are persisted here.
+Single universal record storing user-configurable default pricing values. Managed in Settings. Created lazily on first access. Platform-imposed fees are hardcoded constants on `PlatformType` — only user-configurable values are persisted here.
 
 | Swift Property | Type | Notes |
 |----------------|------|-------|
-| platformType | PlatformType | Enum: `.general` `.etsy` `.shopify` `.amazon`. One per type. |
-| transactionFeePercentage | Decimal | Default transaction fee % (fraction). General only. **Default: 0** |
-| fixedFeePerSale | Decimal | Default fixed fee per sale ($). General only. **Default: 0** |
-| marketingFeeRate | Decimal | Default marketing fee rate (fraction). General/Shopify/Amazon. **Default: 0** |
-| percentSalesFromMarketing | Decimal | Default fraction of sales from marketing. All platforms. **Default: 0** |
+| platformFee | Decimal | Default platform fee % (fraction). **Default: 0** |
+| paymentProcessingFee | Decimal | Default payment processing fee % (fraction). **Default: 0** |
+| marketingFee | Decimal | Default marketing fee rate (fraction). **Default: 0** |
+| percentSalesFromMarketing | Decimal | Default fraction of sales from marketing/ads. **Default: 0** |
 | profitMargin | Decimal | Default target profit margin (fraction). **Default: 0.30** |
 
-> `PlatformType` is a `String`-backed `Codable` enum defined in `PlatformFeeProfile.swift`. Has an extension with locked fee constants (`lockedTransactionFee`, `lockedFixedFee`, `lockedMarketingFeeRate`), editability flags, and display helpers.
+> `PlatformType` is a `String`-backed `Codable` enum defined in `PlatformFeeProfile.swift`. Has an extension with locked fee constants (`lockedPlatformFee`, `lockedPaymentProcessingFee`, `lockedPaymentProcessingFixed`, `lockedMarketingFee`), editability flags, and display helpers (`platformFeeDisplay`, `paymentProcessingDisplay`, `marketingFeeDisplay`).
 
 ### ProductPricing
-Join model enabling per-product per-platform pricing overrides. Up to 4 per product (one per `PlatformType`). Created lazily from `PlatformFeeProfile` defaults when user first visits a platform tab.
+Per-product per-platform pricing overrides. Up to 4 per product (one per `PlatformType`). Created lazily from `PlatformFeeProfile` defaults when user first visits a platform tab.
 
 | Swift Property | Type | Notes |
 |----------------|------|-------|
 | product | Product? | Many-to-one |
 | platformType | PlatformType | Which platform these overrides are for |
-| transactionFeePercentage | Decimal | Transaction fee % override (fraction). General only. **Default: 0** |
-| fixedFeePerSale | Decimal | Fixed fee per sale override ($). General only. **Default: 0** |
-| marketingFeeRate | Decimal | Marketing fee rate override (fraction). **Default: 0** |
-| percentSalesFromMarketing | Decimal | Fraction of sales from marketing. **Default: 0** |
+| platformFee | Decimal | Platform fee % override (fraction). General only. **Default: 0** |
+| paymentProcessingFee | Decimal | Payment processing fee % override (fraction). General only. **Default: 0** |
+| marketingFee | Decimal | Marketing fee rate override (fraction). General/Shopify/Amazon. **Default: 0** |
+| percentSalesFromMarketing | Decimal | Fraction of sales from marketing/ads. **Default: 0** |
 | profitMargin | Decimal | Target profit margin (fraction). **Default: 0.30** |
 
 ---
@@ -178,9 +177,10 @@ totalProductionCost       = totalLaborCostBuffered + totalMaterialCostBuffered +
 // Target Retail Price (per platform — Epic 4)
 // Locked fees come from PlatformType constants; user fees from ProductPricing.
 // resolvedFees() centralises locked-vs-user logic.
-effectiveMarketing    = marketingFeeRate * percentSalesFromMarketing
-totalPercentFees      = transactionFee + effectiveMarketing
-targetRetailPrice     = (totalProductionCost + fixedFee) / (1 - (totalPercentFees + profitMargin))
+effectiveMarketing    = marketingFee * percentSalesFromMarketing
+totalPercentFees      = platformFee + paymentProcessingFee + effectiveMarketing
+targetRetailPrice     = (totalProductionCost + paymentProcessingFixed) / (1 - (totalPercentFees + profitMargin))
+// paymentProcessingFixed is always a locked constant from PlatformType (e.g. $0.25 for Etsy)
 // Returns nil if denominator ≤ 0 (fees + margin ≥ 100%)
 ```
 
@@ -210,7 +210,7 @@ MakerMargins/                              ← repo root
 │   │   ├── ProductWorkStep.swift          ← join model: Product ↔ WorkStep with sortOrder
 │   │   ├── Material.swift                 ← shared entity (many-to-many via ProductMaterial)
 │   │   ├── ProductMaterial.swift          ← join model: Product ↔ Material with sortOrder
-│   │   ├── PlatformFeeProfile.swift       ← defaults per platform type + PlatformType enum & extension
+│   │   ├── PlatformFeeProfile.swift       ← universal pricing defaults + PlatformType enum & extension
 │   │   └── ProductPricing.swift          ← join model: Product ↔ PlatformType with pricing overrides
 │   │
 │   ├── Engine/                            ← calculation, formatting & app-level managers
@@ -248,8 +248,7 @@ MakerMargins/                              ← repo root
 │       │   └── CategoryFormView.swift     ← legacy, categories now created inline in ProductFormView — Epic 1
 │       └── Settings/                      ← Tab 4 root + config views
 │           ├── SettingsView.swift         ← Tab 4 root: currency, appearance, labor rate, platform pricing — Epic 1+2+4
-│           ├── PlatformPricingDefaultsView.swift ← list of 4 platform types, pushed from SettingsView — Epic 4
-│           └── PlatformPricingDefaultFormView.swift ← editable defaults per platform type — Epic 4
+│           └── PlatformPricingDefaultFormView.swift ← single universal pricing defaults form — Epic 4
 │
 ├── MakerMarginsTests/                     ← Swift Testing suite (import Testing, @Test)
 │   ├── Epic0Tests.swift                   ← Complete: test harness smoke test
@@ -257,7 +256,7 @@ MakerMargins/                              ← repo root
 │   ├── Epic2Tests.swift                   ← Complete: WorkStep/join CRUD, CostingEngine, reorder, LaborRateManager (12 tests)
 │   ├── Epic3Tests.swift                   ← Complete: Material/join CRUD, CostingEngine material calcs, per-section buffers, duplication (12 tests)
 │   ├── Epic3_5Tests.swift                 ← Complete: Item/product separation, laborRate on join, per-product independence, laborHoursPerProduct (12 tests)
-│   ├── Epic4Tests.swift                   ← Complete: PlatformFeeProfile/ProductPricing CRUD, PlatformType constants, targetRetailPrice calcs, duplication (15 tests)
+│   ├── Epic4Tests.swift                   ← Complete: PlatformFeeProfile/ProductPricing CRUD, PlatformType constants + display helpers, targetRetailPrice calcs, duplication (20 tests)
 │   └── Epic5Tests.swift                   ← STUB
 │
 └── MakerMarginsUITests/                   ← UI automation (XCUITest)
@@ -315,9 +314,8 @@ MaterialsLibraryView                      [ROOT — titled "Materials", searchab
 
 ### Tab 4 — Settings (one-time config)
 ```
-SettingsView                              [ROOT — currency, appearance, labor rate, platform pricing]
-└── [push] PlatformPricingDefaultsView    [Level 1 — list of 4 platform types]
-    └── [push] PlatformPricingDefaultFormView  [Level 2 — editable defaults per platform]
+SettingsView                              [ROOT — currency, appearance, labor rate, pricing defaults]
+└── [push] PlatformPricingDefaultFormView [Level 1 — single universal pricing defaults form]
 ```
 **Note:** Category management has moved to inline creation within `ProductFormView`. The Settings → Categories navigation link has been removed.
 
@@ -536,41 +534,49 @@ SettingsView                              [ROOT — currency, appearance, labor 
 
 ## Epic 4 — Acceptance Criteria ✅
 
-**PlatformFeeProfile (Defaults)**
-- [x] PlatformFeeProfile repurposed as per-platform defaults store (one per PlatformType)
-- [x] Stores: transactionFeePercentage, fixedFeePerSale, marketingFeeRate, percentSalesFromMarketing, profitMargin
+**PlatformFeeProfile (Universal Defaults)**
+- [x] Single universal record storing default pricing values (no platformType)
+- [x] Stores: platformFee, paymentProcessingFee, marketingFee, percentSalesFromMarketing, profitMargin
 - [x] Created lazily on first access in Settings or calculator
 
 **PlatformType Constants**
-- [x] Locked fee constants on PlatformType extension: Etsy (9.5% + $0.45 + 15% offsite ads), Shopify (2.9% + $0.30), Amazon (15%), General (all nil/editable)
-- [x] Editability flags per platform: isTransactionFeeEditable, isFixedFeeEditable, isMarketingFeeRateEditable
-- [x] Display helpers: lockedFeeDescriptions, marketingFeeLabel, iconName
+- [x] Locked fee constants: `lockedPlatformFee`, `lockedPaymentProcessingFee`, `lockedPaymentProcessingFixed`, `lockedMarketingFee`
+- [x] Etsy: 6.5% platform + 3% processing + $0.25 fixed + 15% marketing (all locked)
+- [x] Shopify: 0% platform + 2.9% processing + $0.30 fixed (locked), marketing editable
+- [x] Amazon: 15% platform + 0% processing (locked), marketing editable
+- [x] General: all nil/editable, no fixed fees
+- [x] Editability flags: isPlatformFeeEditable, isPaymentProcessingFeeEditable, isMarketingFeeEditable
+- [x] Display helpers: platformFeeDisplay, paymentProcessingDisplay (e.g. "3% + $0.25"), marketingFeeDisplay
 
 **ProductPricing (Per-Product Overrides)**
-- [x] New join model: per-product per-platform pricing overrides (up to 4 per product)
+- [x] Per-product per-platform pricing overrides (up to 4 per product)
 - [x] Created lazily from PlatformFeeProfile defaults when user first visits a platform tab
 - [x] Product cascade-deletes its ProductPricing entries
 
 **CostingEngine — Target Price**
-- [x] `effectiveMarketingRate` = marketingFeeRate × percentSalesFromMarketing
-- [x] `resolvedFees` centralises locked-vs-user fee resolution
-- [x] `targetRetailPrice` raw-value + model overloads, returns nil when fees + margin ≥ 100%
+- [x] `effectiveMarketingRate` = marketingFee × percentSalesFromMarketing
+- [x] `resolvedFees` centralises locked-vs-user fee resolution, returns 6-tuple including paymentProcessingFixed
+- [x] `targetRetailPrice` raw-value + model overloads with split platformFee/paymentProcessingFee/paymentProcessingFixed, returns nil when fees + margin ≥ 100%
 
 **PricingCalculatorView (Inline in ProductDetailView)**
 - [x] Segmented platform picker (General | Etsy | Shopify | Amazon)
-- [x] Auto-pulls product costs: material (buffered), labor (buffered), shipping, production total
-- [x] Locked platform fees shown as read-only rows (tertiary styling)
-- [x] Editable user settings: transaction fee, fixed fee, marketing fee, % sales from marketing, profit margin (varies by platform)
-- [x] Effective Marketing derived row with explanation text
+- [x] Consistent section layout across all tabs: Production Cost, Shipping Cost, Marketing and Fees, Profit Margin, Target Price
+- [x] Production Cost sub-section shows Material Cost + Labor Cost
+- [x] Marketing and Fees sub-section: Platform Fee, Payment Processing, Marketing Fees, % Sales from Ads
+- [x] General tab: all fee fields editable (percentages only, no fixed fees)
+- [x] Etsy tab: all 3 fee rows locked (6.5%, "3% + $0.25", 15%)
+- [x] Shopify/Amazon tabs: Platform Fee + Processing locked, Marketing editable
+- [x] Locked fees displayed as text in tertiary color; editable fields use PercentageInputField
 - [x] Target Price hero output (bold, large, accent) or "— (fees too high)" warning
 - [x] Empty-state hint when production cost is $0
+- [x] Subtle pricingSurface background to distinguish from product-building sections
 - [x] Section footer explaining the calculator
 - [x] Per-product overrides persist across app launches
 
-**Settings — Platform Pricing Defaults**
-- [x] SettingsView "Selling" section with icon + footer, links to PlatformPricingDefaultsView
-- [x] PlatformPricingDefaultsView shows all 4 platform types (no add/delete)
-- [x] PlatformPricingDefaultFormView shows locked fees as read-only, editable fields per platform
+**Settings — Pricing Defaults**
+- [x] SettingsView "Selling" section with icon + footer, pushes directly to PlatformPricingDefaultFormView
+- [x] Single universal form with 5 fields: Platform Fee, Payment Processing, Marketing Fee, % Sales from Ads, Profit Margin
+- [x] Defaults pre-fill editable fields across all platform tabs (locked fees not affected)
 - [x] Changes save immediately; footer explains defaults behavior
 
 **Product Duplication**
@@ -582,17 +588,22 @@ SettingsView                              [ROOT — currency, appearance, labor 
 
 **E2E Tests (Epic4Tests.swift)**
 - [x] Test: PlatformFeeProfile create + fetch all fields
+- [x] Test: PlatformFeeProfile defaults are correct
 - [x] Test: ProductPricing create + fetch with product relationship
 - [x] Test: delete Product cascades ProductPricing, PlatformFeeProfile survives
 - [x] Test: per-platform pricing independence (same product, two platforms)
-- [x] Test: Etsy locked fees correct
+- [x] Test: Etsy locked fees correct (platformFee, processingFee, processingFixed, marketingFee)
+- [x] Test: Shopify locked fees correct
+- [x] Test: Amazon locked fees correct
 - [x] Test: General has no locked fees
 - [x] Test: editability flags correct per platform
+- [x] Test: display helpers format locked fees correctly (e.g. "3% + $0.25")
 - [x] Test: effectiveMarketingRate calculation
 - [x] Test: targetRetailPrice General known inputs
 - [x] Test: targetRetailPrice Etsy with locked fees + marketing frequency
 - [x] Test: targetRetailPrice returns nil when fees + margin ≥ 100%
-- [x] Test: resolvedFees applies locked constants over user values
+- [x] Test: resolvedFees applies locked constants for Etsy
+- [x] Test: resolvedFees uses user values for General
 - [x] Test: product duplication copies ProductPricing
 - [x] Test: product duplication with no pricing overrides
 - [x] Test: targetRetailPrice model overload matches raw-value overload
@@ -663,7 +674,7 @@ Runs on every push:
 - **Labor rate on ProductWorkStep (join model), not WorkStep:** Allows the same step to have different rates in different product contexts (e.g. shop rate vs. commissioned rate). Defaults from LaborRateManager. Supports mixed-skill workflows (e.g. machining at $25/hr vs. finishing at $15/hr) while also allowing per-product overrides.
 - **`batchUnitsCompleted` defaults to 1:** Prevents division-by-zero in `CostingEngine`. Never allow 0. Validate in forms.
 - **`bulkQuantity` defaults to 1:** Same reason.
-- **PlatformFeeProfiles are global:** Not per-product. One profile can be reused across all products.
+- **PlatformFeeProfile is a single universal defaults record:** Not per-platform. Stores default values for all editable pricing fields. Per-product overrides live on `ProductPricing`.
 - **Shared WorkSteps (many-to-many):** Steps are reusable across products via the `ProductWorkStep` join model. Edit once, updates everywhere. The Workshop tab serves as the step library. Per-product ordering is stored in `ProductWorkStep.sortOrder`.
 - **Cascade deletes:** Deleting a Product deletes its `ProductWorkStep` and `ProductMaterial` associations, but shared WorkSteps and Materials survive in their libraries. Deleting a WorkStep cascades to its `ProductWorkStep` associations. Deleting a Material cascades to its `ProductMaterial` associations. Deleting a Category does NOT delete its Products (nullify rule).
 - **Shared Materials (many-to-many):** Materials are reusable across products via the `ProductMaterial` join model (mirrors WorkStep/ProductWorkStep exactly). Edit once, updates everywhere. The Materials tab serves as the material library. Per-product ordering is stored in `ProductMaterial.sortOrder`.
@@ -686,8 +697,12 @@ Runs on every push:
 - **CostingEngine.formatHours():** Formats `Decimal` hours to 4 decimal places with trailing zero stripping (minimum 2 decimals). Used for Hours/Unit and Labor Hrs/Product displays. Centralised alongside `formatDuration()`.
 - **Category management is inline-only:** Categories are created from within `ProductFormView`'s category picker. The Settings → Categories navigation link has been removed. `CategoryListView` and `CategoryFormView` are legacy files.
 - **Platform pricing uses fixed tabs, not named profiles:** The original spec had user-created named profiles ("My Etsy Shop"). Epic 4 uses fixed platform tabs (General, Etsy, Shopify, Amazon) with locked fees. Simpler UX, no profile management.
-- **Marketing fee frequency model:** `effectiveMarketing = rate × % of sales`. Handles Etsy offsite ads (15% on ~20% of sales = 3% effective). Generalises to other platforms where users enter their own ad cost rate and conversion frequency.
-- **Locked vs editable platform fees:** Platform-imposed fees are hardcoded constants on `PlatformType` (not persisted). Only user-configurable values (profit margin, marketing frequency) are stored in `PlatformFeeProfile` (defaults) and `ProductPricing` (per-product overrides).
+- **Split fee model (platformFee + paymentProcessingFee + paymentProcessingFixed):** Fees are split into platform commission, payment processing (% + optional fixed $), and marketing. Locked fees display as formatted strings (e.g. "3% + $0.25"). General tab is percent-only (no fixed fees).
+- **Locked/editable rules per platform:** General: all editable. Etsy: platform fee, processing, and marketing all locked. Shopify/Amazon: platform fee and processing locked, marketing editable. % Sales from Ads and Profit Margin always editable.
+- **Marketing fee frequency model:** `effectiveMarketing = marketingFee × percentSalesFromMarketing`. Handles Etsy offsite ads (15% on ~20% of sales = 3% effective). Generalises to Shopify/Amazon where users enter their own ad cost rate and conversion frequency.
+- **Single universal pricing defaults:** Settings has one form (not split by platform) with defaults for all 5 editable fields. These pre-fill editable fields across all platform tabs — locked fees are never overridden by defaults.
+- **Locked vs editable platform fees:** Platform-imposed fees are hardcoded constants on `PlatformType` (not persisted). Only user-configurable values are stored in `PlatformFeeProfile` (defaults) and `ProductPricing` (per-product overrides).
 - **Lazy creation for pricing records:** Both `PlatformFeeProfile` and `ProductPricing` are created on first access, not eagerly. Avoids creating records for platforms the user never uses.
+- **Pricing section background:** `AppTheme.Colors.pricingSurface` provides a subtle warm tint to visually distinguish the pricing calculator from the product-building sections above.
 - **PercentageInputField + PercentageFormat:** Shared components in `ViewModifiers.swift`. Users type whole numbers (30 for 30%), models store fractions (0.30). Conversion centralised in `PercentageFormat.toDisplay()`/`fromDisplay()`.
 - **No CloudKit, no authentication, no sync.** Single-user, local-only.

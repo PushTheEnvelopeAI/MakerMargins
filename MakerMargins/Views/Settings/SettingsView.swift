@@ -65,14 +65,14 @@ struct SettingsView: View {
 
             Section {
                 NavigationLink {
-                    PlatformPricingDefaultsView()
+                    PlatformPricingDefaultFormView()
                 } label: {
-                    Label("Platform Pricing Defaults", systemImage: "dollarsign.circle")
+                    Label("Pricing Defaults", systemImage: "dollarsign.circle")
                 }
             } header: {
                 Text("Selling")
             } footer: {
-                Text("Set default fees and profit margins for each selling platform. You can override these per product.")
+                Text("Set default fees and profit margins. These pre-fill editable fields across all platform tabs. You can override per product.")
             }
         }
         .onAppear {
