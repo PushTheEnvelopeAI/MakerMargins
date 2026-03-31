@@ -1,0 +1,13 @@
+{
+  "images" : [
+    {
+      "filename" : "template-step-oil-finish.jpg",
+      "idiom" : "universal",
+      "scale" : "1x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
