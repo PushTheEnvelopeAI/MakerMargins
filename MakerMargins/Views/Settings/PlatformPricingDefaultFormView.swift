@@ -23,6 +23,9 @@ struct PlatformPricingDefaultFormView: View {
     @State private var percentSalesFromMarketingText: String = ""
     @State private var profitMarginText: String = ""
 
+    /// Stores the value before clearing on focus, for restore on blur if user leaves empty.
+    @State private var previousValue: String = ""
+
     enum FocusableField: Hashable {
         case platformFee, paymentProcessingFee, marketingFee, percentSalesFromMarketing, profitMargin
     }
@@ -112,22 +115,25 @@ struct PlatformPricingDefaultFormView: View {
         profitMarginText = PercentageFormat.toDisplay(profile.profitMargin)
     }
 
-    /// Handles clear-on-focus and restore-on-blur for all fields.
+    /// Clears the focused field's value for easy override; restores previous value on blur if left empty.
     private func handleFocusChange(_ newField: FocusableField?) {
-        let fields: [(text: Binding<String>, defaultValue: String, field: FocusableField)] = [
-            ($platformFeeText, "0", .platformFee),
-            ($paymentProcessingFeeText, "0", .paymentProcessingFee),
-            ($marketingFeeText, "0", .marketingFee),
-            ($percentSalesFromMarketingText, "0", .percentSalesFromMarketing),
-            ($profitMarginText, "0", .profitMargin),
+        let fields: [(text: Binding<String>, field: FocusableField)] = [
+            ($platformFeeText, .platformFee),
+            ($paymentProcessingFeeText, .paymentProcessingFee),
+            ($marketingFeeText, .marketingFee),
+            ($percentSalesFromMarketingText, .percentSalesFromMarketing),
+            ($profitMarginText, .profitMargin),
         ]
 
         for f in fields {
             if newField == f.field {
-                if f.text.wrappedValue == f.defaultValue { f.text.wrappedValue = "" }
+                // Clear on focus — store current value for potential restore
+                previousValue = f.text.wrappedValue
+                f.text.wrappedValue = ""
             } else {
+                // Restore on blur if user left it empty
                 if f.text.wrappedValue.trimmingCharacters(in: .whitespaces).isEmpty {
-                    f.text.wrappedValue = f.defaultValue
+                    f.text.wrappedValue = previousValue.isEmpty ? "0" : previousValue
                 }
             }
         }

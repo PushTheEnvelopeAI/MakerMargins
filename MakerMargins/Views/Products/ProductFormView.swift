@@ -25,6 +25,7 @@ struct ProductFormView: View {
     // MARK: - Form state
 
     @State private var title: String
+    @State private var sku: String
     @State private var summary: String
     @State private var selectedCategory: Category?
 
@@ -42,6 +43,7 @@ struct ProductFormView: View {
         self.product = product
         self.onCreate = onCreate
         _title = State(initialValue: product?.title ?? "")
+        _sku = State(initialValue: product?.sku ?? "")
         _summary = State(initialValue: product?.summary ?? "")
         _selectedCategory = State(initialValue: product?.category)
         _imageData = State(initialValue: product?.image)
@@ -84,6 +86,7 @@ struct ProductFormView: View {
     private var basicInfoSection: some View {
         Section {
             TextField("Title", text: $title)
+            TextField("SKU", text: $sku)
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                 TextField("Description", text: $summary, axis: .vertical)
                     .lineLimit(3...6)
@@ -181,16 +184,19 @@ struct ProductFormView: View {
 
     private func save() {
         let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
+        let trimmedSku = sku.trimmingCharacters(in: .whitespaces)
         let trimmedSummary = summary.trimmingCharacters(in: .whitespaces)
 
         if let product {
             product.title = trimmedTitle
+            product.sku = trimmedSku
             product.summary = trimmedSummary
             product.category = selectedCategory
             product.image = imageData
         } else {
             let newProduct = Product(
                 title: trimmedTitle,
+                sku: trimmedSku,
                 summary: trimmedSummary,
                 image: imageData,
                 category: selectedCategory

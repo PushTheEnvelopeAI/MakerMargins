@@ -43,6 +43,9 @@ struct ProductDetailView: View {
     @State private var pendingMaterial: NewMaterialNav?
     @State private var shippingCostText: String = ""
     @FocusState private var shippingFocused: Bool
+    @State private var laborExpanded = true
+    @State private var materialsExpanded = true
+    @State private var shippingExpanded = true
 
     var body: some View {
         ScrollView {
@@ -139,6 +142,11 @@ struct ProductDetailView: View {
                         .background(AppTheme.Colors.categoryBadgeBackground, in: Capsule())
                         .foregroundStyle(AppTheme.Colors.categoryBadge)
                 }
+                if !product.sku.isEmpty {
+                    Text("SKU: \(product.sku)")
+                        .font(AppTheme.Typography.rowCaption)
+                        .foregroundStyle(.secondary)
+                }
                 if !product.summary.isEmpty {
                     Text(product.summary)
                         .font(AppTheme.Typography.bodyText)
@@ -150,19 +158,19 @@ struct ProductDetailView: View {
     }
 
     private var laborSection: some View {
-        WorkStepListView(product: product) { newStep in
+        WorkStepListView(product: product, isExpanded: $laborExpanded) { newStep in
             pendingWorkStep = NewWorkStepNav(step: newStep)
         }
     }
 
     private var materialsSection: some View {
-        MaterialListView(product: product) { newMaterial in
+        MaterialListView(product: product, isExpanded: $materialsExpanded) { newMaterial in
             pendingMaterial = NewMaterialNav(material: newMaterial)
         }
     }
 
     private var shippingSection: some View {
-        GroupBox("Shipping") {
+        DisclosureGroup("Shipping", isExpanded: $shippingExpanded) {
             HStack {
                 Text("Average Shipping Cost")
                     .font(AppTheme.Typography.bodyText)

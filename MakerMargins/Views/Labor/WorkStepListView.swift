@@ -13,6 +13,7 @@ import SwiftData
 struct WorkStepListView: View {
     let product: Product
     var onNewStepCreated: ((WorkStep) -> Void)? = nil
+    @Binding var isExpanded: Bool
 
     @Query(sort: \WorkStep.title) private var allSteps: [WorkStep]
     @Environment(\.modelContext) private var modelContext
@@ -30,8 +31,9 @@ struct WorkStepListView: View {
 
     // MARK: - Init
 
-    init(product: Product, onNewStepCreated: ((WorkStep) -> Void)? = nil) {
+    init(product: Product, isExpanded: Binding<Bool>, onNewStepCreated: ((WorkStep) -> Void)? = nil) {
         self.product = product
+        self._isExpanded = isExpanded
         self.onNewStepCreated = onNewStepCreated
         _bufferText = State(initialValue: "\(product.laborBuffer * 100)")
     }
@@ -57,7 +59,7 @@ struct WorkStepListView: View {
     // MARK: - Body
 
     var body: some View {
-        GroupBox {
+        DisclosureGroup(isExpanded: $isExpanded) {
             if sortedLinks.isEmpty {
                 emptyState
             } else {
@@ -187,9 +189,16 @@ struct WorkStepListView: View {
                 Text(step.title)
                     .font(AppTheme.Typography.rowTitle)
                     .lineLimit(1)
-                Text(formatter.format(CostingEngine.stepLaborCost(link: link)))
-                    .font(AppTheme.Typography.rowCaption)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    Text(formatter.format(CostingEngine.stepLaborCost(link: link)))
+                        .font(AppTheme.Typography.rowCaption)
+                        .foregroundStyle(.secondary)
+                    Text("·")
+                        .foregroundStyle(.tertiary)
+                    Text("\(link.unitsRequiredPerProduct) \(step.unitName)/product")
+                        .font(AppTheme.Typography.rowCaption)
+                        .foregroundStyle(.tertiary)
+                }
             }
 
             Spacer()
