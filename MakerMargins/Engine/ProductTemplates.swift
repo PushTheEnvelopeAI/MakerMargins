@@ -49,6 +49,8 @@ struct PricingTemplate {
     let marketingFee: Decimal
     let percentSalesFromMarketing: Decimal
     let profitMargin: Decimal
+    let actualPrice: Decimal              // maps to ProductPricing.actualPrice
+    let actualShippingCharge: Decimal     // maps to ProductPricing.actualShippingCharge
 }
 
 /// A complete product template with all child data.
@@ -191,7 +193,9 @@ enum ProductTemplates {
                 paymentProcessingFee: Decimal(string: "0.03")!,
                 marketingFee: Decimal(string: "0.15")!,
                 percentSalesFromMarketing: Decimal(string: "0.20")!,
-                profitMargin: Decimal(string: "0.30")!
+                profitMargin: Decimal(string: "0.30")!,
+                actualPrice: Decimal(string: "89.99")!,
+                actualShippingCharge: Decimal(string: "8.95")!
             )
         ]
     )
@@ -307,7 +311,9 @@ enum ProductTemplates {
                 paymentProcessingFee: Decimal(string: "0.03")!,
                 marketingFee: Decimal(string: "0.15")!,
                 percentSalesFromMarketing: Decimal(string: "0.15")!,
-                profitMargin: Decimal(string: "0.35")!
+                profitMargin: Decimal(string: "0.35")!,
+                actualPrice: Decimal(string: "49.99")!,
+                actualShippingCharge: Decimal(string: "5.50")!
             )
         ]
     )
@@ -423,7 +429,9 @@ enum ProductTemplates {
                 paymentProcessingFee: Decimal(string: "0.03")!,
                 marketingFee: Decimal(string: "0.15")!,
                 percentSalesFromMarketing: Decimal(string: "0.25")!,
-                profitMargin: Decimal(string: "0.30")!
+                profitMargin: Decimal(string: "0.30")!,
+                actualPrice: Decimal(string: "52.00")!,
+                actualShippingCharge: Decimal(string: "6.50")!
             )
         ]
     )
@@ -550,7 +558,9 @@ enum ProductTemplates {
                 paymentProcessingFee: Decimal(string: "0.03")!,
                 marketingFee: Decimal(string: "0.15")!,
                 percentSalesFromMarketing: Decimal(string: "0.20")!,
-                profitMargin: Decimal(string: "0.35")!
+                profitMargin: Decimal(string: "0.35")!,
+                actualPrice: Decimal(string: "24.99")!,
+                actualShippingCharge: Decimal(string: "5.99")!
             )
         ]
     )
@@ -688,7 +698,9 @@ enum ProductTemplates {
                 paymentProcessingFee: Decimal(string: "0.03")!,
                 marketingFee: Decimal(string: "0.15")!,
                 percentSalesFromMarketing: Decimal(string: "0.20")!,
-                profitMargin: Decimal(string: "0.40")!
+                profitMargin: Decimal(string: "0.40")!,
+                actualPrice: Decimal(string: "22.00")!,
+                actualShippingCharge: Decimal(string: "4.50")!
             )
         ]
     )

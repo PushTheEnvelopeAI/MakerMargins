@@ -1,319 +1,383 @@
-# Epic 4: Target Price Calculator
+# Epic 4: Pricing Calculator & Profit Analysis
 
-**Status:** Planned
+**Status:** In Progress
 **Branch:** `epic_4` (from `main`)
 
 ## Context
 
-Epics 1–3.5 delivered the full cost tracking engine: labor with shared work steps, materials with shared library items, shipping costs, and per-section buffers. The `totalProductionCost` is now accurate and live. Epic 4 answers the maker's next question: **"What should I charge?"**
+Epics 1-3.5 delivered the full cost tracking engine: labor with shared work steps, materials with shared library items, shipping costs, and per-section buffers. The `totalProductionCost` is now accurate and live.
 
-The app needs a target price calculator that factors in platform-specific fees, marketing costs, and the maker's desired profit margin. Different selling platforms (Etsy, Shopify, Amazon) have different fee structures, and makers often sell on multiple platforms simultaneously. The calculator must account for this by providing platform-specific tabs with pre-filled, locked platform fees alongside user-configurable settings.
+Epic 4 answers two maker questions:
+1. **"What should I charge?"** — Target Price Calculator (COMPLETE)
+2. **"What am I actually making?"** — Profit Analysis (PENDING)
 
-**Key changes from current state:**
-- `PlatformFeeProfile` repurposed from "named profiles" to "defaults per platform type"
-- New `ProductPricing` join model for per-product per-platform pricing overrides
-- `CostingEngine` gets target retail price calculation functions
-- Inline tabbed pricing calculator in `ProductDetailView`
-- Settings gets platform pricing defaults management
-- Marketing fee frequency model: `rate × % of sales` handles Etsy offsite ads and generalizes to other platforms
+The target price calculator was delivered first. Now makers need to enter what they actually charge (which differs from target due to market competition, efficiency gains, or platform strategy) and see their real profit per sale, including platform-specific shipping strategies and the labor-as-income insight for solo makers.
 
 ---
 
-## Schema Changes
+## Part 1: Target Price Calculator [COMPLETE]
 
-### ProductPricing (new model)
+> All sub-features below have been implemented and merged. Retained for reference.
+
+### Schema Changes [COMPLETE]
+
+#### ProductPricing (new model) [COMPLETE]
 Per-product per-platform pricing overrides. Created lazily when user first visits a platform tab for a product, initialized from `PlatformFeeProfile` defaults.
 
 | Property | Type | Notes |
 |----------|------|-------|
 | product | Product? | Many-to-one |
 | platformType | PlatformType | Which platform tab this pricing is for |
-| transactionFeePercentage | Decimal | Transaction fee % (fraction). General only. Default: 0 |
-| fixedFeePerSale | Decimal | Fixed $ fee per sale. General only. Default: 0 |
-| marketingFeeRate | Decimal | Marketing fee rate (fraction). Editable on General/Shopify/Amazon. Default: 0 |
-| percentSalesFromMarketing | Decimal | Fraction of sales triggering marketing fee. All platforms. Default: 0 |
-| profitMargin | Decimal | Target profit margin (fraction). All platforms. Default: 0.30 |
+| platformFee | Decimal | Platform fee % override (fraction). General only. Default: 0 |
+| paymentProcessingFee | Decimal | Payment processing fee % override (fraction). General only. Default: 0 |
+| marketingFee | Decimal | Marketing fee rate override (fraction). General/Shopify/Amazon. Default: 0 |
+| percentSalesFromMarketing | Decimal | Fraction of sales from marketing/ads. Default: 0 |
+| profitMargin | Decimal | Target profit margin (fraction). Default: 0.30 |
 
 Cascade rules:
 - Deleting a Product cascade-deletes its `ProductPricing` entries
 - Up to 4 per product (one per PlatformType)
 
-### PlatformFeeProfile (modified — repurposed as defaults)
-Stores user-configurable default values per platform type. One per `PlatformType`, managed in Settings. Created lazily on first access.
+#### PlatformFeeProfile (modified — repurposed as universal defaults) [COMPLETE]
+Single record storing user-configurable default values. Managed in Settings. Created lazily on first access.
 
-- **Remove** `name: String`, `feePercentage: Decimal`, `marginGoal: Decimal`
-- **Add** `transactionFeePercentage: Decimal` (default 0, General only)
-- **Add** `fixedFeePerSale: Decimal` (default 0, General only)
-- **Add** `marketingFeeRate: Decimal` (default 0)
-- **Add** `percentSalesFromMarketing: Decimal` (default 0)
-- **Add** `profitMargin: Decimal` (default 0.30)
+Fields: `platformFee`, `paymentProcessingFee`, `marketingFee`, `percentSalesFromMarketing`, `profitMargin`
 
-### PlatformType (extension — hardcoded constants)
+#### PlatformType (extension — hardcoded constants) [COMPLETE]
 Added as extension on existing enum in `PlatformFeeProfile.swift`.
 
-| Platform | Locked Transaction Fee | Locked Fixed Fee | Locked Marketing Rate |
-|----------|----------------------|------------------|-----------------------|
-| General | nil (editable) | nil (editable) | nil (editable) |
-| Etsy | 0.095 (6.5% + 3%) | $0.45 ($0.20 + $0.25) | 0.15 (offsite ads) |
-| Shopify | 0.029 (2.9%) | $0.30 | nil (editable) |
-| Amazon | 0.15 (15% referral) | $0 | nil (editable) |
+| Platform | Locked Platform Fee | Locked Processing Fee | Locked Processing Fixed | Locked Marketing |
+|----------|--------------------|-----------------------|------------------------|------------------|
+| General | nil (editable) | nil (editable) | $0 | nil (editable) |
+| Etsy | 6.5% | 3% | $0.25 | 15% |
+| Shopify | 0% | 2.9% | $0.30 | nil (editable) |
+| Amazon | 15% | 0% | $0 | nil (editable) |
 
-Plus editability flags, display helpers (fee description labels, SF Symbol icon names, marketing fee label per platform).
+Plus editability flags, display helpers (fee description labels, SF Symbol icon names).
 
-### Product (modified)
-- **Add** `@Relationship(deleteRule: .cascade) var productPricings: [ProductPricing] = []`
+#### Product (modified) [COMPLETE]
+- Added `@Relationship(deleteRule: .cascade) var productPricings: [ProductPricing] = []`
 
-### CostingEngine (modified — target price functions)
-- **New formula:** `targetPrice = (productionCost + fixedFee) / (1 - (transactionFee + effectiveMarketing + profitMargin))`
-- **Where:** `effectiveMarketing = marketingFeeRate × percentSalesFromMarketing`
-- Returns `nil` when denominator ≤ 0 (fees + margin ≥ 100%)
+#### CostingEngine (target price functions) [COMPLETE]
+- `effectiveMarketingRate(marketingFee:percentSalesFromMarketing:) -> Decimal`
+- `resolvedFees(platformType:user...) -> 6-tuple`
+- `targetRetailPrice(productionCost:...) -> Decimal?` (raw-value + model overloads)
 
----
+### Sub-Features [ALL COMPLETE]
 
-## Editable vs Locked Fields Per Platform
+#### SF-1 — Schema Changes + CostingEngine Target Price Functions [COMPLETE]
+- `Models/ProductPricing.swift` — created
+- `Models/PlatformFeeProfile.swift` — repurposed as universal defaults + PlatformType extension
+- `Models/Product.swift` — added productPricings relationship
+- `MakerMarginsApp.swift` — added ProductPricing to Schema
+- `Engine/CostingEngine.swift` — target price calculations
+- All test makeContainer() helpers updated
+
+#### SF-2 — Settings UI (Platform Pricing Defaults) [COMPLETE]
+- `Views/Settings/PlatformPricingDefaultFormView.swift` — single universal defaults form
+- `Views/Settings/SettingsView.swift` — "Selling" section with push to defaults form
+
+#### SF-3 — PricingCalculatorView [COMPLETE]
+- `Views/Products/PricingCalculatorView.swift` — tabbed calculator with platform picker, auto-pulled costs, locked/editable fee rows, target price hero output
+
+#### SF-4 — Wire into ProductDetailView [COMPLETE]
+- `Views/Products/ProductDetailView.swift` — PricingCalculatorView added to VStack
+
+#### SF-5 — Product Duplication [COMPLETE]
+- `Views/Products/ProductListView.swift` — duplicateProduct() copies ProductPricing entries
+
+#### SF-6 — E2E Tests [COMPLETE]
+- `MakerMarginsTests/Epic4Tests.swift` — 20 tests covering model CRUD, PlatformType constants, CostingEngine target price, duplication
+
+### Editable vs Locked Fields Per Platform [COMPLETE]
 
 | Field | General | Etsy | Shopify | Amazon |
 |-------|---------|------|---------|--------|
-| Transaction Fee % | editable | locked (9.5%) | locked (2.9%) | locked (15%) |
-| Fixed Fee $ | editable | locked ($0.45) | locked ($0.30) | locked ($0) |
+| Platform Fee % | editable | locked (6.5%) | locked (0%) | locked (15%) |
+| Payment Processing | editable | locked (3% + $0.25) | locked (2.9% + $0.30) | locked (0%) |
 | Marketing Fee % | editable | locked (15%) | editable | editable |
-| % Sales from Marketing | editable | editable | editable | editable |
+| % Sales from Ads | editable | editable | editable | editable |
 | Profit Margin % | editable | editable | editable | editable |
 
 ---
 
-## Sub-Features Checklist
+## Part 2: Profit Analysis [PENDING]
 
-### SF-1 — Schema Changes + CostingEngine Target Price Functions
-**Goal:** Lay the data and calculation foundation. Everything downstream depends on this.
+### Motivation
 
-**Files to create:**
-- `Models/ProductPricing.swift` — new join model (product, platformType, 5 pricing fields)
+The target price calculator tells makers what they *should* charge. But makers often charge different prices — they may have adjusted for market competition, gotten more efficient with labor, or set platform-specific pricing strategies. They need to see what they're *actually* making.
 
-**Files to modify:**
-- `Models/PlatformFeeProfile.swift`
-  - Remove `name`, `feePercentage`, `marginGoal`
-  - Add `transactionFeePercentage`, `fixedFeePerSale`, `marketingFeeRate`, `percentSalesFromMarketing`, `profitMargin`
-  - Update `init()` accordingly
-  - Add `PlatformType` extension with:
-    - `lockedTransactionFee: Decimal?`, `lockedFixedFee: Decimal?`, `lockedMarketingFeeRate: Decimal?`
-    - `isTransactionFeeEditable`, `isFixedFeeEditable`, `isMarketingFeeRateEditable`
-    - `marketingFeeLabel: String` (Etsy: "% Sales from Offsite Ads", others: "% Sales from Marketing")
-    - `lockedFeeDescriptions: [(label: String, value: String)]` for display
-    - `iconName: String` (SF Symbol per platform)
-- `Models/Product.swift`
-  - Add `@Relationship(deleteRule: .cascade) var productPricings: [ProductPricing] = []`
-  - Update `init()` — no new parameters needed (empty array default)
-- `MakerMarginsApp.swift`
-  - Add `ProductPricing.self` to Schema array
-- `Engine/CostingEngine.swift`
-  - Add `effectiveMarketingRate(marketingFeeRate:percentSalesFromMarketing:) -> Decimal`
-  - Add `resolvedFees(platformType:userTransactionFee:userFixedFee:userMarketingFeeRate:userPercentSalesFromMarketing:userProfitMargin:)` — returns tuple with locked values applied
-  - Add `targetRetailPrice(productionCost:transactionFee:fixedFee:marketingFeeRate:percentSalesFromMarketing:profitMargin:) -> Decimal?` (raw-value overload)
-  - Add `targetRetailPrice(product:transactionFee:fixedFee:marketingFeeRate:percentSalesFromMarketing:profitMargin:) -> Decimal?` (model overload, computes productionCost from product)
-- `MakerMarginsTests/Epic0Tests.swift` through `Epic3_5Tests.swift`
-  - Add `ProductPricing.self` to each test's `makeContainer()` Schema array
+Key scenarios:
+- Different selling prices per platform (Etsy vs Amazon vs Shopify)
+- Different shipping strategies: free shipping on Amazon, fixed shipping on Etsy (algorithm optimization), pass-through on Shopify
+- Labor costs that represent the solo maker paying themselves (income, not expense) vs actual employee wages
 
----
+### Schema Changes [PENDING]
 
-### SF-2 — PlatformPricingDefaultsView + PlatformPricingDefaultFormView (Settings UI)
-**Goal:** Settings UI for managing default pricing values per platform.
+#### ProductPricing — Add 2 fields
+**File:** `MakerMargins/Models/ProductPricing.swift`
 
-**Files to create:**
-- `Views/Settings/PlatformPricingDefaultsView.swift` — list of 4 platform types, each pushing to form
-- `Views/Settings/PlatformPricingDefaultFormView.swift` — editable defaults form per platform type
+| New Property | Type | Default | Notes |
+|---|---|---|---|
+| `actualPrice` | `Decimal` | `0` | What the user actually charges on this platform |
+| `actualShippingCharge` | `Decimal` | `0` | What the customer pays for shipping (0 = free shipping) |
 
-**Files to delete:**
-- `Views/Settings/PlatformFeeProfileListView.swift` (empty stub, replaced)
-- `Views/Settings/PlatformFeeProfileFormView.swift` (empty stub, replaced)
+Add to `init()` with default values. Non-breaking SwiftData change (additive with defaults).
 
-**Files to modify:**
-- `Views/Settings/SettingsView.swift`
-  - Change "Selling" section NavigationLink from `ContentUnavailableView` to `PlatformPricingDefaultsView()`
-  - Update link label to "Platform Pricing Defaults"
+No changes to `PlatformFeeProfile` — actual pricing is inherently per-product, not a global default.
 
-**PlatformPricingDefaultsView structure:**
-- `List` with `ForEach(PlatformType.allCases)` — each row: `Label(platform.rawValue, systemImage: platform.iconName)` + NavigationLink
-- No add/delete — all 4 platform types always displayed
-- `.scrollContentBackground(.hidden)` + `.appBackground()`
+### CostingEngine — New Functions [PENDING]
 
-**PlatformPricingDefaultFormView structure:**
-- `let platformType: PlatformType`
-- Lazy creation: fetch or create `PlatformFeeProfile` for this platformType on appear
-- **Read-only section** (if platform has locked fees): GroupBox showing locked fee descriptions as DetailRows
-- **Editable section:** GroupBox with editable fields for this platform:
-  - General: Transaction Fee %, Fixed Fee $, Marketing Fee %, % Sales from Marketing, Profit Margin %
-  - Etsy: % Sales from Offsite Ads, Profit Margin %
-  - Shopify/Amazon: Marketing Fee %, % Sales from Marketing, Profit Margin %
-- Percentage fields: user types whole number (30), model stores fraction (0.30)
-- Immediate save via `onChange` (same pattern as shipping cost in ProductDetailView)
-- Footer: "These defaults pre-fill pricing for new products on [Platform]. Override per product in the Target Price Calculator."
-- `.scrollContentBackground(.hidden)` + `.appBackground()`
+**File:** `MakerMargins/Engine/CostingEngine.swift`
 
----
+New `// MARK: - Profit Analysis` section:
 
-### SF-3 — PricingCalculatorView (Inline Calculator in ProductDetailView)
-**Goal:** Core pricing calculator — tabbed by platform, auto-pulls product costs, calculates target price.
+#### `productionCostExShipping(product:) -> Decimal`
+Returns `totalLaborCostBuffered + totalMaterialCostBuffered` (no shipping). Needed because `totalProductionCost` bundles shipping in, but profit analysis requires separating production from shipping.
 
-**Files to modify:**
-- `Views/Products/PricingCalculatorView.swift` (replace empty stub)
-
-**Structure:**
-- `let product: Product`
-- `@Environment(\.modelContext)`, `@Environment(\.currencyFormatter)`
-- `@State private var selectedPlatform: PlatformType = .general`
-- `@State` text fields for each editable value + `@FocusState` enum for focus management
-
-**Lazy creation logic:**
-- Private helper `pricing(for: PlatformType) -> ProductPricing` — finds existing `ProductPricing` on product for that platform, or creates one initialized from `PlatformFeeProfile` defaults (or system defaults if no profile exists)
-- Private helper `fetchOrCreateDefaults(for: PlatformType) -> PlatformFeeProfile` — finds or creates the defaults record
-
-**Layout (GroupBox "Target Price Calculator"):**
-1. **Segmented Picker** — `PlatformType.allCases`, `.pickerStyle(.segmented)`
-2. **Your Costs** (auto-pulled, read-only):
-   - DetailRow: "Material Cost" → `CostingEngine.totalMaterialCostBuffered(product:)`
-   - DetailRow: "Labor Cost" → `CostingEngine.totalLaborCostBuffered(product:)`
-   - DetailRow: "Shipping Cost" → `product.shippingCost`
-   - DerivedRow: "Production Cost" → `CostingEngine.totalProductionCost(product:)`
-3. **Platform Fees** (locked rows, shown for non-General tabs):
-   - `ForEach(selectedPlatform.lockedFeeDescriptions)` as DetailRows
-4. **Your Settings** (editable fields, vary by platform):
-   - Shown based on editability flags from `PlatformType`
-   - Percentage fields use decimal pad, suffix "%", whole-number display
-   - Currency fields use `CurrencyInputField`
-   - All fields use `.editableFieldStyle()`
-5. **Effective Marketing** (derived, accent):
-   - DerivedRow showing `effectiveMarketingRate` as percentage
-6. **Target Price** (hero output):
-   - Large, bold, accent color text
-   - Shows formatted price or "—" with warning if fees + margin ≥ 100%
-
-**@State reload on tab change:**
-- `.onChange(of: selectedPlatform)` calls `loadFieldTexts()` to populate @State strings from the new platform's `ProductPricing`
-- `.onAppear` also calls `loadFieldTexts()`
-- `onChange` per text field writes back to `ProductPricing` model immediately
-
-**Target price computed property:**
-- Reads from current `ProductPricing` model values (not text fields)
-- Calls `CostingEngine.resolvedFees(...)` then `CostingEngine.targetRetailPrice(...)`
-- SwiftUI reactivity auto-updates when model changes
-
----
-
-### SF-4 — Wire PricingCalculatorView into ProductDetailView
-**Goal:** Add the calculator to the product scroll.
-
-**Files to modify:**
-- `Views/Products/ProductDetailView.swift`
-  - Add `PricingCalculatorView(product: product)` to VStack after `shippingSection`:
-  ```swift
-  VStack(alignment: .leading, spacing: AppTheme.Spacing.xl) {
-      headerSection
-      ProductCostSummaryCard(product: product).padding(.horizontal)
-      laborSection
-      materialsSection
-      shippingSection
-      PricingCalculatorView(product: product)   // NEW
-  }
-  ```
-
----
-
-### SF-5 — Product Duplication Update
-**Goal:** Duplicated products copy pricing overrides.
-
-**Files to modify:**
-- `Views/Products/ProductListView.swift`
-  - In `duplicateProduct()`, after material re-linking loop, add loop to copy `ProductPricing` entries:
-    - For each `srcPricing in source.productPricings`: create new `ProductPricing` with same field values, linked to the copy
-    - Insert into modelContext
-
----
-
-### SF-6 — E2E Tests
-**Goal:** Comprehensive test coverage for Epic 4.
-
-**Files to modify:**
-- `MakerMarginsTests/Epic4Tests.swift` (replace stub)
-
-**Tests (13 total):**
-
-*Model CRUD (4):*
-1. Create PlatformFeeProfile with all new fields — persist, fetch, verify all properties
-2. Create ProductPricing linked to Product — persist, fetch, verify fields and relationship
-3. Delete Product → cascade-deletes ProductPricing entries, PlatformFeeProfile survives
-4. Same product, General + Etsy ProductPricing — change profit margin on General, verify Etsy unchanged
-
-*PlatformType constants (3):*
-5. Etsy locked fees correct — `lockedTransactionFee == 0.095`, `lockedFixedFee == 0.45`, `lockedMarketingFeeRate == 0.15`
-6. General has no locked fees — all three return nil
-7. Editability flags — `isTransactionFeeEditable` true only for General, `isMarketingFeeRateEditable` false only for Etsy, etc.
-
-*CostingEngine calculations (5):*
-8. `effectiveMarketingRate` — `0.15 × 0.20 = 0.03`
-9. `targetRetailPrice` General — product with known production cost, General fees, verify expected output
-10. `targetRetailPrice` Etsy — same product, Etsy locked fees, verify expected output
-11. `targetRetailPrice` returns nil — fees + margin ≥ 100%
-12. `resolvedFees` — call with Etsy + user values differing from locked → verify locked values used for transaction/fixed/marketing, user values used for percentSalesFromMarketing and profitMargin
-
-*Product duplication (1):*
-13. Duplicate product with General ProductPricing — verify copy has matching field values, is a distinct object, changes to copy don't affect original
-
----
-
-## Key Design Decisions
-
-- **Tabbed by platform, not named profiles:** The original spec had user-created named profiles ("My Etsy Shop"). The new design uses fixed platform tabs with locked fees. Simpler UX, no profile management needed. Users who sell on multiple shops of the same platform use the same fees anyway.
-- **Marketing fee frequency model:** `effectiveMarketing = rate × % of sales`. Handles Etsy's offsite ads (15% on ~20% of sales = 3% effective). Generalizes to Shopify/Amazon where users enter their own ad cost rate and conversion frequency. Avoids the complexity of modeling monthly ad budgets with sales volume estimates.
-- **PlatformFeeProfile as defaults store:** Repurposed from named profiles to one-per-platform defaults. Keeps the existing SwiftData model (already in Schema) but changes its purpose. Settings UI manages defaults; ProductPricing stores per-product overrides.
-- **Locked platform fees:** Platform-imposed fees are hardcoded constants on `PlatformType`, not stored in any model. This ensures accuracy (users can't accidentally change them) and simplifies the model. Only user-configurable values are persisted.
-- **Lazy creation pattern:** Both `PlatformFeeProfile` (defaults) and `ProductPricing` (overrides) are created on first access, not eagerly. Avoids creating records for platforms the user never uses.
-- **Percentage display vs storage:** Users type "30" for 30%, model stores `0.30`. Consistent with existing buffer fields (laborBuffer, materialBuffer). All conversion happens at the view boundary.
-- **No profit breakdown or sale tracking in this epic.** Focused scope: target price only. Profit analysis, shipping strategy, and sale tracking are future features that build on this foundation.
-
----
-
-## Key Technical Notes
-
-- **SwiftData enum predicates:** `#Predicate` may not support `PlatformType` enum comparison directly. If the compiler rejects it, add a `platformTypeRaw: String` stored property to both `PlatformFeeProfile` and `ProductPricing` with computed `platformType` getter/setter. Use the raw string in predicates.
-- **Schema migration:** Removing `name`, `feePercentage`, `marginGoal` from `PlatformFeeProfile` is a breaking change. Acceptable pre-release — no production data. SwiftData lightweight migration handles added fields with defaults.
-- **Test schema updates:** All existing test files (Epic0–3.5) need `ProductPricing.self` added to their `makeContainer()` Schema arrays so the ModelContainer includes the full schema.
-- **`resolvedFees` centralizes locked vs user logic:** Both the UI and CostingEngine use this function. No duplicated "which value to use" logic.
-- **Percentage input fields:** Need clear-on-focus (clear "0" when tapped) and restore-on-blur (restore "0" when left empty) behavior, matching existing patterns in WorkStepFormView and ProductDetailView shipping field.
-
----
-
-## Phase Sequencing
+#### `totalSaleFees(actualPrice:actualShippingCharge:resolvedFees...) -> Decimal`
+Platform + processing percentage fees applied to `actualPrice + actualShippingCharge` (the full customer payment). Marketing fees applied to `actualPrice` only (matches Etsy offsite ads behavior — ads don't apply to shipping). Fixed processing fee added per transaction.
 
 ```
-SF-1 (Schema + Engine)                    ← foundation, everything depends on this
-  │
-  ├── SF-2 (Settings UI)                  ← needs PlatformFeeProfile model
-  │
-  ├── SF-3 (PricingCalculatorView)        ← needs ProductPricing model + CostingEngine
-  │     │
-  │     └── SF-4 (ProductDetailView wire) ← needs PricingCalculatorView
-  │
-  ├── SF-5 (Product duplication)          ← needs ProductPricing model
-  │
-  └── SF-6 (Tests)                        ← write incrementally, finalize at end
+grossRevenue = actualPrice + actualShippingCharge
+transactionalFees = grossRevenue × (platformFee + processingFee)
+marketingCost = actualPrice × effectiveMarketingRate
+totalFees = transactionalFees + marketingCost + processingFixed
 ```
 
-SF-2, SF-3, and SF-5 can be done in parallel after SF-1. SF-4 depends on SF-3. SF-6 spans the entire epic.
+**Why fees on price+shipping:** Etsy charges 6.5% on item+shipping; Shopify processes 2.9% on total charge; Amazon referral covers total. Applying fees to price-only would understate costs by ~$0.50-$1.50 per sale.
+
+#### `actualProfit(actualPrice:actualShippingCharge:productionCostExShipping:shippingCost:resolvedFees...) -> Decimal`
+```
+profit = (actualPrice + actualShippingCharge) - totalSaleFees - productionCostExShipping - shippingCost
+```
+
+#### `actualProfitMargin(profit:actualPrice:actualShippingCharge:) -> Decimal?`
+Returns `profit / grossRevenue`, or `nil` if gross revenue is zero.
+
+All functions also get model-based overloads (accepting `Product` + resolved fees) that delegate to raw-value versions.
+
+### UI Design [PENDING]
+
+#### Location
+Extend `PricingCalculatorView` with a **second GroupBox** ("Profit Analysis") placed below the existing Target Price Calculator GroupBox. Same `pricingSurface` background. Shares the same `selectedPlatform` state — no duplicate platform tabs needed.
+
+#### Layout
+
+```
+┌─ Target Price Calculator (existing) ─────────────────────┐
+│  [General | Etsy | Shopify | Amazon]                      │
+│  Production Cost / Shipping / Fees / Margin               │
+│  Target Price          $42.50  (hero, accent)             │
+└───────────────────────────────────────────────────────────┘
+
+┌─ Profit Analysis ─────────────────────────────────────────┐
+│  Your Actual Pricing   (section header, tertiary)         │
+│    Selling Price       [$ _____]  (CurrencyInputField)    │
+│    ─────                                                  │
+│    Shipping Charge     [$ _____]  (CurrencyInputField)    │
+│                                                           │
+│  [Use Target Price ($42.50)]  ← only when price is empty  │
+│                                                           │
+│  ═══════ (only shown when actualPrice > 0) ═══════        │
+│                                                           │
+│  Breakdown             (section header, tertiary)         │
+│    Revenue              $47.50  (price + shipping)        │
+│    Platform Fees       -$3.09                             │
+│    Processing Fees     -$1.67                             │
+│    Marketing Fees      -$0.64                             │
+│    Production Cost     -$20.80  (labor+material buffered) │
+│    Shipping Expense    -$7.50   (maker's cost)            │
+│    ─────                                                  │
+│    Profit per Sale      $13.80  (hero, green/red)         │
+│    Profit Margin         29.1%                            │
+│                                                           │
+│  ┌ Labor Callout (when labor > 0) ─────────────────────┐  │
+│  │ Your labor ($8.40) is also your income.             │  │
+│  │ Total take-home per sale: $22.20                    │  │
+│  └─────────────────────────────────────────────────────┘  │
+│                                                           │
+│  ┌ Shipping Callout (absorbing costs) ─────────────────┐  │
+│  │ You're absorbing $7.50 in shipping costs.           │  │
+│  └─────────────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────────┘
+
+Footer: "Enter your actual selling price and shipping charge
+to see your real profit per sale on this platform."
+```
+
+#### Interaction Details
+
+- **"Use Target Price" button:** Shown when `actualPrice == 0` and `computedTargetPrice != nil`. Tapping pre-fills `actualPrice` with the target price. Explicit action, not auto-fill.
+- **Breakdown visibility:** Only appears when `actualPrice > 0`. When zero, just show the two input fields.
+- **Profit color:** Green (`AppTheme.Colors.accent`) when positive, `.red` when negative.
+- **Fee breakdown:** Show Platform Fees, Processing Fees, and Marketing Fees as separate rows. Marketing row hidden when effective marketing is zero.
+- **Labor callout:** Only shown when `totalLaborCostBuffered > 0` AND `actualPrice > 0`. Uses `AppTheme.Typography.note` with `.secondary` style. Shows `profit + laborCostBuffered` as take-home.
+- **Shipping callout:** Only shown when `actualShippingCharge == 0` AND `product.shippingCost > 0`. Prevents confusion about why profit seems low with "free shipping."
+- **Zero production cost:** Mirror the existing `emptyCostHint` pattern — show a warning when production cost is zero so users don't see misleading profit numbers.
+- **Negative values:** Fee rows show negative amounts (e.g., "-$3.09"). Verify `CurrencyFormatter` handles negative `Decimal` correctly.
+
+#### State Management (within existing PricingCalculatorView)
+
+New `@State` properties:
+```swift
+@State private var actualPriceText: String = ""
+@State private var actualShippingChargeText: String = ""
+```
+
+New `FocusableField` cases:
+```swift
+case actualPrice, actualShippingCharge
+```
+
+Extend `loadFieldTexts()` to populate these from `currentPricing`. Extend `handleFocusChange()` with two more entries. `onChange` for each text field writes back to `currentPricing?.actualPrice` / `currentPricing?.actualShippingCharge`.
+
+### Product Duplication Update [PENDING]
+
+**File:** `MakerMargins/Views/Products/ProductListView.swift` (line ~312-323)
+
+Add `actualPrice` and `actualShippingCharge` to the `ProductPricing` copy in `duplicateProduct()`.
+
+### Template Updates — Pre-populated Actual Pricing [PENDING]
+
+Templates should include realistic actual prices so users immediately see a populated Profit Analysis section when they create from a template. This showcases the feature and teaches by example.
+
+#### PricingTemplate — Add 2 fields
+**File:** `MakerMargins/Engine/ProductTemplates.swift`
+
+```swift
+struct PricingTemplate {
+    // ... existing fields ...
+    let actualPrice: Decimal           // NEW -- realistic market price
+    let actualShippingCharge: Decimal  // NEW -- platform-specific shipping charge
+}
+```
+
+#### Template Actual Prices
+
+Each template already has an Etsy `PricingTemplate`. Add actual prices that demonstrate realistic maker strategies (pricing below target for market competitiveness, various shipping approaches):
+
+| Template | Actual Price | Shipping Charge | Approx Target | Strategy Demonstrated |
+|---|---|---|---|---|
+| Woodworking | $89.99 | $8.95 | ~$97 | Below target for competition, absorbing ~$3 shipping |
+| 3D Printing | $49.99 | $5.50 | ~$58 | Below target, pass-through shipping (matches shippingCost) |
+| Laser Coasters | $52.00 | $6.50 | ~$54 | Near target, slight shipping markup |
+| Candle Making | $24.99 | $5.99 | ~$29 | Below target, absorbing ~$1.50 shipping |
+| Resin Earrings | $22.00 | $4.50 | ~$27 | Below target, slight shipping markup |
+
+#### TemplateApplier — Pass new fields
+**File:** `MakerMargins/Engine/TemplateApplier.swift` (line ~83-91)
+
+Update the `ProductPricing` creation in `apply()` to include `actualPrice` and `actualShippingCharge` from the template.
+
+#### Why these values work for onboarding
+- All templates price below target -- a common real-world scenario that motivates the "What am I actually making?" question
+- Shipping strategies vary: some absorb costs (woodworking), some pass through (3D printing), some mark up slightly (laser)
+- Users immediately see a profit breakdown with the labor callout, understanding the feature without needing to fill in any data
 
 ---
 
-## Verification
+## Files to Modify (Part 2 — Profit Analysis)
 
-1. **CI:** Push to `epic_4` → GitHub Actions: XcodeGen → build → all Epic0–4 tests pass
+| File | Changes | Status |
+|------|---------|--------|
+| `Models/ProductPricing.swift` | Add `actualPrice`, `actualShippingCharge` properties + init params | PENDING |
+| `Engine/CostingEngine.swift` | Add `productionCostExShipping`, `totalSaleFees`, `actualProfit`, `actualProfitMargin` + model overloads | PENDING |
+| `Engine/ProductTemplates.swift` | Add `actualPrice`, `actualShippingCharge` to `PricingTemplate` struct + all 5 template definitions | PENDING |
+| `Engine/TemplateApplier.swift` | Pass new fields when creating `ProductPricing` from template | PENDING |
+| `Views/Products/PricingCalculatorView.swift` | Add profit analysis GroupBox, 2 input fields, breakdown section, callouts | PENDING |
+| `Views/Products/ProductListView.swift` | Update duplication to copy new fields | PENDING |
+| `MakerMarginsTests/Epic4Tests.swift` | Add tests for new engine functions, model fields, duplication | PENDING |
+| `MakerMarginsTests/Epic4_5Tests.swift` | Update template data integrity test to verify actualPrice > 0, update pricing creation test | PENDING |
+
+No changes needed to: `PlatformFeeProfile`, `Product`, `MakerMarginsApp`, `ProductDetailView`, `ProductCostSummaryCard`, `AppTheme`, existing test files' `makeContainer()`.
+
+---
+
+## Implementation Phases (Part 2)
+
+```
+Phase 1: Schema + Engine + Templates
+  |-- ProductPricing: add 2 fields (actualPrice, actualShippingCharge)
+  |-- CostingEngine: add 4 functions + model overloads
+  |-- PricingTemplate: add 2 fields + update all 5 template definitions
+  +-- TemplateApplier: pass new fields through
+
+Phase 2: UI  (depends on Phase 1)
+  +-- PricingCalculatorView: profit analysis GroupBox
+
+Phase 3: Duplication  (parallel with Phase 2)
+  +-- ProductListView: update duplicateProduct()
+
+Phase 4: Tests  (after Phase 1, can overlap with Phase 2)
+  |-- Epic4Tests: ~10 new test cases for profit analysis
+  +-- Epic4_5Tests: update template pricing tests for new fields
+```
+
+---
+
+## Tests (Part 2 — Profit Analysis)
+
+| # | Test | What it verifies | Status |
+|---|------|-----------------|--------|
+| 1 | `totalSaleFees` Etsy with shipping | Fees on price+shipping for platform/processing, price-only for marketing | PENDING |
+| 2 | `totalSaleFees` zero shipping | Fees correct when shipping charge is $0 | PENDING |
+| 3 | `actualProfit` positive | Known inputs produce expected positive profit | PENDING |
+| 4 | `actualProfit` negative | Price too low results in negative profit | PENDING |
+| 5 | `actualProfit` free shipping absorbed | Shipping charge $0, shipping cost $8, profit reflects the hit | PENDING |
+| 6 | `actualProfitMargin` nil for zero revenue | Division guard works | PENDING |
+| 7 | `actualProfitMargin` positive | Known profit / revenue produces correct % | PENDING |
+| 8 | `productionCostExShipping` | Equals `totalProductionCost - shippingCost` | PENDING |
+| 9 | `ProductPricing` CRUD with new fields | Create, persist, fetch back actualPrice and actualShippingCharge | PENDING |
+| 10 | Duplication copies new fields | actualPrice and actualShippingCharge copied to duplicate | PENDING |
+| 11 | Template PricingTemplate has actual prices | All templates have actualPrice > 0 and valid actualShippingCharge | PENDING |
+| 12 | TemplateApplier creates pricing with actual fields | Apply template, verify ProductPricing has actualPrice and actualShippingCharge from template | PENDING |
+
+---
+
+## Verification (Part 2)
+
+1. **CI:** Push to branch -> GitHub Actions: XcodeGen -> build -> all Epic 0-4.5 tests pass (including new profit tests)
 2. **Manual (simulator):**
-   - Open Settings → Platform Pricing Defaults → configure Etsy defaults (20% marketing sales, 30% profit)
-   - Create a product with materials ($8.80), labor ($12.00), shipping ($5.00)
-   - Scroll to Target Price Calculator → verify Production Cost auto-pulls correctly
-   - **Etsy tab:** Locked fees shown (9.5% + $0.45 + 15%). Editable: % Sales from Offsite Ads (pre-filled from defaults), Profit Margin. Target price calculates.
-   - **General tab:** All fields editable. Enter custom fees. Target price updates live.
-   - **Shopify tab:** Locked 2.9% + $0.30. Marketing and profit editable.
-   - Change profit margin on Etsy tab → switch to General tab → verify General's margin unchanged (per-product per-platform independence)
-   - Close and reopen product → verify overrides persisted
-   - Duplicate product → verify pricing overrides copied to new product
-   - Set fees + margin to ≥ 100% → verify "—" warning instead of impossible price
+   - Create product with materials ($8.80), labor ($12.00), shipping ($7.50)
+   - Open pricing calculator -> Etsy tab -> note target price
+   - Scroll to Profit Analysis -> tap "Use Target Price" -> verify pre-fills
+   - Enter $5 shipping charge -> verify breakdown shows all fee lines
+   - Verify profit is positive, green hero display
+   - Enter $0 shipping charge -> verify "absorbing $7.50" callout appears
+   - Verify labor callout shows take-home amount
+   - Switch to Amazon tab -> enter different actual price -> verify independent
+   - Set actual price below cost -> verify negative profit in red
+   - Close and reopen product -> verify actual pricing persisted
+   - Duplicate product -> verify actual pricing copied
+   - Create product from Woodworking template -> Etsy tab should show $89.99 selling price, $8.95 shipping
+   - Profit Analysis section is pre-populated with breakdown -- no user input needed
+   - Verify labor callout shows take-home amount
+   - Create product from 3D Printing template -> verify different actual price ($49.99) and shipping ($5.50)
+
+---
+
+## CLAUDE.md Updates (after Part 2 implementation)
+
+- Add `actualPrice` and `actualShippingCharge` to ProductPricing schema table
+- Add profit analysis functions to Calculation Logic section
+- Update PricingCalculatorView description in navigation structure
+- Add acceptance criteria for the profit analysis feature
+- Update PricingTemplate struct description in Key Decisions
+
+---
+
+## Key Design Decisions (Full Epic)
+
+- **Tabbed by platform, not named profiles:** Fixed platform tabs with locked fees. Simpler UX, no profile management needed.
+- **Marketing fee frequency model:** `effectiveMarketing = rate x % of sales`. Handles Etsy's offsite ads (15% on ~20% of sales = 3% effective).
+- **PlatformFeeProfile as defaults store:** Single universal defaults record, not per-platform. Settings manages defaults; ProductPricing stores per-product overrides.
+- **Locked platform fees:** Platform-imposed fees are hardcoded constants on `PlatformType`, not stored in any model.
+- **Lazy creation pattern:** Both `PlatformFeeProfile` and `ProductPricing` created on first access.
+- **Percentage display vs storage:** Users type "30" for 30%, model stores `0.30`.
+- **Profit analysis in separate GroupBox:** Clear conceptual separation from target price ("what should I charge" vs "what am I making"). Shares platform tabs via same `selectedPlatform` state.
+- **Fees on price + shipping:** Platform and processing fees apply to full customer payment (matching real Etsy/Shopify/Amazon behavior). Marketing fees on price only (matching Etsy offsite ads behavior).
+- **Labor-as-income callout:** Solo makers' labor is their income, not a cost. Callout shows take-home = profit + labor to prevent panic-based mispricing.
+- **"Use Target Price" button:** Explicit pre-fill action (not auto-fill) reduces friction while keeping control with the user.
+- **Template actual prices:** All templates price below target, demonstrating the common real-world scenario and showcasing the profit analysis feature on first use.
+- **No actual price defaults in PlatformFeeProfile:** Actual pricing is inherently per-product (a $15 candle and $85 cutting board from the same shop).

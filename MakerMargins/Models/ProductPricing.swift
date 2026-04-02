@@ -37,6 +37,15 @@ final class ProductPricing {
     /// Target profit margin (fraction, e.g. 0.30 = 30%).
     var profitMargin: Decimal
 
+    /// What the user actually charges on this platform (e.g. $49.99).
+    /// Default: 0 (not yet set — profit analysis hidden until user enters a price).
+    var actualPrice: Decimal
+
+    /// What the customer pays for shipping on this platform.
+    /// Default: 0 (free shipping). Platform-specific — makers may charge $0 on Amazon,
+    /// a fixed rate on Etsy, or pass through the full cost on Shopify.
+    var actualShippingCharge: Decimal
+
     init(
         product: Product? = nil,
         platformType: PlatformType = .general,
@@ -44,7 +53,9 @@ final class ProductPricing {
         paymentProcessingFee: Decimal = 0,
         marketingFee: Decimal = 0,
         percentSalesFromMarketing: Decimal = 0,
-        profitMargin: Decimal = 0.30
+        profitMargin: Decimal = 0.30,
+        actualPrice: Decimal = 0,
+        actualShippingCharge: Decimal = 0
     ) {
         self.product = product
         self.platformType = platformType
@@ -53,5 +64,7 @@ final class ProductPricing {
         self.marketingFee = marketingFee
         self.percentSalesFromMarketing = percentSalesFromMarketing
         self.profitMargin = profitMargin
+        self.actualPrice = actualPrice
+        self.actualShippingCharge = actualShippingCharge
     }
 }

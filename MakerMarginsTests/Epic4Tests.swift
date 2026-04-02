@@ -450,6 +450,253 @@ struct Epic4Tests {
         #expect(copied.productPricings.isEmpty)
     }
 
+    // MARK: - CostingEngine: Profit Analysis
+
+    @Test("totalSaleFees Etsy with shipping — fees on price+shipping, marketing on price only")
+    func totalSaleFeesEtsyWithShipping() {
+        // $40 item + $10 shipping on Etsy
+        // Platform: $50 × 6.5% = $3.25
+        // Processing: $50 × 3% + $0.25 = $1.75
+        // Marketing: $40 × (15% × 20%) = $40 × 0.03 = $1.20
+        // Total = $3.25 + $1.75 + $1.20 = $6.20
+        let result = CostingEngine.totalSaleFees(
+            actualPrice: 40,
+            actualShippingCharge: 10,
+            platformFee: Decimal(string: "0.065")!,
+            paymentProcessingFee: Decimal(string: "0.03")!,
+            paymentProcessingFixed: Decimal(string: "0.25")!,
+            marketingFee: Decimal(string: "0.15")!,
+            percentSalesFromMarketing: Decimal(string: "0.20")!
+        )
+        let expected = Decimal(string: "3.25")! + Decimal(string: "1.75")! + Decimal(string: "1.20")!
+        #expect(result == expected)
+    }
+
+    @Test("totalSaleFees with zero shipping — fees on price only")
+    func totalSaleFeesZeroShipping() {
+        // $40 item + $0 shipping, General: 5% platform + 3% processing + $0 fixed, no marketing
+        // Platform: $40 × 5% = $2
+        // Processing: $40 × 3% = $1.20
+        // Total = $3.20
+        let result = CostingEngine.totalSaleFees(
+            actualPrice: 40,
+            actualShippingCharge: 0,
+            platformFee: Decimal(string: "0.05")!,
+            paymentProcessingFee: Decimal(string: "0.03")!,
+            paymentProcessingFixed: 0,
+            marketingFee: 0,
+            percentSalesFromMarketing: 0
+        )
+        #expect(result == Decimal(string: "3.20")!)
+    }
+
+    @Test("actualProfit positive — known inputs produce expected profit")
+    func actualProfitPositive() {
+        // Price $50, shipping charge $10, production cost $25, shipping cost $8
+        // Fees: 5% platform + 2% processing on $60 = $4.20, no marketing, no fixed
+        // Revenue = $60
+        // Profit = $60 - $4.20 - $25 - $8 = $22.80
+        let result = CostingEngine.actualProfit(
+            actualPrice: 50,
+            actualShippingCharge: 10,
+            productionCostExShipping: 25,
+            shippingCost: 8,
+            platformFee: Decimal(string: "0.05")!,
+            paymentProcessingFee: Decimal(string: "0.02")!,
+            paymentProcessingFixed: 0,
+            marketingFee: 0,
+            percentSalesFromMarketing: 0
+        )
+        #expect(result == Decimal(string: "22.80")!)
+    }
+
+    @Test("actualProfit negative — price too low results in loss")
+    func actualProfitNegative() {
+        // Price $10, shipping charge $0, production cost $25, shipping cost $5
+        // Fees: 5% on $10 = $0.50
+        // Profit = $10 - $0.50 - $25 - $5 = -$20.50
+        let result = CostingEngine.actualProfit(
+            actualPrice: 10,
+            actualShippingCharge: 0,
+            productionCostExShipping: 25,
+            shippingCost: 5,
+            platformFee: Decimal(string: "0.05")!,
+            paymentProcessingFee: 0,
+            paymentProcessingFixed: 0,
+            marketingFee: 0,
+            percentSalesFromMarketing: 0
+        )
+        #expect(result == Decimal(string: "-20.50")!)
+        #expect(result < 0)
+    }
+
+    @Test("actualProfit free shipping absorbed — shipping cost hits profit")
+    func actualProfitFreeShippingAbsorbed() {
+        // Price $30, free shipping (charge $0), production cost $15, shipping cost $8
+        // No fees for simplicity
+        // Profit = $30 - $0 - $15 - $8 = $7
+        let result = CostingEngine.actualProfit(
+            actualPrice: 30,
+            actualShippingCharge: 0,
+            productionCostExShipping: 15,
+            shippingCost: 8,
+            platformFee: 0,
+            paymentProcessingFee: 0,
+            paymentProcessingFixed: 0,
+            marketingFee: 0,
+            percentSalesFromMarketing: 0
+        )
+        #expect(result == 7)
+
+        // With shipping charge $8 (pass-through), profit increases by $8
+        let withShipping = CostingEngine.actualProfit(
+            actualPrice: 30,
+            actualShippingCharge: 8,
+            productionCostExShipping: 15,
+            shippingCost: 8,
+            platformFee: 0,
+            paymentProcessingFee: 0,
+            paymentProcessingFixed: 0,
+            marketingFee: 0,
+            percentSalesFromMarketing: 0
+        )
+        #expect(withShipping == 15)
+    }
+
+    @Test("actualProfitMargin returns nil for zero revenue")
+    func actualProfitMarginZeroRevenue() {
+        let result = CostingEngine.actualProfitMargin(
+            profit: 0,
+            actualPrice: 0,
+            actualShippingCharge: 0
+        )
+        #expect(result == nil)
+    }
+
+    @Test("actualProfitMargin returns correct fraction for known values")
+    func actualProfitMarginPositive() {
+        // Profit $15, price $40 + shipping $10 = $50 revenue
+        // Margin = $15 / $50 = 0.30
+        let result = CostingEngine.actualProfitMargin(
+            profit: 15,
+            actualPrice: 40,
+            actualShippingCharge: 10
+        )
+        #expect(result == Decimal(string: "0.30")!)
+    }
+
+    @Test("productionCostExShipping equals totalProductionCost minus shipping")
+    func productionCostExShippingMatchesTotalMinusShipping() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+
+        let product = Product(title: "Test", shippingCost: 5, materialBuffer: 0, laborBuffer: 0)
+        let step = WorkStep(title: "Step", recordedTime: 3600, batchUnitsCompleted: 1)
+        let link = ProductWorkStep(product: product, workStep: step, sortOrder: 0, unitsRequiredPerProduct: 1, laborRate: 10)
+        let material = Material(title: "Mat", bulkCost: 8, bulkQuantity: 1)
+        let matLink = ProductMaterial(product: product, material: material, sortOrder: 0, unitsRequiredPerProduct: 1)
+
+        product.productWorkSteps.append(link)
+        step.productWorkSteps.append(link)
+        product.productMaterials.append(matLink)
+        material.productMaterials.append(matLink)
+
+        ctx.insert(product)
+        ctx.insert(step)
+        ctx.insert(link)
+        ctx.insert(material)
+        ctx.insert(matLink)
+        try ctx.save()
+
+        let total = CostingEngine.totalProductionCost(product: product)
+        let exShipping = CostingEngine.productionCostExShipping(product: product)
+        #expect(total == exShipping + product.shippingCost)
+        #expect(exShipping == 18) // $10 labor + $8 material
+    }
+
+    // MARK: - ProductPricing: Actual Fields
+
+    @Test("ProductPricing stores and persists actualPrice and actualShippingCharge")
+    func productPricingActualFieldsCRUD() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+
+        let product = Product(title: "Test")
+        let pricing = ProductPricing(
+            product: product,
+            platformType: .etsy,
+            profitMargin: Decimal(string: "0.30")!,
+            actualPrice: Decimal(string: "49.99")!,
+            actualShippingCharge: Decimal(string: "5.50")!
+        )
+
+        ctx.insert(product)
+        ctx.insert(pricing)
+        product.productPricings.append(pricing)
+        try ctx.save()
+
+        let fetched = try ctx.fetch(FetchDescriptor<ProductPricing>())
+        #expect(fetched.count == 1)
+        #expect(fetched[0].actualPrice == Decimal(string: "49.99")!)
+        #expect(fetched[0].actualShippingCharge == Decimal(string: "5.50")!)
+    }
+
+    @Test("Duplicate product copies actualPrice and actualShippingCharge")
+    func duplicateProductCopiesActualPricing() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+
+        let source = Product(title: "Original")
+        let pricing = ProductPricing(
+            product: source,
+            platformType: .etsy,
+            platformFee: Decimal(string: "0.065")!,
+            paymentProcessingFee: Decimal(string: "0.03")!,
+            marketingFee: Decimal(string: "0.15")!,
+            percentSalesFromMarketing: Decimal(string: "0.20")!,
+            profitMargin: Decimal(string: "0.30")!,
+            actualPrice: Decimal(string: "89.99")!,
+            actualShippingCharge: Decimal(string: "8.95")!
+        )
+
+        ctx.insert(source)
+        ctx.insert(pricing)
+        source.productPricings.append(pricing)
+        try ctx.save()
+
+        // Duplicate (mirrors ProductListView.duplicateProduct logic)
+        let copy = Product(title: "\(source.title) (Copy)")
+        ctx.insert(copy)
+
+        for srcPricing in source.productPricings {
+            let newPricing = ProductPricing(
+                product: copy,
+                platformType: srcPricing.platformType,
+                platformFee: srcPricing.platformFee,
+                paymentProcessingFee: srcPricing.paymentProcessingFee,
+                marketingFee: srcPricing.marketingFee,
+                percentSalesFromMarketing: srcPricing.percentSalesFromMarketing,
+                profitMargin: srcPricing.profitMargin,
+                actualPrice: srcPricing.actualPrice,
+                actualShippingCharge: srcPricing.actualShippingCharge
+            )
+            ctx.insert(newPricing)
+        }
+        try ctx.save()
+
+        let copied = try ctx.fetch(FetchDescriptor<Product>()).first { $0.title == "Original (Copy)" }!
+        #expect(copied.productPricings.count == 1)
+
+        let copiedPricing = copied.productPricings[0]
+        #expect(copiedPricing.actualPrice == Decimal(string: "89.99")!)
+        #expect(copiedPricing.actualShippingCharge == Decimal(string: "8.95")!)
+
+        // Changing copy should not affect original
+        copiedPricing.actualPrice = Decimal(string: "79.99")!
+        try ctx.save()
+        #expect(source.productPricings[0].actualPrice == Decimal(string: "89.99")!)
+    }
+
     // MARK: - CostingEngine: Model Overload
 
     @Test("targetRetailPrice model overload matches raw-value overload")
@@ -501,6 +748,59 @@ struct Epic4Tests {
 
         #expect(rawResult != nil)
         #expect(modelResult != nil)
+        #expect(rawResult == modelResult)
+    }
+
+    @Test("actualProfit model overload matches raw-value overload")
+    func actualProfitModelOverloadMatchesRawValue() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+
+        // Product with known costs: $10 labor + $8 material + $5 shipping = $23
+        let product = Product(title: "Test", shippingCost: 5, materialBuffer: 0, laborBuffer: 0)
+        let step = WorkStep(title: "Step", recordedTime: 3600, batchUnitsCompleted: 1)
+        let link = ProductWorkStep(product: product, workStep: step, sortOrder: 0, unitsRequiredPerProduct: 1, laborRate: 10)
+        let material = Material(title: "Mat", bulkCost: 8, bulkQuantity: 1)
+        let matLink = ProductMaterial(product: product, material: material, sortOrder: 0, unitsRequiredPerProduct: 1)
+
+        product.productWorkSteps.append(link)
+        step.productWorkSteps.append(link)
+        product.productMaterials.append(matLink)
+        material.productMaterials.append(matLink)
+
+        ctx.insert(product)
+        ctx.insert(step)
+        ctx.insert(link)
+        ctx.insert(material)
+        ctx.insert(matLink)
+        try ctx.save()
+
+        let prodCostEx = CostingEngine.productionCostExShipping(product: product)
+        #expect(prodCostEx == 18) // $10 labor + $8 material
+
+        let rawResult = CostingEngine.actualProfit(
+            actualPrice: 50,
+            actualShippingCharge: 10,
+            productionCostExShipping: prodCostEx,
+            shippingCost: product.shippingCost,
+            platformFee: Decimal(string: "0.065")!,
+            paymentProcessingFee: Decimal(string: "0.03")!,
+            paymentProcessingFixed: Decimal(string: "0.25")!,
+            marketingFee: Decimal(string: "0.15")!,
+            percentSalesFromMarketing: Decimal(string: "0.20")!
+        )
+
+        let modelResult = CostingEngine.actualProfit(
+            product: product,
+            actualPrice: 50,
+            actualShippingCharge: 10,
+            platformFee: Decimal(string: "0.065")!,
+            paymentProcessingFee: Decimal(string: "0.03")!,
+            paymentProcessingFixed: Decimal(string: "0.25")!,
+            marketingFee: Decimal(string: "0.15")!,
+            percentSalesFromMarketing: Decimal(string: "0.20")!
+        )
+
         #expect(rawResult == modelResult)
     }
 }
