@@ -317,7 +317,9 @@ struct ProductListView: View {
                 paymentProcessingFee: srcPricing.paymentProcessingFee,
                 marketingFee: srcPricing.marketingFee,
                 percentSalesFromMarketing: srcPricing.percentSalesFromMarketing,
-                profitMargin: srcPricing.profitMargin
+                profitMargin: srcPricing.profitMargin,
+                actualPrice: srcPricing.actualPrice,
+                actualShippingCharge: srcPricing.actualShippingCharge
             )
             modelContext.insert(newPricing)
         }

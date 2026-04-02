@@ -251,6 +251,106 @@ enum CostingEngine {
         )
     }
 
+    // MARK: - Profit Analysis
+
+    /// Production cost excluding shipping (labor buffered + material buffered).
+    /// Profit analysis needs shipping separated — the maker's shipping expense
+    /// and the customer's shipping charge are distinct line items.
+    static func productionCostExShipping(product: Product) -> Decimal {
+        totalLaborCostBuffered(product: product) + totalMaterialCostBuffered(product: product)
+    }
+
+    /// Total fees charged by the platform on a single sale.
+    ///
+    /// Platform + processing % fees apply to the full customer payment
+    /// (actualPrice + actualShippingCharge) — this matches real Etsy/Shopify/Amazon
+    /// behavior where percentage fees are assessed on the total transaction.
+    /// Marketing fees apply to the item price only (Etsy offsite ads do not
+    /// apply to shipping). Fixed processing fee is per-transaction.
+    static func totalSaleFees(
+        actualPrice: Decimal,
+        actualShippingCharge: Decimal,
+        platformFee: Decimal,
+        paymentProcessingFee: Decimal,
+        paymentProcessingFixed: Decimal,
+        marketingFee: Decimal,
+        percentSalesFromMarketing: Decimal
+    ) -> Decimal {
+        let grossRevenue = actualPrice + actualShippingCharge
+        let transactionalFees = grossRevenue * (platformFee + paymentProcessingFee)
+        let marketing = effectiveMarketingRate(
+            marketingFee: marketingFee,
+            percentSalesFromMarketing: percentSalesFromMarketing
+        )
+        let marketingCost = actualPrice * marketing
+        return transactionalFees + marketingCost + paymentProcessingFixed
+    }
+
+    /// Actual profit per sale after all platform fees and costs.
+    ///
+    /// Formula:
+    ///   grossRevenue = actualPrice + actualShippingCharge
+    ///   profit = grossRevenue - totalSaleFees - productionCostExShipping - shippingCost
+    static func actualProfit(
+        actualPrice: Decimal,
+        actualShippingCharge: Decimal,
+        productionCostExShipping: Decimal,
+        shippingCost: Decimal,
+        platformFee: Decimal,
+        paymentProcessingFee: Decimal,
+        paymentProcessingFixed: Decimal,
+        marketingFee: Decimal,
+        percentSalesFromMarketing: Decimal
+    ) -> Decimal {
+        let grossRevenue = actualPrice + actualShippingCharge
+        let fees = totalSaleFees(
+            actualPrice: actualPrice,
+            actualShippingCharge: actualShippingCharge,
+            platformFee: platformFee,
+            paymentProcessingFee: paymentProcessingFee,
+            paymentProcessingFixed: paymentProcessingFixed,
+            marketingFee: marketingFee,
+            percentSalesFromMarketing: percentSalesFromMarketing
+        )
+        return grossRevenue - fees - productionCostExShipping - shippingCost
+    }
+
+    /// Actual profit for a product, computing production cost and shipping from the model.
+    static func actualProfit(
+        product: Product,
+        actualPrice: Decimal,
+        actualShippingCharge: Decimal,
+        platformFee: Decimal,
+        paymentProcessingFee: Decimal,
+        paymentProcessingFixed: Decimal,
+        marketingFee: Decimal,
+        percentSalesFromMarketing: Decimal
+    ) -> Decimal {
+        actualProfit(
+            actualPrice: actualPrice,
+            actualShippingCharge: actualShippingCharge,
+            productionCostExShipping: productionCostExShipping(product: product),
+            shippingCost: product.shippingCost,
+            platformFee: platformFee,
+            paymentProcessingFee: paymentProcessingFee,
+            paymentProcessingFixed: paymentProcessingFixed,
+            marketingFee: marketingFee,
+            percentSalesFromMarketing: percentSalesFromMarketing
+        )
+    }
+
+    /// Actual profit margin as a fraction of gross revenue.
+    /// Returns nil if gross revenue is zero (avoids division by zero).
+    static func actualProfitMargin(
+        profit: Decimal,
+        actualPrice: Decimal,
+        actualShippingCharge: Decimal
+    ) -> Decimal? {
+        let grossRevenue = actualPrice + actualShippingCharge
+        guard grossRevenue > 0 else { return nil }
+        return profit / grossRevenue
+    }
+
     // MARK: - Time Formatting
 
     /// Formats a Decimal hours value to a readable string.

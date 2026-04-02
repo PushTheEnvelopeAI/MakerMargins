@@ -294,6 +294,33 @@ struct Epic4_5Tests {
         #expect(products.count == 5)
     }
 
+    @Test("All templates have actual prices set on their pricing templates")
+    func templatePricingHasActualPrices() {
+        for template in ProductTemplates.all {
+            #expect(!template.pricings.isEmpty)
+            for pricing in template.pricings {
+                #expect(pricing.actualPrice > 0, "Template '\(template.title)' has actualPrice 0")
+                #expect(pricing.actualShippingCharge >= 0)
+            }
+        }
+    }
+
+    @Test("TemplateApplier creates ProductPricing with actualPrice and actualShippingCharge")
+    func applyTemplateCreatesPricingWithActualFields() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+
+        // Woodworking template: actualPrice $89.99, actualShippingCharge $8.95
+        let template = ProductTemplates.all[0]
+        let product = try TemplateApplier.apply(template, to: ctx)
+        try ctx.save()
+
+        #expect(product.productPricings.count == 1)
+        let pricing = product.productPricings[0]
+        #expect(pricing.actualPrice == Decimal(string: "89.99")!)
+        #expect(pricing.actualShippingCharge == Decimal(string: "8.95")!)
+    }
+
     @Test("3D printing template pricing fees match template definition")
     func phoneStandPricingFees() throws {
         let container = try makeContainer()

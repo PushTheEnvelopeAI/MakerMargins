@@ -35,6 +35,7 @@ iOS 26 is the minimum. The Liquid Glass design language is a first-class iOS 26 
 | 3 | Material Ledger & Costing + E2E Tests | **Complete** |
 | 3.5 | Item vs Product Cost Separation + E2E Tests | **Complete** |
 | 4 | Pricing Calculator & Platform Tabs + E2E Tests | **Complete** |
+| 4.5 | Template Products + Bundled Images + E2E Tests | **Complete** |
 | 5 | Batch Forecasting Widgets + E2E Tests | Pending |
 | 6 | Production Readiness & App Store Launch | Pending |
 
@@ -139,6 +140,8 @@ Per-product per-platform pricing overrides. Up to 4 per product (one per `Platfo
 | marketingFee | Decimal | Marketing fee rate override (fraction). General/Shopify/Amazon. **Default: 0** |
 | percentSalesFromMarketing | Decimal | Fraction of sales from marketing/ads. **Default: 0** |
 | profitMargin | Decimal | Target profit margin (fraction). **Default: 0.30** |
+| actualPrice | Decimal | What the user actually charges on this platform. **Default: 0** (not yet set) |
+| actualShippingCharge | Decimal | What the customer pays for shipping on this platform. **Default: 0** (free shipping) |
 
 ---
 
@@ -184,7 +187,20 @@ targetRetailPrice     = (totalProductionCost + paymentProcessingFixed) / (1 - (t
 // Returns nil if denominator ≤ 0 (fees + margin ≥ 100%)
 ```
 
-**Division-by-zero guards:** `batchUnitsCompleted` and `bulkQuantity` both default to 1. CostingEngine must still guard against zero before dividing. `targetRetailPrice` returns `nil` when the denominator is not positive.
+```
+
+```
+// Profit Analysis (per platform — Epic 4)
+// Platform + processing fees apply to full customer payment; marketing on price only.
+productionCostExShipping = totalLaborCostBuffered + totalMaterialCostBuffered
+grossRevenue             = actualPrice + actualShippingCharge
+totalSaleFees            = grossRevenue × (platformFee + paymentProcessingFee)
+                         + actualPrice × effectiveMarketing + paymentProcessingFixed
+actualProfit             = grossRevenue - totalSaleFees - productionCostExShipping - shippingCost
+actualProfitMargin       = actualProfit / grossRevenue  // nil if grossRevenue = 0
+```
+
+**Division-by-zero guards:** `batchUnitsCompleted` and `bulkQuantity` both default to 1. CostingEngine must still guard against zero before dividing. `targetRetailPrice` returns `nil` when the denominator is not positive. `actualProfitMargin` returns `nil` when gross revenue is zero.
 
 ---
 
@@ -213,11 +229,15 @@ MakerMargins/                              ← repo root
 │   │   ├── PlatformFeeProfile.swift       ← universal pricing defaults + PlatformType enum & extension
 │   │   └── ProductPricing.swift          ← join model: Product ↔ PlatformType with pricing overrides
 │   │
+│   ├── Assets.xcassets/                   ← Asset catalog: AppIcon + 42 template image sets (Epic 4.5)
+│   │
 │   ├── Engine/                            ← calculation, formatting & app-level managers
 │   │   ├── CostingEngine.swift            ← labor + material + target price calculations (Epic 2-4)
 │   │   ├── CurrencyFormatter.swift        ← implemented Epic 1
 │   │   ├── AppearanceManager.swift        ← System/Light/Dark toggle, UserDefaults-persisted
-│   │   └── LaborRateManager.swift         ← default hourly rate, UserDefaults-persisted (Epic 2)
+│   │   ├── LaborRateManager.swift         ← default hourly rate, UserDefaults-persisted (Epic 2)
+│   │   ├── ProductTemplates.swift         ← pure-data template definitions for 5 maker workflows (Epic 4.5)
+│   │   └── TemplateApplier.swift          ← hydrates templates into SwiftData entities with dedup (Epic 4.5)
 │   │
 │   ├── Theme/                             ← design system tokens and reusable view modifiers
 │   │   ├── AppTheme.swift                 ← colors (surface, surfaceElevated, accent, categoryBadge, tabTint, cardBorder, etc.), spacing, corner radii, typography, sizing
@@ -225,11 +245,12 @@ MakerMargins/                              ← repo root
 │   │
 │   └── Views/                             ← SwiftUI views, grouped by feature
 │       ├── Products/                      ← Tab 1 root + all product-owned views
-│       │   ├── ProductListView.swift      ← Tab 1 root (NavigationStack), product duplication via context menu — Epic 1
+│       │   ├── ProductListView.swift      ← Tab 1 root (NavigationStack), product duplication, template picker menu — Epic 1+4.5
 │       │   ├── ProductDetailView.swift    ← scrollable hub: header, cost summary, labor, materials — Epic 1+2
 │       │   ├── ProductFormView.swift      ← create/edit sheet, inline category creation — Epic 1
 │       │   ├── ProductCostSummaryCard.swift ← cost breakdown card (labor + materials live) — Epic 2+3
-│       │   ├── PricingCalculatorView.swift  ← inline tabbed target price calculator in ProductDetailView — Epic 4
+│       │   ├── PricingCalculatorView.swift  ← inline tabbed target price calculator + profit analysis in ProductDetailView — Epic 4
+│       │   ├── TemplatePickerView.swift     ← sheet: 2-column grid of template cards — Epic 4.5
 │       │   └── BatchForecastView.swift      ← inline section in ProductDetailView — STUB
 │       ├── Workshop/                      ← Tab 2 (Labor): shared step library
 │       │   └── WorkshopView.swift         ← searchable list of all WorkSteps, titled "Labor" — Epic 2
@@ -257,6 +278,7 @@ MakerMargins/                              ← repo root
 │   ├── Epic3Tests.swift                   ← Complete: Material/join CRUD, CostingEngine material calcs, per-section buffers, duplication (12 tests)
 │   ├── Epic3_5Tests.swift                 ← Complete: Item/product separation, laborRate on join, per-product independence, laborHoursPerProduct (12 tests)
 │   ├── Epic4Tests.swift                   ← Complete: PlatformFeeProfile/ProductPricing CRUD, PlatformType constants + display helpers, targetRetailPrice calcs, duplication (20 tests)
+│   ├── Epic4_5Tests.swift                 ← Complete: Template data integrity, TemplateApplier entity creation, title-based deduplication (14 tests)
 │   └── Epic5Tests.swift                   ← STUB
 │
 └── MakerMarginsUITests/                   ← UI automation (XCUITest)
@@ -284,7 +306,7 @@ ProductListView                            [ROOT — context menu: Duplicate, De
     │   Labor Workflow section (inline WorkStepListView — VStack, not List)
     │   Materials section (inline MaterialListView content)
     │   Shipping section (inline GroupBox with editable Average Shipping Cost)
-    │   Pricing section (inline PricingCalculatorView — tabbed by platform, target price calculator)
+    │   Pricing section (inline PricingCalculatorView — tabbed by platform, target price calculator + profit analysis)
     │   Forecast section (inline BatchForecastView content)
     ├── [push] WorkStepDetailView          [Level 2 — edit in toolbar; delete only from library; "Remove from Product" button in product context]
     │   └── [fullScreenCover] StopwatchView  [Level 3 — MAX DEPTH, pause/resume]
@@ -608,6 +630,94 @@ SettingsView                              [ROOT — currency, appearance, labor 
 - [x] Test: product duplication with no pricing overrides
 - [x] Test: targetRetailPrice model overload matches raw-value overload
 
+**Profit Analysis (Inline in PricingCalculatorView)**
+- [x] "Profit Analysis" GroupBox below Target Price Calculator, same pricingSurface background
+- [x] Selling Price and Shipping Charge currency inputs per platform
+- [x] "Use Target Price" button pre-fills from computed target price
+- [x] Breakdown section: Revenue, Platform Fees, Processing Fees, Marketing Fees, Production Cost, Shipping Expense
+- [x] Fee rows hidden when amount is zero
+- [x] Profit per Sale hero (green positive, red negative)
+- [x] Profit Margin percentage display
+- [x] Labor callout: "Your labor ($X) is also your income. Take-home: $Y"
+- [x] Shipping absorbed callout when charging $0 but shipping costs exist
+- [x] Zero production cost warning in breakdown
+- [x] Per-product per-platform actual pricing persists across app launches
+
+**Template Actual Pricing**
+- [x] PricingTemplate includes actualPrice and actualShippingCharge
+- [x] All 5 templates have realistic actual prices (below target, varied shipping strategies)
+- [x] TemplateApplier passes actual pricing fields through to ProductPricing
+
+**E2E Tests (Profit Analysis — Epic4Tests.swift + Epic4_5Tests.swift)**
+- [x] Test: totalSaleFees Etsy with shipping (fees on price+shipping, marketing on price only)
+- [x] Test: totalSaleFees zero shipping
+- [x] Test: actualProfit positive, negative, and free-shipping-absorbed scenarios
+- [x] Test: actualProfitMargin nil for zero revenue, correct for known values
+- [x] Test: productionCostExShipping equals totalProductionCost minus shipping
+- [x] Test: ProductPricing CRUD with actualPrice and actualShippingCharge
+- [x] Test: Duplication copies actual pricing fields
+- [x] Test: Template PricingTemplate has actual prices > 0
+- [x] Test: TemplateApplier creates pricing with actual fields
+
+---
+
+## Epic 4.5 — Acceptance Criteria ✅
+
+**Template Data Layer**
+- [x] `ProductTemplates.swift` defines 5 maker workflow templates as pure Swift structs (no SwiftData dependency)
+- [x] Template structs (`WorkStepTemplate`, `MaterialTemplate`, `PricingTemplate`, `ProductTemplate`) mirror model initializer signatures
+- [x] Each template includes: product metadata (title, SKU, summary, image), 4–5 work steps, 3–5 materials, Etsy pricing, shipping, buffers
+- [x] Templates: Woodworking, 3D Printing, Laser Engraving, Candle Making, Resin Art
+- [x] Shared items have identical entity-level fields across templates for clean dedup
+
+**Template Application with Deduplication**
+- [x] `TemplateApplier.apply(_:to:)` creates Product + all linked entities in one call
+- [x] WorkSteps deduplicated by title — existing step reused, only new join model created
+- [x] Materials deduplicated by title — same pattern as WorkSteps
+- [x] Shared "Package" step reused across 4 templates; "Packaging" and "Sandpaper Assortment" materials shared across templates
+- [x] ProductPricing created from template with correct platform type and fee values
+- [x] Returns the new Product for post-creation navigation
+
+**Template Picker UI**
+- [x] `TemplatePickerView` presented as sheet from ProductListView
+- [x] 2-column grid of template cards with SF Symbol icon, title, summary
+- [x] Cards use `.cardStyle()` and `AppTheme` tokens throughout
+- [x] Tapping a card applies template, fires callback, dismisses sheet
+
+**ProductListView Integration**
+- [x] Toolbar "+" button is now a Menu with "Blank Product" and "From Template" options
+- [x] Template picker sheet uses same `newlyCreatedProduct` + `onDismiss` navigation pattern as create form
+- [x] Empty state text updated to mention templates
+
+**Bundled Template Images**
+- [x] `Assets.xcassets` created with AppIcon set + 42 template image sets
+- [x] All 5 products, 18 unique work steps, and 19 unique materials have bundled images
+- [x] `TemplateApplier` loads images via `UIImage(named:)?.jpegData()`, returns nil for empty names
+- [x] Images are compiled into the app binary — available offline on first launch
+
+**Template Variety (showcases app features)**
+- [x] Labor rates range from $3/hr (machine time) to $30/hr (design skill)
+- [x] Batch sizes range from 1 (solo) to 8 (candle batches)
+- [x] Material buffers: 5–10%; Labor buffers: 5–10%
+- [x] Profit margins: 30–40% across templates
+- [x] Each template has a unique SKU (TMPL-WOOD, TMPL-3DP, TMPL-LASER, TMPL-CANDLE, TMPL-RESIN)
+
+**E2E Tests (Epic4_5Tests.swift)**
+- [x] Test: all templates have non-empty titles, summaries, icon names
+- [x] Test: all work steps have valid batch data (batchUnitsCompleted > 0)
+- [x] Test: all materials have valid bulk quantities (bulkQuantity > 0)
+- [x] Test: applying woodworking template creates product with correct fields
+- [x] Test: correct work steps and join models with sortOrder and laborRate
+- [x] Test: correct materials and join models with sortOrder and unitsRequired
+- [x] Test: ProductPricing created with correct Etsy platform and fee values
+- [x] Test: candle template has correct shipping, material buffer, labor buffer
+- [x] Test: same template twice reuses WorkSteps (4 entities, 8 joins)
+- [x] Test: same template twice reuses Materials (4 entities, 8 joins)
+- [x] Test: two templates with overlapping materials deduplicate correctly (6 not 8)
+- [x] Test: two templates with overlapping steps deduplicate Package step (7 not 8)
+- [x] Test: all 5 templates apply without error
+- [x] Test: 3D printing template pricing fees match definition
+
 ---
 
 ## Build & Development Workflow
@@ -705,4 +815,15 @@ Runs on every push:
 - **Lazy creation for pricing records:** Both `PlatformFeeProfile` and `ProductPricing` are created on first access, not eagerly. Avoids creating records for platforms the user never uses.
 - **Pricing section background:** `AppTheme.Colors.pricingSurface` provides a subtle warm tint to visually distinguish the pricing calculator from the product-building sections above.
 - **PercentageInputField + PercentageFormat:** Shared components in `ViewModifiers.swift`. Users type whole numbers (30 for 30%), models store fractions (0.30). Conversion centralised in `PercentageFormat.toDisplay()`/`fromDisplay()`.
+- **Template data is pure Swift structs:** `ProductTemplates.swift` imports only `Foundation` — no SwiftData. Template structs mirror model init signatures so `TemplateApplier` maps fields directly. Keeps template definitions testable and decoupled.
+- **TemplateApplier is a caseless enum:** Matches `CostingEngine` pattern. Single `static func apply(_:to:) throws -> Product`. No `context.save()` inside — SwiftData auto-saves, tests control save timing.
+- **Title-based deduplication:** Shared WorkSteps and Materials are matched by exact title string. Fetch-all + in-memory filter pattern (consistent with zero `#Predicate` usage in the codebase). Entity-level fields must be identical across templates sharing a title; per-product fields (laborRate, unitsRequiredPerProduct) live on join models.
+- **Template images bundled in Asset Catalog:** `Assets.xcassets` contains 42 image sets (5 products + 18 steps + 19 materials). Loaded via `UIImage(named:)?.jpegData(compressionQuality: 0.8)`. Empty `imageName` returns nil gracefully. Images ship in the app binary.
+- **ProductListView toolbar "+" is a Menu:** Contains "Blank Product" and "From Template" options. Both use the same `newlyCreatedProduct` + `onDismiss` navigation pattern.
+- **Template names are workflow-focused:** Titles like "Woodworking Template" (not "Hardwood Cutting Board") to communicate that templates are starting points for any product in that category. Each has a TMPL-prefixed SKU.
+- **Fees on price + shipping in profit analysis:** Platform and processing percentage fees apply to `actualPrice + actualShippingCharge` (the full customer payment), matching real Etsy/Shopify/Amazon behavior. Marketing fees apply to `actualPrice` only (Etsy offsite ads don't apply to shipping).
+- **Separate GroupBox for profit analysis:** "Target Price Calculator" answers "what should I charge?" and "Profit Analysis" answers "what am I actually making?" Separate GroupBoxes maintain clear mental models while sharing the same platform tabs via `selectedPlatform` state.
+- **Labor-as-income callout:** Solo makers' labor cost is their income, not a true expense. Callout shows `profit + laborCostBuffered` as take-home to prevent panic-based mispricing. Only shown when `laborCostBuffered > 0` and `actualPrice > 0`.
+- **Template actual prices below target:** All 5 templates set `actualPrice` below the computed target price, demonstrating the common real-world scenario that motivates the "What am I actually making?" question. Shipping strategies vary (absorb, pass-through, mark up).
+- **No actual price defaults in PlatformFeeProfile:** Actual pricing is inherently per-product — a $15 candle and $85 cutting board from the same shop have different prices. Only fee-related defaults are stored globally.
 - **No CloudKit, no authentication, no sync.** Single-user, local-only.

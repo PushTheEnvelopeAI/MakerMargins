@@ -87,7 +87,9 @@ enum TemplateApplier {
                 paymentProcessingFee: pricingTemplate.paymentProcessingFee,
                 marketingFee: pricingTemplate.marketingFee,
                 percentSalesFromMarketing: pricingTemplate.percentSalesFromMarketing,
-                profitMargin: pricingTemplate.profitMargin
+                profitMargin: pricingTemplate.profitMargin,
+                actualPrice: pricingTemplate.actualPrice,
+                actualShippingCharge: pricingTemplate.actualShippingCharge
             )
             context.insert(pricing)
         }
