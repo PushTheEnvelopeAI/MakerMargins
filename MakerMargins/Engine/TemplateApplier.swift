@@ -33,6 +33,7 @@ enum TemplateApplier {
         // 1. Create the product.
         let product = Product(
             title: template.title,
+            sku: template.sku,
             summary: template.summary,
             image: loadImageData(named: template.imageName),
             shippingCost: template.shippingCost,
