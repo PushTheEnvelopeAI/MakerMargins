@@ -87,8 +87,8 @@ struct Epic4_5Tests {
         let product = try TemplateApplier.apply(template, to: ctx)
         try ctx.save()
 
-        #expect(product.title == "Hardwood Cutting Board")
-        #expect(product.summary.contains("walnut and maple"))
+        #expect(product.title == "Woodworking Template")
+        #expect(product.sku == "TMPL-WOOD")
         #expect(product.shippingCost == 12)
         #expect(product.materialBuffer == Decimal(string: "0.10")!)
         #expect(product.laborBuffer == Decimal(string: "0.05")!)
@@ -179,7 +179,7 @@ struct Epic4_5Tests {
         let product = try TemplateApplier.apply(template, to: ctx)
         try ctx.save()
 
-        #expect(product.title == "Hand-Poured Soy Candle")
+        #expect(product.title == "Candle Making Template")
         #expect(product.shippingCost == Decimal(string: "7.50")!)
         #expect(product.materialBuffer == Decimal(string: "0.10")!)
         #expect(product.laborBuffer == Decimal(string: "0.05")!)

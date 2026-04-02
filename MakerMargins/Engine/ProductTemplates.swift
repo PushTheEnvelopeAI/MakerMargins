@@ -56,6 +56,7 @@ struct PricingTemplate {
 struct ProductTemplate {
     let id: String
     let title: String
+    let sku: String
     let summary: String
     let iconName: String                // SF Symbol for the picker card
     let imageName: String               // Asset catalog name — empty string means no image
@@ -83,8 +84,9 @@ enum ProductTemplates {
 
     private static let woodCuttingBoard = ProductTemplate(
         id: "wood-cutting-board",
-        title: "Hardwood Cutting Board",
-        summary: "Edge-grain walnut and maple cutting board, 12\u{00D7}18 inches.",
+        title: "Woodworking Template",
+        sku: "TMPL-WOOD",
+        summary: "A typical woodworking product with cutting, sanding, finishing, and packaging steps.",
         iconName: "hammer",
         imageName: "template-product-cutting-board",
         shippingCost: 12,
@@ -198,10 +200,11 @@ enum ProductTemplates {
 
     private static let phoneStand3D = ProductTemplate(
         id: "3d-phone-stand",
-        title: "3D Printed Phone Stand",
-        summary: "Minimalist phone stand, PLA filament, painted finish.",
+        title: "3D Printing Template",
+        sku: "TMPL-3DP",
+        summary: "A typical 3D printed product with printing, post-processing, painting, and packaging steps.",
         iconName: "cube",
-        imageName: "",
+        imageName: "template-product-phone-stand",
         shippingCost: Decimal(string: "5.50")!,
         materialBuffer: Decimal(string: "0.05")!,
         laborBuffer: Decimal(string: "0.05")!,
@@ -209,7 +212,7 @@ enum ProductTemplates {
             WorkStepTemplate(
                 title: "3D Print",
                 summary: "Print on FDM printer, 4.5 hours per unit.",
-                imageName: "",
+                imageName: "template-step-3d-print",
                 recordedTime: 16200,
                 batchUnitsCompleted: 1,
                 unitName: "piece",
@@ -220,7 +223,7 @@ enum ProductTemplates {
             WorkStepTemplate(
                 title: "Post-Process & Clean",
                 summary: "Remove supports, sand layer lines.",
-                imageName: "",
+                imageName: "template-step-post-process",
                 recordedTime: 1200,
                 batchUnitsCompleted: 3,
                 unitName: "piece",
@@ -231,7 +234,7 @@ enum ProductTemplates {
             WorkStepTemplate(
                 title: "Paint",
                 summary: "Prime, paint 2 coats, clear coat.",
-                imageName: "",
+                imageName: "template-step-paint",
                 recordedTime: 1500,
                 batchUnitsCompleted: 3,
                 unitName: "piece",
@@ -255,7 +258,7 @@ enum ProductTemplates {
             MaterialTemplate(
                 title: "PLA Filament",
                 summary: "1 kg spool, standard colors",
-                imageName: "",
+                imageName: "template-mat-pla-filament",
                 link: "",
                 bulkCost: 22,
                 bulkQuantity: 1000,
@@ -277,7 +280,7 @@ enum ProductTemplates {
             MaterialTemplate(
                 title: "Spray Paint",
                 summary: "Primer, color, and clear coat cans",
-                imageName: "",
+                imageName: "template-mat-spray-paint",
                 link: "",
                 bulkCost: 24,
                 bulkQuantity: 20,
@@ -313,10 +316,11 @@ enum ProductTemplates {
 
     private static let laserCoasterSet = ProductTemplate(
         id: "laser-coaster-set",
-        title: "Laser Engraved Coaster Set",
-        summary: "Set of 4 birch plywood coasters with custom engraving.",
+        title: "Laser Engraving Template",
+        sku: "TMPL-LASER",
+        summary: "A typical laser engraving product with design, engraving, finishing, and packaging steps.",
         iconName: "target",
-        imageName: "",
+        imageName: "template-product-coaster-set",
         shippingCost: 6,
         materialBuffer: Decimal(string: "0.08")!,
         laborBuffer: Decimal(string: "0.05")!,
@@ -324,7 +328,7 @@ enum ProductTemplates {
             WorkStepTemplate(
                 title: "Design Prep",
                 summary: "Prepare vector artwork and laser settings.",
-                imageName: "",
+                imageName: "template-step-design-prep",
                 recordedTime: 1200,
                 batchUnitsCompleted: 1,
                 unitName: "set",
@@ -335,7 +339,7 @@ enum ProductTemplates {
             WorkStepTemplate(
                 title: "Laser Engrave",
                 summary: "Engrave 4 coasters on laser cutter.",
-                imageName: "",
+                imageName: "template-step-laser-engrave",
                 recordedTime: 2400,
                 batchUnitsCompleted: 1,
                 unitName: "set",
@@ -346,7 +350,7 @@ enum ProductTemplates {
             WorkStepTemplate(
                 title: "Sand & Clean",
                 summary: "Remove masking, light sand, wipe clean.",
-                imageName: "",
+                imageName: "template-step-sand-clean",
                 recordedTime: 900,
                 batchUnitsCompleted: 2,
                 unitName: "set",
@@ -370,7 +374,7 @@ enum ProductTemplates {
             MaterialTemplate(
                 title: "Birch Plywood Rounds",
                 summary: "3mm birch plywood, 4-inch rounds, pre-cut",
-                imageName: "",
+                imageName: "template-mat-plywood-rounds",
                 link: "",
                 bulkCost: 28,
                 bulkQuantity: 50,
@@ -381,7 +385,7 @@ enum ProductTemplates {
             MaterialTemplate(
                 title: "Masking Tape",
                 summary: "Transfer tape for laser masking",
-                imageName: "",
+                imageName: "template-mat-masking-tape",
                 link: "",
                 bulkCost: 15,
                 bulkQuantity: 100,
@@ -392,7 +396,7 @@ enum ProductTemplates {
             MaterialTemplate(
                 title: "Finish Spray",
                 summary: "Polyurethane satin clear coat",
-                imageName: "",
+                imageName: "template-mat-finish-spray",
                 link: "",
                 bulkCost: 14,
                 bulkQuantity: 30,
@@ -428,10 +432,11 @@ enum ProductTemplates {
 
     private static let soyCandle = ProductTemplate(
         id: "soy-candle",
-        title: "Hand-Poured Soy Candle",
-        summary: "8 oz soy wax candle in glass jar with cotton wick.",
+        title: "Candle Making Template",
+        sku: "TMPL-CANDLE",
+        summary: "A typical candle making product with melting, pouring, curing, and packaging steps.",
         iconName: "flame",
-        imageName: "",
+        imageName: "template-product-soy-candle",
         shippingCost: Decimal(string: "7.50")!,
         materialBuffer: Decimal(string: "0.10")!,
         laborBuffer: Decimal(string: "0.05")!,
@@ -439,7 +444,7 @@ enum ProductTemplates {
             WorkStepTemplate(
                 title: "Melt & Mix Wax",
                 summary: "Melt soy wax, add fragrance oil at correct temperature.",
-                imageName: "",
+                imageName: "template-step-melt-mix",
                 recordedTime: 1800,
                 batchUnitsCompleted: 8,
                 unitName: "candle",
@@ -450,7 +455,7 @@ enum ProductTemplates {
             WorkStepTemplate(
                 title: "Pour Candles",
                 summary: "Center wicks, pour wax, top off after cooling.",
-                imageName: "",
+                imageName: "template-step-pour-candles",
                 recordedTime: 1200,
                 batchUnitsCompleted: 8,
                 unitName: "candle",
@@ -461,7 +466,7 @@ enum ProductTemplates {
             WorkStepTemplate(
                 title: "Cure & Trim",
                 summary: "Cure 48 hours, trim wick to 1/4 inch.",
-                imageName: "",
+                imageName: "template-step-cure-trim",
                 recordedTime: 600,
                 batchUnitsCompleted: 8,
                 unitName: "candle",
@@ -472,7 +477,7 @@ enum ProductTemplates {
             WorkStepTemplate(
                 title: "Label & Package",
                 summary: "Apply label, wrap, box for shipping.",
-                imageName: "",
+                imageName: "template-step-label-package",
                 recordedTime: 480,
                 batchUnitsCompleted: 4,
                 unitName: "candle",
@@ -485,7 +490,7 @@ enum ProductTemplates {
             MaterialTemplate(
                 title: "Soy Wax",
                 summary: "Natural soy wax flakes, 10 lb bag",
-                imageName: "",
+                imageName: "template-mat-soy-wax",
                 link: "",
                 bulkCost: 25,
                 bulkQuantity: 160,
@@ -496,7 +501,7 @@ enum ProductTemplates {
             MaterialTemplate(
                 title: "Fragrance Oil",
                 summary: "Premium candle fragrance, 16 oz bottle",
-                imageName: "",
+                imageName: "template-mat-fragrance-oil",
                 link: "",
                 bulkCost: 18,
                 bulkQuantity: 16,
@@ -507,7 +512,7 @@ enum ProductTemplates {
             MaterialTemplate(
                 title: "Cotton Wicks",
                 summary: "Pre-tabbed cotton wicks, 100-pack",
-                imageName: "",
+                imageName: "template-mat-cotton-wicks",
                 link: "",
                 bulkCost: 8,
                 bulkQuantity: 100,
@@ -518,7 +523,7 @@ enum ProductTemplates {
             MaterialTemplate(
                 title: "Glass Jars",
                 summary: "8 oz glass candle jars with lids, 24-pack",
-                imageName: "",
+                imageName: "template-mat-glass-jars",
                 link: "",
                 bulkCost: 36,
                 bulkQuantity: 24,
@@ -529,7 +534,7 @@ enum ProductTemplates {
             MaterialTemplate(
                 title: "Labels",
                 summary: "Custom printed labels, 100-count roll",
-                imageName: "",
+                imageName: "template-mat-labels",
                 link: "",
                 bulkCost: 15,
                 bulkQuantity: 100,
@@ -554,10 +559,11 @@ enum ProductTemplates {
 
     private static let resinEarrings = ProductTemplate(
         id: "resin-earrings",
-        title: "Resin Earrings",
-        summary: "Handmade epoxy resin earrings with embedded pigment.",
+        title: "Resin Art Template",
+        sku: "TMPL-RESIN",
+        summary: "A typical resin art product with mixing, molding, polishing, and assembly steps.",
         iconName: "sparkles",
-        imageName: "",
+        imageName: "template-product-resin-earrings",
         shippingCost: 4,
         materialBuffer: Decimal(string: "0.08")!,
         laborBuffer: Decimal(string: "0.10")!,
@@ -565,7 +571,7 @@ enum ProductTemplates {
             WorkStepTemplate(
                 title: "Mix Resin",
                 summary: "Measure and mix epoxy resin with hardener and pigment.",
-                imageName: "",
+                imageName: "template-step-mix-resin",
                 recordedTime: 900,
                 batchUnitsCompleted: 6,
                 unitName: "pair",
@@ -576,7 +582,7 @@ enum ProductTemplates {
             WorkStepTemplate(
                 title: "Pour & Cure",
                 summary: "Pour into molds, pop bubbles, cure 24 hours.",
-                imageName: "",
+                imageName: "template-step-pour-cure",
                 recordedTime: 600,
                 batchUnitsCompleted: 6,
                 unitName: "pair",
@@ -587,7 +593,7 @@ enum ProductTemplates {
             WorkStepTemplate(
                 title: "Sand & Polish",
                 summary: "Demold, wet sand 400 to 1500 grit, polish to shine.",
-                imageName: "",
+                imageName: "template-step-sand-polish",
                 recordedTime: 1800,
                 batchUnitsCompleted: 3,
                 unitName: "pair",
@@ -598,7 +604,7 @@ enum ProductTemplates {
             WorkStepTemplate(
                 title: "Assemble Hardware",
                 summary: "Attach earring hooks with jump rings.",
-                imageName: "",
+                imageName: "template-step-assemble-hardware",
                 recordedTime: 600,
                 batchUnitsCompleted: 6,
                 unitName: "pair",
@@ -622,7 +628,7 @@ enum ProductTemplates {
             MaterialTemplate(
                 title: "Epoxy Resin",
                 summary: "Crystal clear epoxy, 32 oz kit",
-                imageName: "",
+                imageName: "template-mat-epoxy-resin",
                 link: "",
                 bulkCost: 35,
                 bulkQuantity: 32,
@@ -633,7 +639,7 @@ enum ProductTemplates {
             MaterialTemplate(
                 title: "Resin Pigment",
                 summary: "Mica powder pigment set, 12 colors",
-                imageName: "",
+                imageName: "template-mat-resin-pigment",
                 link: "",
                 bulkCost: 14,
                 bulkQuantity: 120,
@@ -644,7 +650,7 @@ enum ProductTemplates {
             MaterialTemplate(
                 title: "Earring Hooks",
                 summary: "Hypoallergenic stainless steel hooks, 100 pair",
-                imageName: "",
+                imageName: "template-mat-earring-hooks",
                 link: "",
                 bulkCost: 10,
                 bulkQuantity: 100,
@@ -655,7 +661,7 @@ enum ProductTemplates {
             MaterialTemplate(
                 title: "Backing Cards",
                 summary: "Custom printed earring display cards, 50-pack",
-                imageName: "",
+                imageName: "template-mat-backing-cards",
                 link: "",
                 bulkCost: 12,
                 bulkQuantity: 50,
@@ -666,7 +672,7 @@ enum ProductTemplates {
             MaterialTemplate(
                 title: "Poly Bags",
                 summary: "Clear resealable bags, 3x4 inch, 200-pack",
-                imageName: "",
+                imageName: "template-mat-poly-bags",
                 link: "",
                 bulkCost: 6,
                 bulkQuantity: 200,
