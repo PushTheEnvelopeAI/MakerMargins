@@ -566,4 +566,161 @@ enum CostingEngine {
             percentSalesFromMarketing: percentSalesFromMarketing
         ) * Decimal(batchSize)
     }
+
+    // MARK: - Portfolio Metrics (Epic 6)
+
+    /// Precomputed metrics snapshot for a single product, used by the portfolio
+    /// comparison view. Avoids repeated CostingEngine calls when rendering
+    /// multiple products side-by-side.
+    struct ProductSnapshot {
+        let product: Product
+        let productionCost: Decimal
+        let laborCostBuffered: Decimal
+        let materialCostBuffered: Decimal
+        let shippingCost: Decimal
+        let totalLaborHours: Decimal
+        /// Solo-maker hero metric: actualProfit + laborCostBuffered.
+        let earnings: Decimal
+        /// actualProfit (revenue - fees - costs).
+        let profit: Decimal
+        /// actualProfitMargin (nil when no revenue).
+        let profitMargin: Decimal?
+        /// takeHomePerHour (nil when no labor hours).
+        let hourlyRate: Decimal?
+        /// Whether a ProductPricing with actualPrice > 0 exists for the selected platform.
+        let hasPricing: Bool
+        /// Display label for the platform (e.g. "General", "Etsy").
+        let platformLabel: String
+    }
+
+    /// Returns the ProductPricing record for a specific platform, if it exists
+    /// and has actualPrice > 0. Returns nil otherwise.
+    ///
+    /// Portfolio uses this to evaluate all products against the same platform,
+    /// ensuring apples-to-apples comparison.
+    static func portfolioPricing(
+        for product: Product,
+        platform: PlatformType
+    ) -> ProductPricing? {
+        product.productPricings.first(where: {
+            $0.platformType == platform && $0.actualPrice > 0
+        })
+    }
+
+    /// Builds a full metrics snapshot for one product using the specified
+    /// platform's pricing. Cost fields are always populated; profit fields
+    /// are zeroed/nil when no pricing exists for the platform.
+    static func productSnapshot(
+        product: Product,
+        platform: PlatformType
+    ) -> ProductSnapshot {
+        let laborBuffered = totalLaborCostBuffered(product: product)
+        let materialBuffered = totalMaterialCostBuffered(product: product)
+        let prodCost = totalProductionCost(product: product)
+        let laborHours = totalLaborHours(product: product)
+        let shipping = product.shippingCost
+
+        guard let pricing = portfolioPricing(for: product, platform: platform) else {
+            return ProductSnapshot(
+                product: product,
+                productionCost: prodCost,
+                laborCostBuffered: laborBuffered,
+                materialCostBuffered: materialBuffered,
+                shippingCost: shipping,
+                totalLaborHours: laborHours,
+                earnings: 0,
+                profit: 0,
+                profitMargin: nil,
+                hourlyRate: nil,
+                hasPricing: false,
+                platformLabel: platform.rawValue
+            )
+        }
+
+        let fees = resolvedFees(
+            platformType: platform,
+            userPlatformFee: pricing.platformFee,
+            userPaymentProcessingFee: pricing.paymentProcessingFee,
+            userMarketingFee: pricing.marketingFee,
+            userPercentSalesFromMarketing: pricing.percentSalesFromMarketing,
+            userProfitMargin: pricing.profitMargin
+        )
+
+        let profit = actualProfit(
+            product: product,
+            actualPrice: pricing.actualPrice,
+            actualShippingCharge: pricing.actualShippingCharge,
+            platformFee: fees.platformFee,
+            paymentProcessingFee: fees.paymentProcessingFee,
+            paymentProcessingFixed: fees.paymentProcessingFixed,
+            marketingFee: fees.marketingFee,
+            percentSalesFromMarketing: fees.percentSalesFromMarketing
+        )
+
+        let margin = actualProfitMargin(
+            profit: profit,
+            actualPrice: pricing.actualPrice,
+            actualShippingCharge: pricing.actualShippingCharge
+        )
+
+        let hourly = takeHomePerHour(
+            actualProfit: profit,
+            laborCostBuffered: laborBuffered,
+            totalLaborHours: laborHours
+        )
+
+        return ProductSnapshot(
+            product: product,
+            productionCost: prodCost,
+            laborCostBuffered: laborBuffered,
+            materialCostBuffered: materialBuffered,
+            shippingCost: shipping,
+            totalLaborHours: laborHours,
+            earnings: profit + laborBuffered,
+            profit: profit,
+            profitMargin: margin,
+            hourlyRate: hourly,
+            hasPricing: true,
+            platformLabel: platform.rawValue
+        )
+    }
+
+    /// Builds snapshots for all products using the specified platform's pricing.
+    /// Returns unsorted — the view layer handles sort order.
+    static func portfolioSnapshots(
+        products: [Product],
+        platform: PlatformType
+    ) -> [ProductSnapshot] {
+        products.map { productSnapshot(product: $0, platform: platform) }
+    }
+
+    /// Portfolio-level averages computed only across products that have pricing.
+    ///
+    /// Returns nil for avgProfitMargin when no priced products have revenue.
+    /// Returns nil for avgHourlyRate when no priced products have labor hours.
+    static func portfolioAverages(
+        snapshots: [ProductSnapshot]
+    ) -> (avgEarnings: Decimal, avgProfitMargin: Decimal?,
+          avgHourlyRate: Decimal?, pricedCount: Int, totalCount: Int) {
+        let totalCount = snapshots.count
+        let priced = snapshots.filter { $0.hasPricing }
+        let pricedCount = priced.count
+
+        guard pricedCount > 0 else {
+            return (0, nil, nil, 0, totalCount)
+        }
+
+        let avgEarnings = priced.reduce(Decimal.zero) { $0 + $1.earnings }
+            / Decimal(pricedCount)
+
+        let margins = priced.compactMap { $0.profitMargin }
+        let avgMargin: Decimal? = margins.isEmpty ? nil
+            : margins.reduce(Decimal.zero, +) / Decimal(margins.count)
+
+        let rates = priced.compactMap { $0.hourlyRate }
+        let avgRate: Decimal? = rates.isEmpty ? nil
+            : rates.reduce(Decimal.zero, +) / Decimal(rates.count)
+
+        return (avgEarnings, avgMargin, avgRate, pricedCount, totalCount)
+    }
 }
