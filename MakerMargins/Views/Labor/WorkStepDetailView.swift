@@ -202,7 +202,7 @@ struct WorkStepDetailView: View {
             VStack(spacing: 0) {
                 // Editable: Labor Rate
                 HStack {
-                    Text("Labor Rate")
+                    Text("Your Hourly Rate")
                         .font(AppTheme.Typography.bodyText)
                     Spacer()
                     CurrencyInputField(
@@ -237,7 +237,7 @@ struct WorkStepDetailView: View {
                     batchUnitsCompleted: step.batchUnitsCompleted,
                     unitsRequiredPerProduct: editableUnitsPerProduct
                 )
-                DerivedRow(label: "Labor Hrs / Product", value: CostingEngine.formatHours(laborHours))
+                DerivedRow(label: "Your Hours / Product", value: CostingEngine.formatHours(laborHours))
 
                 Divider()
 
@@ -249,7 +249,7 @@ struct WorkStepDetailView: View {
                     laborRate: editableLaborRate
                 )
                 HStack {
-                    Text("Labor Cost / Product")
+                    Text("Your Time Cost / Product")
                         .font(AppTheme.Typography.bodyText)
                     Spacer()
                     Text(formatter.format(laborCost))

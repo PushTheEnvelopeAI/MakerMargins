@@ -351,6 +351,36 @@ enum CostingEngine {
         return profit / grossRevenue
     }
 
+    // MARK: - Take-Home Metrics
+
+    /// Total labor hours for a product across all work steps.
+    static func totalLaborHours(product: Product) -> Decimal {
+        product.productWorkSteps.reduce(Decimal.zero) { sum, link in
+            sum + laborHoursPerProduct(link: link)
+        }
+    }
+
+    /// Take-home amount per labor hour (solo-maker effective hourly wage).
+    /// Returns nil when total labor hours is zero.
+    static func takeHomePerHour(
+        actualProfit: Decimal,
+        laborCostBuffered: Decimal,
+        totalLaborHours: Decimal
+    ) -> Decimal? {
+        guard totalLaborHours > 0 else { return nil }
+        return (actualProfit + laborCostBuffered) / totalLaborHours
+    }
+
+    /// Take-home per hour using model data.
+    static func takeHomePerHour(
+        product: Product,
+        actualProfit: Decimal
+    ) -> Decimal? {
+        let hours = totalLaborHours(product: product)
+        let laborCost = totalLaborCostBuffered(product: product)
+        return takeHomePerHour(actualProfit: actualProfit, laborCostBuffered: laborCost, totalLaborHours: hours)
+    }
+
     // MARK: - Time Formatting
 
     /// Formats a Decimal hours value to a readable string.

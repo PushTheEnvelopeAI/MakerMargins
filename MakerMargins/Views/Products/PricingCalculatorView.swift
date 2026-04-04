@@ -117,6 +117,16 @@ struct PricingCalculatorView: View {
         )
     }
 
+    /// Total labor hours across all work steps for this product.
+    private var totalLaborHours: Decimal {
+        CostingEngine.totalLaborHours(product: product)
+    }
+
+    /// Take-home per labor hour, or nil when hours = 0.
+    private var computedTakeHomePerHour: Decimal? {
+        CostingEngine.takeHomePerHour(product: product, actualProfit: computedActualProfit)
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -131,11 +141,6 @@ struct PricingCalculatorView: View {
                 }
             }
             .backgroundStyle(AppTheme.Colors.pricingSurface)
-
-            Text("Select a platform to see your target price based on production costs, fees, and profit margin. Switch tabs to compare across platforms.")
-                .font(AppTheme.Typography.note)
-                .foregroundStyle(.tertiary)
-                .padding(.horizontal, AppTheme.Spacing.xs)
 
             profitAnalysisGroupBox
 
@@ -260,6 +265,29 @@ struct PricingCalculatorView: View {
                     writeBack: { currentPricing?.percentSalesFromMarketing = $0 }
                 )
                 .padding(.vertical, AppTheme.Spacing.xs)
+
+                // Total Fees subtotal
+                let f = resolved
+                let effectiveMktg = CostingEngine.effectiveMarketingRate(
+                    marketingFee: f.marketingFee,
+                    percentSalesFromMarketing: f.percentSalesFromMarketing
+                )
+                let totalPercentFees = f.platformFee + f.paymentProcessingFee + effectiveMktg
+                HStack {
+                    Text("Total Fees")
+                        .font(AppTheme.Typography.sectionHeader)
+                    Spacer()
+                    Text("\(PercentageFormat.toDisplay(totalPercentFees))%")
+                        .font(AppTheme.Typography.sectionHeader)
+                        .foregroundStyle(AppTheme.Colors.accent)
+                }
+                .padding(.vertical, AppTheme.Spacing.sm)
+
+                if f.paymentProcessingFixed > 0 {
+                    Text("+ \(formatter.format(f.paymentProcessingFixed)) per transaction")
+                        .font(AppTheme.Typography.note)
+                        .foregroundStyle(.tertiary)
+                }
             }
             .sectionGroupStyle()
         }
@@ -500,6 +528,7 @@ struct PricingCalculatorView: View {
     private var profitHeroSection: some View {
         VStack(spacing: AppTheme.Spacing.xs) {
             VStack(spacing: AppTheme.Spacing.sm) {
+                // Profit per Sale — always shown
                 HStack {
                     Text("Profit per Sale")
                         .font(AppTheme.Typography.sectionHeader)
@@ -509,6 +538,43 @@ struct PricingCalculatorView: View {
                         .foregroundStyle(computedActualProfit >= 0 ? AppTheme.Colors.accent : .red)
                 }
 
+                // Take-home math — only when labor exists
+                let laborCost = CostingEngine.totalLaborCostBuffered(product: product)
+                if laborCost > 0 {
+                    HStack {
+                        Text("+ Your Labor")
+                            .font(AppTheme.Typography.bodyText)
+                        Spacer()
+                        Text(formatter.format(laborCost))
+                            .font(AppTheme.Typography.bodyText)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Divider()
+
+                    HStack {
+                        Text("Take-Home / Sale")
+                            .font(AppTheme.Typography.sectionHeader)
+                        Spacer()
+                        Text(formatter.format(computedActualProfit + laborCost))
+                            .font(AppTheme.Typography.heroPrice)
+                            .foregroundStyle(AppTheme.Colors.accent)
+                    }
+                }
+
+                // Take-Home per Hour — only when labor hours exist
+                if let perHour = computedTakeHomePerHour {
+                    HStack {
+                        Text("Take-Home / Hr")
+                            .font(AppTheme.Typography.bodyText)
+                        Spacer()
+                        Text(formatter.format(perHour))
+                            .font(AppTheme.Typography.sectionHeader)
+                            .foregroundStyle(computedActualProfit >= 0 ? AppTheme.Colors.accent : .red)
+                    }
+                }
+
+                // Profit Margin
                 if let margin = computedActualProfitMargin {
                     Divider()
                     HStack {
@@ -523,32 +589,13 @@ struct PricingCalculatorView: View {
             }
             .heroCardStyle()
 
-            let laborCost = CostingEngine.totalLaborCostBuffered(product: product)
-            if laborCost > 0 {
-                laborCallout(laborCost: laborCost)
-            }
-
+            // Shipping absorbed callout
             if let pricing = currentPricing,
                pricing.actualShippingCharge == 0,
                product.shippingCost > 0 {
                 shippingAbsorbedCallout
             }
         }
-    }
-
-    private func laborCallout(laborCost: Decimal) -> some View {
-        let takeHome = computedActualProfit + laborCost
-        return HStack(alignment: .top, spacing: AppTheme.Spacing.sm) {
-            Image(systemName: "info.circle")
-                .font(.caption)
-                .foregroundStyle(AppTheme.Colors.accent)
-                .accessibilityLabel("Info")
-            Text("Your labor (\(formatter.format(laborCost))) is also your income. Total take-home per sale: \(formatter.format(takeHome))")
-                .font(AppTheme.Typography.note)
-                .foregroundStyle(.secondary)
-        }
-        .padding(.vertical, AppTheme.Spacing.xs)
-        .sectionGroupStyle()
     }
 
     private var shippingAbsorbedCallout: some View {
