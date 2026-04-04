@@ -142,6 +142,17 @@ struct PricingCalculatorView: View {
             }
             .backgroundStyle(AppTheme.Colors.pricingSurface)
 
+            // Visual separator between the two calculator tools
+            HStack(spacing: AppTheme.Spacing.sm) {
+                VStack { Divider() }
+                Text("YOUR ACTUAL RESULTS")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .layoutPriority(1)
+                VStack { Divider() }
+            }
+            .padding(.vertical, AppTheme.Spacing.sm)
+
             profitAnalysisGroupBox
 
             Text("Enter your actual selling price and shipping charge to see your real profit per sale on this platform.")
@@ -526,64 +537,69 @@ struct PricingCalculatorView: View {
     }
 
     private var profitHeroSection: some View {
-        VStack(spacing: AppTheme.Spacing.xs) {
+        let laborCost = CostingEngine.totalLaborCostBuffered(product: product)
+        let earnings = computedActualProfit + laborCost
+        let hasLabor = laborCost > 0
+
+        return VStack(spacing: AppTheme.Spacing.xs) {
             VStack(spacing: AppTheme.Spacing.sm) {
-                // Profit per Sale — always shown
+                // Your Earnings / Sale — single hero metric
                 HStack {
-                    Text("Profit per Sale")
+                    Text("Your Earnings / Sale")
                         .font(AppTheme.Typography.sectionHeader)
                     Spacer()
-                    Text(formatter.format(computedActualProfit))
+                    Text(formatter.format(earnings))
                         .font(AppTheme.Typography.heroPrice)
-                        .foregroundStyle(computedActualProfit >= 0 ? AppTheme.Colors.accent : .red)
+                        .foregroundStyle(earnings >= 0 ? AppTheme.Colors.accent : .red)
                 }
 
-                // Take-home math — only when labor exists
-                let laborCost = CostingEngine.totalLaborCostBuffered(product: product)
-                if laborCost > 0 {
+                // Effective Hourly Rate — only when labor hours exist
+                if let perHour = computedTakeHomePerHour {
+                    HStack {
+                        Text("Effective Hourly Rate")
+                            .font(AppTheme.Typography.bodyText)
+                        Spacer()
+                        Text("\(formatter.format(perHour)) / hr")
+                            .font(AppTheme.Typography.sectionHeader)
+                            .foregroundStyle(earnings >= 0 ? AppTheme.Colors.accent : .red)
+                    }
+                }
+
+                Divider()
+
+                // Breakdown: Margin After Costs (hidden when no labor — would be redundant with hero)
+                if hasLabor {
+                    HStack {
+                        Text("Margin After Costs")
+                            .font(AppTheme.Typography.bodyText)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(formatter.format(computedActualProfit))
+                            .font(AppTheme.Typography.bodyText)
+                            .foregroundStyle(.secondary)
+                    }
+
                     HStack {
                         Text("+ Your Labor")
                             .font(AppTheme.Typography.bodyText)
+                            .foregroundStyle(.secondary)
                         Spacer()
                         Text(formatter.format(laborCost))
                             .font(AppTheme.Typography.bodyText)
                             .foregroundStyle(.secondary)
                     }
-
-                    Divider()
-
-                    HStack {
-                        Text("Take-Home / Sale")
-                            .font(AppTheme.Typography.sectionHeader)
-                        Spacer()
-                        Text(formatter.format(computedActualProfit + laborCost))
-                            .font(AppTheme.Typography.heroPrice)
-                            .foregroundStyle(AppTheme.Colors.accent)
-                    }
-                }
-
-                // Take-Home per Hour — only when labor hours exist
-                if let perHour = computedTakeHomePerHour {
-                    HStack {
-                        Text("Take-Home / Hr")
-                            .font(AppTheme.Typography.bodyText)
-                        Spacer()
-                        Text(formatter.format(perHour))
-                            .font(AppTheme.Typography.sectionHeader)
-                            .foregroundStyle(computedActualProfit >= 0 ? AppTheme.Colors.accent : .red)
-                    }
                 }
 
                 // Profit Margin
                 if let margin = computedActualProfitMargin {
-                    Divider()
                     HStack {
                         Text("Profit Margin")
                             .font(AppTheme.Typography.bodyText)
+                            .foregroundStyle(.secondary)
                         Spacer()
                         Text("\(PercentageFormat.toDisplay(margin))%")
-                            .font(AppTheme.Typography.sectionHeader)
-                            .foregroundStyle(computedActualProfit >= 0 ? AppTheme.Colors.accent : .red)
+                            .font(AppTheme.Typography.bodyText)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
