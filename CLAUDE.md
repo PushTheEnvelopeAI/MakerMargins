@@ -36,7 +36,7 @@ iOS 26 is the minimum. The Liquid Glass design language is a first-class iOS 26 
 | 3.5 | Item vs Product Cost Separation + E2E Tests | **Complete** |
 | 4 | Pricing Calculator & Platform Tabs + E2E Tests | **Complete** |
 | 4.5 | Template Products + Bundled Images + E2E Tests | **Complete** |
-| 5 | Batch Forecasting Widgets + E2E Tests | Pending |
+| 5 | Batch Forecasting Calculator + E2E Tests | **Complete** |
 | 6 | Production Readiness & App Store Launch | Pending |
 
 ---
@@ -205,7 +205,22 @@ takeHomePerSale          = actualProfit + totalLaborCostBuffered
 takeHomePerHour          = takeHomePerSale / totalLaborHours   // nil if hours = 0
 ```
 
-**Division-by-zero guards:** `batchUnitsCompleted` and `bulkQuantity` both default to 1. CostingEngine must still guard against zero before dividing. `targetRetailPrice` returns `nil` when the denominator is not positive. `actualProfitMargin` returns `nil` when gross revenue is zero.
+```
+// Batch Forecasting (per batch of N units — Epic 5)
+batchStepHours         = laborHoursPerProduct * batchSize
+batchLaborHours        = totalLaborHours * batchSize
+batchMaterialUnits     = unitsRequiredPerProduct * batchSize
+batchMaterialLineCost  = materialLineCost * batchSize
+bulkPurchasesNeeded    = ceil(batchMaterialUnits / bulkQuantity)   // returns (purchases, totalBulkUnits, leftover)
+batchPurchaseCost      = bulkPurchasesNeeded.purchases * bulkCost
+batchProductionCost    = totalProductionCost * batchSize
+batchCostPerUnit       = batchProductionCost / batchSize           // identity check — equals totalProductionCost
+batchRevenue           = (actualPrice + actualShippingCharge) * batchSize
+batchTotalFees         = totalSaleFees * batchSize                 // fixed fees apply per transaction
+batchProfit            = actualProfit * batchSize
+```
+
+**Division-by-zero guards:** `batchUnitsCompleted` and `bulkQuantity` both default to 1. CostingEngine must still guard against zero before dividing. `targetRetailPrice` returns `nil` when the denominator is not positive. `actualProfitMargin` returns `nil` when gross revenue is zero. `bulkPurchasesNeeded` returns `(0, 0, 0)` when `bulkQuantity` is zero or negative. `batchCostPerUnit` returns `0` when `batchSize` is zero.
 
 ---
 
@@ -237,7 +252,7 @@ MakerMargins/                              ← repo root
 │   ├── Assets.xcassets/                   ← Asset catalog: AppIcon + 42 template image sets (Epic 4.5)
 │   │
 │   ├── Engine/                            ← calculation, formatting & app-level managers
-│   │   ├── CostingEngine.swift            ← labor + material + target price calculations (Epic 2-4)
+│   │   ├── CostingEngine.swift            ← labor + material + target price + batch forecasting calculations (Epic 2-5)
 │   │   ├── CurrencyFormatter.swift        ← implemented Epic 1
 │   │   ├── AppearanceManager.swift        ← System/Light/Dark toggle, UserDefaults-persisted
 │   │   ├── LaborRateManager.swift         ← default hourly rate, UserDefaults-persisted (Epic 2)
@@ -256,7 +271,7 @@ MakerMargins/                              ← repo root
 │       │   ├── ProductCostSummaryCard.swift ← cost breakdown card (labor + materials live) — Epic 2+3
 │       │   ├── PricingCalculatorView.swift  ← target price calculator + profit analysis, rendered in Price sub-tab — Epic 4
 │       │   ├── TemplatePickerView.swift     ← sheet: 2-column grid of template cards — Epic 4.5
-│       │   └── BatchForecastView.swift      ← batch forecasting in Forecast sub-tab — STUB (Epic 5)
+│       │   └── BatchForecastView.swift      ← batch forecasting calculator in Forecast sub-tab — Epic 5
 │       ├── Workshop/                      ← Tab 2 (Labor): shared step library
 │       │   └── WorkshopView.swift         ← searchable list of all WorkSteps, titled "Labor" — Epic 2
 │       ├── Labor/
@@ -284,7 +299,7 @@ MakerMargins/                              ← repo root
 │   ├── Epic3_5Tests.swift                 ← Complete: Item/product separation, laborRate on join, per-product independence, laborHoursPerProduct (12 tests)
 │   ├── Epic4Tests.swift                   ← Complete: PlatformFeeProfile/ProductPricing CRUD, PlatformType constants + display helpers, targetRetailPrice calcs, duplication (20 tests)
 │   ├── Epic4_5Tests.swift                 ← Complete: Template data integrity, TemplateApplier entity creation, title-based deduplication (14 tests)
-│   └── Epic5Tests.swift                   ← STUB
+│   └── Epic5Tests.swift                   ← Complete: Batch forecasting calculations, bulk purchase planning, revenue projections (22 tests)
 │
 └── MakerMarginsUITests/                   ← UI automation (XCUITest)
     └── MakerMarginsUITests.swift          ← STUB
@@ -740,6 +755,60 @@ SettingsView                              [ROOT — currency, appearance, labor 
 - [x] Test: all 5 templates apply without error
 - [x] Test: 3D printing template pricing fees match definition
 
+## Epic 5 — Acceptance Criteria ✅
+
+**CostingEngine — Batch Forecasting Functions**
+- [x] `batchStepHours` model + raw-value overloads: labor hours per step × batch size
+- [x] `batchLaborHours` model + raw-value overloads: total labor hours × batch size
+- [x] `batchMaterialUnits` model + raw-value overloads: units per product × batch size
+- [x] `batchMaterialLineCost` model + raw-value overloads: material line cost × batch size
+- [x] `bulkPurchasesNeeded`: ceiling division with (purchases, totalBulkUnits, leftover) tuple; zero-guard on bulkQuantity
+- [x] `batchPurchaseCost`: purchases × bulk cost
+- [x] `batchProductionCost` model + raw-value overloads: production cost × batch size
+- [x] `batchCostPerUnit`: batch cost / batch size; zero-guard on batchSize
+- [x] `batchRevenue`: (actualPrice + actualShippingCharge) × batch size
+- [x] `batchTotalFees`: per-sale fees × batch size (fixed fees per transaction)
+- [x] `batchProfit`: per-sale profit × batch size
+- [x] `formatHoursReadable`: Decimal hours → "Xh Ym" string (drops seconds)
+
+**BatchForecastView (Forecast Sub-Tab)**
+- [x] Batch size input with +/- buttons, editable text field, quick-select chips (5/10/25/50/100)
+- [x] Batch size defaults to 10; session state only (not persisted)
+- [x] Labor Time Forecast section: per-step hours breakdown (hrs/ea + batch total), total hero with decimal + human-readable "Xh Ym"
+- [x] Material Shopping List section: units needed per material, "Buy X × [bulkQty] [unitName]" purchase recommendations, leftover tracking
+- [x] Shopping list summary: material cost (buffered) vs total purchase cost, surplus explanation note
+- [x] Batch Cost Summary section: buffered labor/materials/shipping with buffer % notes, Total Batch Cost + Cost Per Unit hero
+- [x] Revenue Forecast section: revenue/fees/production cost breakdown, batch profit hero (green/red), batch take-home, take-home/hr
+- [x] Revenue section only shown when ProductPricing with actualPrice > 0 exists
+- [x] Pricing hint when no actual prices set, pointing to Price tab
+- [x] Empty product state with ContentUnavailableView pointing to Build tab
+- [x] All sections use existing UI components: CalculatorSectionHeader, DetailRow, heroCardStyle, sectionGroupStyle, pricingSurface
+- [x] All monetary values formatted through CurrencyFormatter
+
+**E2E Tests (Epic5Tests.swift)**
+- [x] Test: batchStepHours raw-value multiplies by batch size
+- [x] Test: batchLaborHours sums all steps and multiplies by batch size
+- [x] Test: batchLaborHours raw-value overload matches model overload
+- [x] Test: batchLaborHours returns zero when step has zero recorded time
+- [x] Test: formatHoursReadable formats various hour values correctly (0h 0m, 0h 30m, 4h 45m, 25h 30m)
+- [x] Test: batchMaterialUnits multiplies units per product by batch size
+- [x] Test: batchMaterialLineCost multiplies line cost by batch size
+- [x] Test: bulkPurchasesNeeded exact fit (zero leftover)
+- [x] Test: bulkPurchasesNeeded partial bulk (has leftover)
+- [x] Test: bulkPurchasesNeeded multiple bulks required
+- [x] Test: bulkPurchasesNeeded zero bulk quantity guard
+- [x] Test: batchPurchaseCost multiplies purchases by bulk cost
+- [x] Test: batchProductionCost multiplies per-unit cost by batch size
+- [x] Test: batchCostPerUnit equals single-unit production cost
+- [x] Test: batchProductionCost batch of 1 equals single-unit production cost
+- [x] Test: batchRevenue multiplies gross revenue by batch size
+- [x] Test: batchTotalFees includes fixed fee per transaction scaled by batch
+- [x] Test: batchProfit multiplies per-sale profit by batch size
+- [x] Test: batchProfit negative profit scales correctly
+- [x] Test: full batch forecast with known product — all outputs internally consistent
+- [x] Test: empty product with no steps or materials — all batch values are zero
+- [x] Test: product with costs but no pricing — batch revenue is zero
+
 ---
 
 ## Build & Development Workflow
@@ -851,4 +920,10 @@ Runs on every push:
 - **Take-home as first-class metric:** Solo makers' labor cost is their income. The hero card shows explicit take-home math (Profit + Labor = Take-Home/Sale) and Take-Home/Hr as the maker's effective hourly wage. Take-home rows shown when `laborCostBuffered > 0`; per-hour shown when `totalLaborHours > 0`. Total Fees percentage subtotal in the Marketing and Fees section helps quick platform comparison.
 - **Template actual prices below target:** All 5 templates set `actualPrice` below the computed target price, demonstrating the common real-world scenario that motivates the "What am I actually making?" question. Shipping strategies vary (absorb, pass-through, mark up).
 - **No actual price defaults in PlatformFeeProfile:** Actual pricing is inherently per-product — a $15 candle and $85 cutting board from the same shop have different prices. Only fee-related defaults are stored globally.
+- **Batch forecasting is session state only:** Batch size is `@State` — not persisted to SwiftData. This is a calculator, not a production plan. Resets when navigating away. Default of 10 gives meaningful numbers on first view.
+- **Single input drives everything:** The batch size number is the only user input in the Forecast tab. All sections (labor time, shopping list, costs, revenue) derive from `product` data × `batchSize`. No configuration, no settings.
+- **Material shopping list with purchase recommendations:** `bulkPurchasesNeeded` uses ceiling division to tell makers exactly how many packages to buy. Shows leftover units. "Total Purchase Cost" (what you spend at the store) is distinct from "Material Cost" (what goes into production cost) — the difference is surplus from bulk packaging.
+- **Revenue forecast is conditional:** Only shown when at least one `ProductPricing` has `actualPrice > 0`. Uses the first matching pricing record. When no pricing exists, a hint directs users to the Price tab.
+- **Batch functions delegate to existing per-unit functions:** All `batchX` functions in CostingEngine are `existingPerUnitFunction × batchSize`. This ensures batch calculations are always consistent with single-unit calculations and avoids duplicating math.
+- **`formatHoursReadable` drops seconds:** Batch-level time display uses "Xh Ym" format (not "Xh Ym Zs") because second-level precision is meaningless for multi-unit production forecasts.
 - **No CloudKit, no authentication, no sync.** Single-user, local-only.
