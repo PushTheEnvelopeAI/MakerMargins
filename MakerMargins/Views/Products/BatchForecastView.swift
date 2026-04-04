@@ -47,14 +47,6 @@ struct BatchForecastView: View {
         product.shippingCost * Decimal(batchSize)
     }
 
-    private var totalBatchCost: Decimal {
-        CostingEngine.batchProductionCost(product: product, batchSize: batchSize)
-    }
-
-    private var costPerUnit: Decimal {
-        CostingEngine.batchCostPerUnit(batchProductionCost: totalBatchCost, batchSize: batchSize)
-    }
-
     // MARK: - Revenue
 
     /// Selects the best pricing for revenue forecasting.
@@ -85,8 +77,6 @@ struct BatchForecastView: View {
             }
 
             if hasLaborSteps || hasMaterials {
-                batchCostSummarySection
-
                 if activePricing != nil {
                     revenueForecastSection
                 } else {
@@ -319,80 +309,7 @@ struct BatchForecastView: View {
         .heroCardStyle()
     }
 
-    // MARK: - Section 4: Batch Cost Summary
-
-    private var batchCostSummarySection: some View {
-        GroupBox {
-            VStack(spacing: AppTheme.Spacing.xs) {
-                CalculatorSectionHeader(title: "Batch Cost", icon: "dollarsign.circle")
-
-                VStack(spacing: 0) {
-                    costDetailRow(
-                        label: "Labor",
-                        value: batchLaborCostBuffered,
-                        buffer: product.laborBuffer
-                    )
-                    costDetailRow(
-                        label: "Materials",
-                        value: batchMaterialCostBuffered,
-                        buffer: product.materialBuffer
-                    )
-                    HStack {
-                        Text("Shipping")
-                            .font(AppTheme.Typography.bodyText)
-                        Spacer()
-                        Text(formatter.format(batchShippingCost))
-                            .font(AppTheme.Typography.sectionHeader)
-                    }
-                    .padding(.vertical, AppTheme.Spacing.sm)
-                }
-                .sectionGroupStyle()
-
-                VStack(spacing: AppTheme.Spacing.sm) {
-                    HStack {
-                        Text("Total Batch Cost")
-                            .font(AppTheme.Typography.sectionHeader)
-                        Spacer()
-                        Text(formatter.format(totalBatchCost))
-                            .font(AppTheme.Typography.heroPrice)
-                            .foregroundStyle(AppTheme.Colors.accent)
-                    }
-                    HStack {
-                        Text("Cost Per Unit")
-                            .font(AppTheme.Typography.bodyText)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Text(formatter.format(costPerUnit))
-                            .font(AppTheme.Typography.sectionHeader)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .heroCardStyle()
-            }
-        }
-        .backgroundStyle(AppTheme.Colors.pricingSurface)
-    }
-
-    @ViewBuilder
-    private func costDetailRow(label: String, value: Decimal, buffer: Decimal) -> some View {
-        HStack {
-            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxxs) {
-                Text(label)
-                    .font(AppTheme.Typography.bodyText)
-                if buffer > 0 {
-                    Text("+\(PercentageFormat.toDisplay(buffer))% buffer")
-                        .font(AppTheme.Typography.note)
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            Spacer()
-            Text(formatter.format(value))
-                .font(AppTheme.Typography.sectionHeader)
-        }
-        .padding(.vertical, AppTheme.Spacing.sm)
-    }
-
-    // MARK: - Section 5: Revenue Forecast
+    // MARK: - Section 4: Revenue Forecast
 
     @ViewBuilder
     private var revenueForecastSection: some View {
@@ -460,45 +377,31 @@ struct BatchForecastView: View {
                     .sectionGroupStyle()
 
                     VStack(spacing: AppTheme.Spacing.sm) {
+                        let batchEarnings = profit + batchLaborCostBuffered
+
+                        // Batch Earnings — single hero metric
                         HStack {
-                            Text("Batch Profit")
+                            Text("Batch Earnings")
                                 .font(AppTheme.Typography.sectionHeader)
                             Spacer()
-                            Text(formatter.format(profit))
+                            Text(formatter.format(batchEarnings))
                                 .font(AppTheme.Typography.heroPrice)
-                                .foregroundStyle(profit >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive)
+                                .foregroundStyle(batchEarnings >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive)
                         }
 
                         if batchSize > 0 {
                             HStack {
-                                Text("Profit / Unit")
+                                Text("Earnings / Unit")
                                     .font(AppTheme.Typography.bodyText)
                                     .foregroundStyle(.secondary)
                                 Spacer()
-                                Text(formatter.format(profit / Decimal(batchSize)))
+                                Text(formatter.format(batchEarnings / Decimal(batchSize)))
                                     .font(AppTheme.Typography.sectionHeader)
                                     .foregroundStyle(.secondary)
                             }
                         }
 
-                        Text("Based on \(pricing.platformType.rawValue) pricing")
-                            .font(AppTheme.Typography.rowCaption)
-                            .foregroundStyle(.tertiary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-
-                        if batchLaborCostBuffered > 0 {
-                            Divider()
-                            HStack {
-                                Text("Batch Take-Home")
-                                    .font(AppTheme.Typography.bodyText)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Text(formatter.format(profit + batchLaborCostBuffered))
-                                    .font(AppTheme.Typography.sectionHeader)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-
+                        // Effective Hourly Rate — only when labor hours exist
                         if totalBatchLaborHours > 0 {
                             let perUnitProfit = CostingEngine.actualProfit(
                                 product: product,
@@ -515,16 +418,34 @@ struct BatchForecastView: View {
                                 actualProfit: perUnitProfit
                             ) {
                                 HStack {
-                                    Text("Take-Home / Hr")
+                                    Text("Effective Hourly Rate")
                                         .font(AppTheme.Typography.bodyText)
-                                        .foregroundStyle(.secondary)
                                     Spacer()
-                                    Text(formatter.format(perHour))
+                                    Text("\(formatter.format(perHour)) / hr")
                                         .font(AppTheme.Typography.sectionHeader)
-                                        .foregroundStyle(profit >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive)
+                                        .foregroundStyle(batchEarnings >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive)
                                 }
                             }
                         }
+
+                        // Breakdown: Margin After Costs (only when labor exists — otherwise redundant with hero)
+                        if batchLaborCostBuffered > 0 {
+                            Divider()
+                            HStack {
+                                Text("Margin After Costs")
+                                    .font(AppTheme.Typography.bodyText)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(formatter.format(profit))
+                                    .font(AppTheme.Typography.bodyText)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        Text("Based on \(pricing.platformType.rawValue) pricing")
+                            .font(AppTheme.Typography.rowCaption)
+                            .foregroundStyle(.tertiary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .heroCardStyle()
                 }

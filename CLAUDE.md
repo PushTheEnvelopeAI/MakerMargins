@@ -200,10 +200,11 @@ totalSaleFees            = grossRevenue × (platformFee + paymentProcessingFee)
 actualProfit             = grossRevenue - totalSaleFees - productionCostExShipping - shippingCost
 actualProfitMargin       = actualProfit / grossRevenue  // nil if grossRevenue = 0
 
-// Take-Home Metrics (solo-maker)
+// Earnings Metrics (solo-maker — "Your Earnings" in UI)
 totalLaborHours          = sum of laborHoursPerProduct across all ProductWorkSteps
-takeHomePerSale          = actualProfit + totalLaborCostBuffered
-takeHomePerHour          = takeHomePerSale / totalLaborHours   // nil if hours = 0
+earningsPerSale          = actualProfit + totalLaborCostBuffered   // UI: "Your Earnings / Sale"
+effectiveHourlyRate      = earningsPerSale / totalLaborHours       // nil if hours = 0; UI: "Effective Hourly Rate"
+// actualProfit shown as "Margin After Costs" in UI breakdown (secondary, not hero)
 ```
 
 ```
@@ -667,10 +668,10 @@ SettingsView                              [ROOT — currency, appearance, labor 
 - [x] "Use Target Price" button pre-fills from computed target price
 - [x] Breakdown section: Revenue, Platform Fees, Processing Fees, Marketing Fees, Production Cost, Shipping Expense
 - [x] Fee rows hidden when amount is zero
-- [x] Profit per Sale hero (green positive, red negative)
-- [x] Profit Margin percentage display
-- [x] Take-home math in hero card: Profit per Sale → + Your Labor → Take-Home/Sale (shown when labor > 0)
-- [x] Take-Home / Hr in hero card (shown when totalLaborHours > 0)
+- [x] Your Earnings / Sale hero (green positive, red negative) — single clear answer
+- [x] Effective Hourly Rate in hero card (shown when totalLaborHours > 0)
+- [x] Margin After Costs + Your Labor breakdown below hero (shown when labor > 0, secondary styling)
+- [x] Profit Margin percentage display (secondary styling)
 - [x] Total Fees percentage subtotal row in Marketing and Fees section
 - [x] Shipping absorbed callout when charging $0 but shipping costs exist
 - [x] Zero production cost warning in breakdown
@@ -778,8 +779,8 @@ SettingsView                              [ROOT — currency, appearance, labor 
 - [x] Labor Time Forecast section: per-step hours breakdown (hrs/ea + batch total), total hero with decimal + human-readable "Xh Ym"
 - [x] Material Shopping List section: units needed per material, "Buy X × [bulkQty] [unitName]" purchase recommendations, leftover tracking
 - [x] Shopping list summary: material cost (buffered) vs total purchase cost, surplus explanation note
-- [x] Batch Cost Summary section: buffered labor/materials/shipping with buffer % notes, Total Batch Cost + Cost Per Unit hero
-- [x] Revenue Forecast section: revenue/fees/production cost breakdown, batch profit hero (green/red), batch take-home, take-home/hr
+- [x] ~~Batch Cost Summary section~~ — removed (redundant with Revenue Forecast breakdown)
+- [x] Revenue Forecast section: revenue/fees/production cost breakdown, batch earnings hero (green/red), earnings/unit, effective hourly rate, margin after costs
 - [x] Revenue section only shown when ProductPricing with actualPrice > 0 exists
 - [x] Pricing hint when no actual prices set, pointing to Price tab
 - [x] Empty product state with ContentUnavailableView pointing to Build tab
@@ -918,7 +919,7 @@ Runs on every push:
 - **Template names are workflow-focused:** Titles like "Woodworking Template" (not "Hardwood Cutting Board") to communicate that templates are starting points for any product in that category. Each has a TMPL-prefixed SKU.
 - **Fees on price + shipping in profit analysis:** Platform and processing percentage fees apply to `actualPrice + actualShippingCharge` (the full customer payment), matching real Etsy/Shopify/Amazon behavior. Marketing fees apply to `actualPrice` only (Etsy offsite ads don't apply to shipping).
 - **Separate GroupBox for profit analysis:** "Target Price Calculator" answers "what should I charge?" and "Profit Analysis" answers "what am I actually making?" Separate GroupBoxes maintain clear mental models while sharing the same platform tabs via `selectedPlatform` state.
-- **Take-home as first-class metric:** Solo makers' labor cost is their income. The hero card shows explicit take-home math (Profit + Labor = Take-Home/Sale) and Take-Home/Hr as the maker's effective hourly wage. Take-home rows shown when `laborCostBuffered > 0`; per-hour shown when `totalLaborHours > 0`. Total Fees percentage subtotal in the Marketing and Fees section helps quick platform comparison.
+- **"Your Earnings" as single hero metric:** Solo makers' labor cost is their income. The hero card shows one clear answer — "Your Earnings / Sale" (= actualProfit + laborCostBuffered) — instead of two competing profit numbers. "Margin After Costs" (the old "Profit per Sale") and "+ Your Labor" appear as secondary breakdown lines below the hero, preserving educational value without visual competition. "Effective Hourly Rate" (the old "Take-Home / Hr") answers "is this product worth my time?" Batch Forecast uses the same pattern: "Batch Earnings" hero + "Earnings / Unit" + "Margin After Costs" breakdown. All breakdown rows hidden when no labor exists (earnings = margin, so showing both would be redundant).
 - **Template actual prices below target:** All 5 templates set `actualPrice` below the computed target price, demonstrating the common real-world scenario that motivates the "What am I actually making?" question. Shipping strategies vary (absorb, pass-through, mark up).
 - **No actual price defaults in PlatformFeeProfile:** Actual pricing is inherently per-product — a $15 candle and $85 cutting board from the same shop have different prices. Only fee-related defaults are stored globally.
 - **Batch forecasting is session state only:** Batch size is `@State` — not persisted to SwiftData. This is a calculator, not a production plan. Resets when navigating away. Default of 10 gives meaningful numbers on first view.
