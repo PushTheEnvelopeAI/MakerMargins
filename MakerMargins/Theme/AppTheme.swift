@@ -93,6 +93,15 @@ enum AppTheme {
         /// Editable input field background — subtle fill to indicate tappable/editable fields.
         static let inputBackground = Color(.tertiarySystemFill)
 
+        /// Grouped-section background within calculator GroupBoxes — subtle fill to visually separate row groups without dividers.
+        static let sectionFill = Color(
+            UIColor { traits in
+                traits.userInterfaceStyle == .dark
+                    ? UIColor(white: 1.0, alpha: 0.04)
+                    : UIColor(white: 0.0, alpha: 0.03)
+            }
+        )
+
         /// Pricing calculator background — subtle warm tint to distinguish from product-building sections.
         static let pricingSurface = Color(
             UIColor { traits in
@@ -137,7 +146,9 @@ enum AppTheme {
         static let rowTitle:      Font = .body
         static let rowCaption:    Font = .caption
         static let sectionHeader: Font = .subheadline.weight(.semibold)
+        static let sectionLabel:  Font = .caption.weight(.semibold)
         static let bodyText:      Font = .subheadline
+        static let heroPrice:     Font = .title2.weight(.bold)
         static let badge:         Font = .caption.weight(.medium)
         static let note:          Font = .caption2
         static let timerDisplay:  Font = .system(size: 56, weight: .light, design: .monospaced)

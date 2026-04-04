@@ -183,6 +183,52 @@ struct CurrencyInputField: View {
     }
 }
 
+// MARK: - Calculator Section Header
+
+/// Reusable section header with SF Symbol icon for pricing calculator sections.
+struct CalculatorSectionHeader: View {
+    let title: String
+    let icon: String
+
+    var body: some View {
+        HStack(spacing: AppTheme.Spacing.smd) {
+            Image(systemName: icon)
+                .font(.caption)
+                .foregroundStyle(AppTheme.Colors.accent)
+                .accessibilityHidden(true)
+            Text(title)
+                .font(AppTheme.Typography.sectionLabel)
+                .foregroundStyle(.secondary)
+            Spacer()
+        }
+    }
+}
+
+// MARK: - Calculator Section Styles
+
+extension View {
+    /// Wraps content in a subtle grouped background for calculator row sections.
+    func sectionGroupStyle() -> some View {
+        self
+            .padding(.horizontal, AppTheme.Spacing.sm)
+            .padding(.vertical, AppTheme.Spacing.xs)
+            .background(
+                AppTheme.Colors.sectionFill,
+                in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small)
+            )
+    }
+
+    /// Hero card treatment for key output values (Target Price, Profit per Sale).
+    func heroCardStyle() -> some View {
+        self
+            .padding(AppTheme.Spacing.md)
+            .background(
+                AppTheme.Colors.accentSubtle,
+                in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small)
+            )
+    }
+}
+
 // MARK: - Detail Rows
 
 /// Standard detail row for displaying a label–value pair in a GroupBox.
@@ -294,7 +340,12 @@ enum PercentageFormat {
         if double == double.rounded(.towardZero) {
             return "\(Int(double))"
         }
-        return "\(whole)"
+        // Round to 1 decimal place for computed values with many decimal places
+        let rounded = (double * 10).rounded() / 10
+        if rounded == rounded.rounded(.towardZero) {
+            return "\(Int(rounded))"
+        }
+        return String(format: "%.1f", rounded)
     }
 
     /// Converts a display string (e.g. "30") to a stored fraction (e.g. 0.30).
