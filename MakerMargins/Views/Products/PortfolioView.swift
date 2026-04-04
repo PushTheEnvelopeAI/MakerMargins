@@ -42,9 +42,6 @@ struct PortfolioView: View {
             }
         }
         .navigationTitle("Portfolio")
-        .navigationDestination(for: Product.self) { product in
-            ProductDetailView(product: product)
-        }
         .appBackground()
     }
 
@@ -108,7 +105,7 @@ struct PortfolioView: View {
                     noPricingHint
                 } else {
                     ForEach(priced, id: \.product.persistentModelID) { snap in
-                        NavigationLink(value: snap.product) {
+                        NavigationLink { ProductDetailView(product: snap.product) } label: {
                             portfolioBarRow(
                                 imageData: snap.product.image,
                                 title: snap.product.title,
@@ -146,7 +143,7 @@ struct PortfolioView: View {
                 } else {
                     ForEach(withMargin, id: \.product.persistentModelID) { snap in
                         if let margin = snap.profitMargin {
-                            NavigationLink(value: snap.product) {
+                            NavigationLink { ProductDetailView(product: snap.product) } label: {
                                 portfolioBarRow(
                                     imageData: snap.product.image,
                                     title: snap.product.title,
@@ -186,7 +183,7 @@ struct PortfolioView: View {
                 } else {
                     ForEach(withRate, id: \.product.persistentModelID) { snap in
                         if let rate = snap.hourlyRate {
-                            NavigationLink(value: snap.product) {
+                            NavigationLink { ProductDetailView(product: snap.product) } label: {
                                 portfolioBarRow(
                                     imageData: snap.product.image,
                                     title: snap.product.title,
@@ -203,7 +200,7 @@ struct PortfolioView: View {
 
                     // Products with pricing but no labor hours
                     ForEach(noHours, id: \.product.persistentModelID) { snap in
-                        NavigationLink(value: snap.product) {
+                        NavigationLink { ProductDetailView(product: snap.product) } label: {
                             HStack(spacing: AppTheme.Spacing.md) {
                                 ProductThumbnailView(imageData: snap.product.image, size: 32)
                                 VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
@@ -241,7 +238,7 @@ struct PortfolioView: View {
                 CalculatorSectionHeader(title: "Cost Breakdown", icon: "chart.bar")
 
                 ForEach(sorted, id: \.product.persistentModelID) { snap in
-                    NavigationLink(value: snap.product) {
+                    NavigationLink { ProductDetailView(product: snap.product) } label: {
                         costBreakdownRow(snap: snap)
                     }
                     .buttonStyle(.plain)
@@ -425,7 +422,7 @@ struct PortfolioView: View {
     @ViewBuilder
     private func unpricedRows(_ unpriced: [CostingEngine.ProductSnapshot]) -> some View {
         ForEach(unpriced, id: \.product.persistentModelID) { snap in
-            NavigationLink(value: snap.product) {
+            NavigationLink { ProductDetailView(product: snap.product) } label: {
                 HStack(spacing: AppTheme.Spacing.md) {
                     ProductThumbnailView(imageData: snap.product.image, size: 32)
                     Text(snap.product.title)
