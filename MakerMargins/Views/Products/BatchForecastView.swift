@@ -50,14 +50,12 @@ struct BatchForecastView: View {
     // MARK: - Revenue
 
     /// Selects the best pricing for revenue forecasting.
-    /// Prefers platform-specific (Etsy/Shopify/Amazon) over General,
-    /// since General is lazily created with defaults and may have a
-    /// placeholder actualPrice. Among equals, picks highest actualPrice.
+    /// Prefers General for broad applicability (no platform-specific locked fees).
+    /// Falls back to any pricing with an actual price if General has none.
     private var activePricing: ProductPricing? {
         let withPrice = product.productPricings.filter { $0.actualPrice > 0 }
-        let platformSpecific = withPrice.filter { $0.platformType != .general }
-        if let best = platformSpecific.max(by: { $0.actualPrice < $1.actualPrice }) {
-            return best
+        if let general = withPrice.first(where: { $0.platformType == .general }) {
+            return general
         }
         return withPrice.first
     }
@@ -378,6 +376,11 @@ struct BatchForecastView: View {
 
                     VStack(spacing: AppTheme.Spacing.sm) {
                         let batchEarnings = profit + batchLaborCostBuffered
+                        let grossRevenue = CostingEngine.batchRevenue(
+                            actualPrice: pricing.actualPrice,
+                            actualShippingCharge: pricing.actualShippingCharge,
+                            batchSize: batchSize
+                        )
 
                         // Batch Earnings — single hero metric
                         HStack {
@@ -398,6 +401,19 @@ struct BatchForecastView: View {
                                 Text(formatter.format(batchEarnings / Decimal(batchSize)))
                                     .font(AppTheme.Typography.sectionHeader)
                                     .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        // Profit Margin
+                        if grossRevenue > 0 {
+                            let margin = profit / grossRevenue
+                            HStack {
+                                Text("Profit Margin")
+                                    .font(AppTheme.Typography.bodyText)
+                                Spacer()
+                                Text("\(PercentageFormat.toDisplay(margin))%")
+                                    .font(AppTheme.Typography.sectionHeader)
+                                    .foregroundStyle(batchEarnings >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive)
                             }
                         }
 
@@ -425,20 +441,6 @@ struct BatchForecastView: View {
                                         .font(AppTheme.Typography.sectionHeader)
                                         .foregroundStyle(batchEarnings >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive)
                                 }
-                            }
-                        }
-
-                        // Breakdown: Margin After Costs (only when labor exists — otherwise redundant with hero)
-                        if batchLaborCostBuffered > 0 {
-                            Divider()
-                            HStack {
-                                Text("Margin After Costs")
-                                    .font(AppTheme.Typography.bodyText)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Text(formatter.format(profit))
-                                    .font(AppTheme.Typography.bodyText)
-                                    .foregroundStyle(.secondary)
                             }
                         }
 

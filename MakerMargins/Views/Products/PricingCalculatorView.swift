@@ -553,21 +553,7 @@ struct PricingCalculatorView: View {
                         .foregroundStyle(earnings >= 0 ? AppTheme.Colors.accent : .red)
                 }
 
-                // Effective Hourly Rate — only when labor hours exist
-                if let perHour = computedTakeHomePerHour {
-                    HStack {
-                        Text("Effective Hourly Rate")
-                            .font(AppTheme.Typography.bodyText)
-                        Spacer()
-                        Text("\(formatter.format(perHour)) / hr")
-                            .font(AppTheme.Typography.sectionHeader)
-                            .foregroundStyle(earnings >= 0 ? AppTheme.Colors.accent : .red)
-                    }
-                }
-
-                Divider()
-
-                // Breakdown: Margin After Costs (hidden when no labor — would be redundant with hero)
+                // Breakdown: Margin After Costs + Your Labor (hidden when no labor — would be redundant with hero)
                 if hasLabor {
                     HStack {
                         Text("Margin After Costs")
@@ -595,11 +581,22 @@ struct PricingCalculatorView: View {
                     HStack {
                         Text("Profit Margin")
                             .font(AppTheme.Typography.bodyText)
-                            .foregroundStyle(.secondary)
                         Spacer()
                         Text("\(PercentageFormat.toDisplay(margin))%")
+                            .font(AppTheme.Typography.sectionHeader)
+                            .foregroundStyle(earnings >= 0 ? AppTheme.Colors.accent : .red)
+                    }
+                }
+
+                // Effective Hourly Rate — only when labor hours exist
+                if let perHour = computedTakeHomePerHour {
+                    HStack {
+                        Text("Effective Hourly Rate")
                             .font(AppTheme.Typography.bodyText)
-                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text("\(formatter.format(perHour)) / hr")
+                            .font(AppTheme.Typography.sectionHeader)
+                            .foregroundStyle(earnings >= 0 ? AppTheme.Colors.accent : .red)
                     }
                 }
             }
