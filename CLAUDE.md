@@ -37,7 +37,7 @@ iOS 26 is the minimum. The Liquid Glass design language is a first-class iOS 26 
 | 4 | Pricing Calculator & Platform Tabs + E2E Tests | **Complete** |
 | 4.5 | Template Products + Bundled Images + E2E Tests | **Complete** |
 | 5 | Batch Forecasting Calculator + E2E Tests | **Complete** |
-| 6 | Portfolio Metrics & Product Comparison + E2E Tests | Pending |
+| 6 | Portfolio Metrics & Product Comparison + E2E Tests | **Complete** |
 | 7 | Production Readiness & App Store Launch | Pending |
 
 ---
@@ -222,6 +222,15 @@ batchTotalFees         = totalSaleFees * batchSize                 // fixed fees
 batchProfit            = actualProfit * batchSize
 ```
 
+```
+// Portfolio Metrics (per product, platform-specific — Epic 6)
+portfolioPricing       = product.productPricings.first(where: platform & actualPrice > 0)
+productSnapshot        = { productionCost, laborCostBuffered, materialCostBuffered, shippingCost,
+                           totalLaborHours, earnings, profit, profitMargin, hourlyRate, hasPricing }
+earnings               = actualProfit + laborCostBuffered     // same as "Your Earnings" in Price tab
+portfolioAverages      = avg(earnings), avg(profitMargin), avg(hourlyRate) across priced products only
+```
+
 **Division-by-zero guards:** `batchUnitsCompleted` and `bulkQuantity` both default to 1. CostingEngine must still guard against zero before dividing. `targetRetailPrice` returns `nil` when the denominator is not positive. `actualProfitMargin` returns `nil` when gross revenue is zero. `bulkPurchasesNeeded` returns `(0, 0, 0)` when `bulkQuantity` is zero or negative. `batchCostPerUnit` returns `0` when `batchSize` is zero.
 
 ---
@@ -254,7 +263,7 @@ MakerMargins/                              ← repo root
 │   ├── Assets.xcassets/                   ← Asset catalog: AppIcon + 42 template image sets (Epic 4.5)
 │   │
 │   ├── Engine/                            ← calculation, formatting & app-level managers
-│   │   ├── CostingEngine.swift            ← labor + material + target price + batch forecasting calculations (Epic 2-5)
+│   │   ├── CostingEngine.swift            ← labor + material + target price + batch forecasting + portfolio calculations (Epic 2-6)
 │   │   ├── CurrencyFormatter.swift        ← implemented Epic 1
 │   │   ├── AppearanceManager.swift        ← System/Light/Dark toggle, UserDefaults-persisted
 │   │   ├── LaborRateManager.swift         ← default hourly rate, UserDefaults-persisted (Epic 2)
@@ -267,13 +276,14 @@ MakerMargins/                              ← repo root
 │   │
 │   └── Views/                             ← SwiftUI views, grouped by feature
 │       ├── Products/                      ← Tab 1 root + all product-owned views
-│       │   ├── ProductListView.swift      ← Tab 1 root (NavigationStack), product duplication, template picker menu — Epic 1+4.5
+│       │   ├── ProductListView.swift      ← Tab 1 root (NavigationStack), product duplication, template picker menu, portfolio link — Epic 1+4.5+6
 │       │   ├── ProductDetailView.swift    ← pinned header + segmented sub-tabs (Build/Price/Forecast) — Epic 1+2+4
 │       │   ├── ProductFormView.swift      ← create/edit sheet, inline category creation — Epic 1
 │       │   ├── ProductCostSummaryCard.swift ← cost breakdown card (labor + materials live) — Epic 2+3
 │       │   ├── PricingCalculatorView.swift  ← target price calculator + profit analysis, rendered in Price sub-tab — Epic 4
 │       │   ├── TemplatePickerView.swift     ← sheet: 2-column grid of template cards — Epic 4.5
-│       │   └── BatchForecastView.swift      ← batch forecasting calculator in Forecast sub-tab — Epic 5
+│       │   ├── BatchForecastView.swift      ← batch forecasting calculator in Forecast sub-tab — Epic 5
+│       │   └── PortfolioView.swift         ← portfolio comparison: rankings, profitability, cost breakdown — Epic 6
 │       ├── Workshop/                      ← Tab 2 (Labor): shared step library
 │       │   └── WorkshopView.swift         ← searchable list of all WorkSteps, titled "Labor" — Epic 2
 │       ├── Labor/
@@ -301,7 +311,8 @@ MakerMargins/                              ← repo root
 │   ├── Epic3_5Tests.swift                 ← Complete: Item/product separation, laborRate on join, per-product independence, laborHoursPerProduct (12 tests)
 │   ├── Epic4Tests.swift                   ← Complete: PlatformFeeProfile/ProductPricing CRUD, PlatformType constants + display helpers, targetRetailPrice calcs, duplication (20 tests)
 │   ├── Epic4_5Tests.swift                 ← Complete: Template data integrity, TemplateApplier entity creation, title-based deduplication (14 tests)
-│   └── Epic5Tests.swift                   ← Complete: Batch forecasting calculations, bulk purchase planning, revenue projections (22 tests)
+│   ├── Epic5Tests.swift                   ← Complete: Batch forecasting calculations, bulk purchase planning, revenue projections (22 tests)
+│   └── Epic6Tests.swift                   ← Complete: Portfolio pricing lookup, product snapshots, averages, cross-verification (20 tests)
 │
 └── MakerMarginsUITests/                   ← UI automation (XCUITest)
     └── MakerMarginsUITests.swift          ← STUB
@@ -323,6 +334,8 @@ MakerMargins/                              ← repo root
 ### Tab 1 — Products (primary workspace)
 ```
 ProductListView                            [ROOT — context menu: Duplicate, Delete]
+├── [push] PortfolioView                   [Level 1 — platform picker, sort, rankings, cost breakdown]
+│   └── [push] ProductDetailView           [Level 2 — tapping a product in rankings]
 └── [push] ProductDetailView               [Level 1 — pinned header + segmented sub-tabs]
     │   Pinned Header: category badge, description, sub-tab picker
     │   Sub-tabs: Build | Price | Forecast
@@ -813,6 +826,57 @@ SettingsView                              [ROOT — currency, appearance, labor 
 
 ---
 
+## Epic 6 — Acceptance Criteria ✅
+
+**CostingEngine — Portfolio Metrics**
+- [x] `ProductSnapshot` struct captures all portfolio-relevant metrics per product
+- [x] `portfolioPricing(for:platform:)` returns ProductPricing for specific platform with actualPrice > 0, nil otherwise
+- [x] `productSnapshot(product:platform:)` builds full snapshot using resolvedFees + actualProfit + takeHomePerHour
+- [x] `productSnapshot` returns zero earnings/nil margins when no pricing exists; cost fields always populated
+- [x] `portfolioSnapshots(products:platform:)` maps all products to snapshots
+- [x] `portfolioAverages(snapshots:)` computes averages only across priced products; nil-safe for margin/rate
+
+**PortfolioView (Pushed from ProductListView)**
+- [x] Platform picker (General | Etsy | Shopify | Amazon) defaults to General, recomputes all snapshots on change
+- [x] Sort picker (Earnings | Margin | $/Hour | Cost) re-sorts all sections
+- [x] Portfolio Summary Card at top: avg earnings hero, avg margin, avg hourly rate, top earner, needs attention callout
+- [x] Earnings Leaderboard: ranked products with proportional horizontal bars, green/red color coding
+- [x] Unpriced products listed at bottom with "No [Platform] price" tertiary label
+- [x] Profitability section: profit margin % and effective hourly rate sub-groups with proportional bars
+- [x] Products with no labor hours show "N/A" for hourly rate
+- [x] Cost Breakdown section: stacked bars (labor amber / material sage / shipping gray) with legend, always visible
+- [x] All products tappable NavigationLinks to ProductDetailView
+- [x] Empty state when no products exist
+- [x] Empty state when no products have pricing for selected platform (replaces Sections A & B, Cost Breakdown still visible)
+
+**ProductListView Integration**
+- [x] Toolbar chart icon (`chart.bar.xaxis.ascending`) in topBarLeading pushes PortfolioView
+- [x] Existing `navigationDestination(for: Product.self)` handles product taps from within portfolio
+
+**E2E Tests (Epic6Tests.swift)**
+- [x] Test: portfolioPricing returns nil when product has no pricing records
+- [x] Test: portfolioPricing returns General pricing when actualPrice > 0
+- [x] Test: portfolioPricing returns nil for Etsy when only General pricing exists
+- [x] Test: portfolioPricing returns Etsy pricing when queried for Etsy
+- [x] Test: portfolioPricing returns nil when General pricing has actualPrice = 0
+- [x] Test: productSnapshot full product — all fields populated with correct values
+- [x] Test: productSnapshot no pricing — hasPricing false, costs populated
+- [x] Test: productSnapshot no labor steps — hourlyRate nil, laborCostBuffered zero
+- [x] Test: productSnapshot no materials — materialCostBuffered zero
+- [x] Test: productSnapshot empty product — all fields zero or nil
+- [x] Test: portfolioAverages mixed — averages only from priced products
+- [x] Test: portfolioAverages all priced — pricedCount equals totalCount
+- [x] Test: portfolioAverages none priced — safe defaults
+- [x] Test: portfolioAverages single product — averages equal own values
+- [x] Test: portfolioAverages includes negative profit
+- [x] Test: snapshot earnings matches direct CostingEngine calculation
+- [x] Test: snapshot profitMargin matches direct CostingEngine calculation
+- [x] Test: snapshots sorted by earnings produce correct descending order
+- [x] Test: snapshots sorted by production cost produce correct descending order
+- [x] Test: snapshots include all products regardless of category
+
+---
+
 ## Build & Development Workflow
 
 **Development machine:** Windows 11. No local Mac. Xcode is not available locally.
@@ -931,4 +995,11 @@ Runs on every push:
 - **`activePricing` prefers platform-specific over General:** Revenue forecast selects the pricing with the highest `actualPrice` among platform-specific records (Etsy/Shopify/Amazon), falling back to General only if no platform-specific pricing exists. This prevents lazily-created General records from shadowing template Etsy pricing.
 - **Per-unit labor time uses minutes:** The per-unit context line in labor forecast rows shows "23m/ea" or "1h 15m/ea" instead of "0.375 hrs/ea" — more intuitive for makers. Batch totals keep decimal precision.
 - **Zero-value rows hidden in revenue breakdown:** Fee, production cost, and shipping rows in the revenue forecast section are hidden when their value is zero, avoiding "-$0.00" display artifacts.
+- **Portfolio uses platform picker, not fixed General:** The portfolio view has a segmented platform picker (General | Etsy | Shopify | Amazon) defaulting to General. All earnings/profitability metrics are computed against the selected platform's pricing and fee structure, ensuring apples-to-apples comparison. Products without pricing for the selected platform are treated as "unpriced."
+- **`portfolioPricing` is distinct from `activePricing`:** `portfolioPricing(for:platform:)` returns pricing for a specific platform only. `BatchForecastView.activePricing` falls back across platforms. Portfolio needs strict per-platform lookup; batch forecast needs best-available.
+- **`ProductSnapshot` is a value type, not a model:** Computed once per product per view refresh from existing CostingEngine functions. No new math — purely a composition cache. Nested inside `CostingEngine` to keep the namespace clean.
+- **Portfolio sort is session state only:** `sortMetric` and `selectedPlatform` are `@State` — not persisted. The portfolio is an analytical tool, not a saved configuration.
+- **Cost Breakdown is platform-independent:** The stacked bar section shows all products regardless of platform selection, since production costs don't vary by selling platform. Only earnings/profitability sections are platform-gated.
+- **Toolbar chart icon in ProductListView:** `chart.bar.xaxis.ascending` icon in `topBarLeading` alongside the list/grid toggle. Uses `NavigationLink` to push `PortfolioView` within the same `NavigationStack`. Products in portfolio are tappable via the existing `navigationDestination(for: Product.self)`.
+- **Proportional bars use linear scale:** Bar widths are proportional to the max value in each section. For v1, linear scaling is fine — makers typically have products in similar price ranges. Log scale could be a future enhancement for extreme outliers.
 - **No CloudKit, no authentication, no sync.** Single-user, local-only.

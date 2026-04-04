@@ -71,10 +71,17 @@ struct ProductListView: View {
                 }
             }
             ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    isGridMode.toggle()
-                } label: {
-                    Image(systemName: isGridMode ? "list.bullet" : "square.grid.2x2")
+                HStack(spacing: 0) {
+                    Button {
+                        isGridMode.toggle()
+                    } label: {
+                        Image(systemName: isGridMode ? "list.bullet" : "square.grid.2x2")
+                    }
+                    NavigationLink {
+                        PortfolioView()
+                    } label: {
+                        Image(systemName: "chart.bar.xaxis.ascending")
+                    }
                 }
             }
         }
