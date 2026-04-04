@@ -1,9 +1,10 @@
 // ProductDetailView.swift
 // MakerMargins
 //
-// Scrollable hub for a single Product.
-// Epic 1: header, cost summary card, materials placeholder.
-// Epic 2: live labor section via WorkStepListView, navigation to WorkStepDetailView.
+// Product workspace with pinned header and segmented sub-tabs.
+// Build tab: cost summary, labor workflow, materials, shipping.
+// Price tab: target price calculator + profit analysis.
+// Forecast tab: batch forecasting (Epic 5 stub).
 
 import SwiftUI
 import SwiftData
@@ -37,6 +38,18 @@ struct ProductDetailView: View {
 
     @Environment(\.currencyFormatter) private var formatter
 
+    // MARK: - Sub-tabs
+
+    private enum DetailTab: String, CaseIterable {
+        case build = "Build"
+        case price = "Price"
+        case forecast = "Forecast"
+    }
+
+    @State private var selectedTab: DetailTab = .build
+
+    // MARK: - State
+
     @State private var showingEditForm = false
     @State private var showingDeleteConfirmation = false
     @State private var pendingWorkStep: NewWorkStepNav?
@@ -48,17 +61,9 @@ struct ProductDetailView: View {
     @State private var shippingExpanded = true
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: AppTheme.Spacing.xl) {
-                headerSection
-                ProductCostSummaryCard(product: product)
-                    .padding(.horizontal)
-                laborSection
-                materialsSection
-                shippingSection
-                PricingCalculatorView(product: product)
-            }
-            .padding(.vertical)
+        VStack(spacing: 0) {
+            pinnedHeader
+            tabContent
         }
         .appBackground()
         .onAppear {
@@ -76,8 +81,14 @@ struct ProductDetailView: View {
         .navigationDestination(item: $pendingMaterial) { nav in
             MaterialDetailView(material: nav.material, product: product)
         }
+        .onChange(of: pendingWorkStep) { _, new in
+            if new != nil { selectedTab = .build }
+        }
+        .onChange(of: pendingMaterial) { _, new in
+            if new != nil { selectedTab = .build }
+        }
         .navigationTitle(product.title)
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
@@ -111,48 +122,110 @@ struct ProductDetailView: View {
         }
     }
 
-    // MARK: - Sections
+    // MARK: - Pinned Header
+
+    private var pinnedHeader: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
+            compactHeaderSection
+
+            Picker("Section", selection: $selectedTab) {
+                ForEach(DetailTab.allCases, id: \.self) { tab in
+                    Text(tab.rawValue).tag(tab)
+                }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+        }
+        .padding(.bottom, AppTheme.Spacing.sm)
+    }
+
+    /// Compact product context for the pinned header — category badge, SKU, description.
+    private var compactHeaderSection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.smd) {
+            if let category = product.category {
+                Text(category.name)
+                    .font(AppTheme.Typography.badge)
+                    .padding(.horizontal, AppTheme.Spacing.md)
+                    .padding(.vertical, AppTheme.Spacing.xs)
+                    .background(AppTheme.Colors.categoryBadgeBackground, in: Capsule())
+                    .foregroundStyle(AppTheme.Colors.categoryBadge)
+            }
+            if !product.sku.isEmpty {
+                Text("SKU: \(product.sku)")
+                    .font(AppTheme.Typography.rowCaption)
+                    .foregroundStyle(.secondary)
+            }
+            if !product.summary.isEmpty {
+                Text(product.summary)
+                    .font(AppTheme.Typography.bodyText)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        }
+        .padding(.horizontal)
+    }
+
+    // MARK: - Tab Content
 
     @ViewBuilder
-    private var headerSection: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            if let data = product.image, let uiImage = UIImage(data: data) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(maxWidth: .infinity)
-                    .frame(height: AppTheme.Sizing.detailImageHeight)
-                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large))
-                    .padding(.horizontal)
-            } else {
-                PlaceholderImageView(
-                    height: AppTheme.Sizing.detailPlaceholderHeight,
-                    cornerRadius: AppTheme.CornerRadius.large,
-                    iconFont: .largeTitle
-                )
-                .padding(.horizontal)
-            }
+    private var tabContent: some View {
+        switch selectedTab {
+        case .build:
+            buildTabContent
+        case .price:
+            priceTabContent
+        case .forecast:
+            forecastTabContent
+        }
+    }
 
-            VStack(alignment: .leading, spacing: AppTheme.Spacing.smd) {
-                if let category = product.category {
-                    Text(category.name)
-                        .font(AppTheme.Typography.badge)
-                        .padding(.horizontal, AppTheme.Spacing.md)
-                        .padding(.vertical, AppTheme.Spacing.xs)
-                        .background(AppTheme.Colors.categoryBadgeBackground, in: Capsule())
-                        .foregroundStyle(AppTheme.Colors.categoryBadge)
-                }
-                if !product.sku.isEmpty {
-                    Text("SKU: \(product.sku)")
-                        .font(AppTheme.Typography.rowCaption)
-                        .foregroundStyle(.secondary)
-                }
-                if !product.summary.isEmpty {
-                    Text(product.summary)
-                        .font(AppTheme.Typography.bodyText)
-                        .foregroundStyle(.secondary)
-                }
+    private var buildTabContent: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xl) {
+                headerImageSection
+                ProductCostSummaryCard(product: product)
+                    .padding(.horizontal)
+                laborSection
+                materialsSection
+                shippingSection
             }
+            .padding(.vertical)
+        }
+    }
+
+    private var priceTabContent: some View {
+        ScrollView {
+            PricingCalculatorView(product: product)
+                .padding(.vertical)
+        }
+    }
+
+    private var forecastTabContent: some View {
+        ScrollView {
+            BatchForecastView(product: product)
+                .padding(.vertical)
+        }
+    }
+
+    // MARK: - Sections
+
+    /// Full product image — shown at the top of the Build tab.
+    @ViewBuilder
+    private var headerImageSection: some View {
+        if let data = product.image, let uiImage = UIImage(data: data) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .scaledToFill()
+                .frame(maxWidth: .infinity)
+                .frame(height: AppTheme.Sizing.detailImageHeight)
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large))
+                .padding(.horizontal)
+        } else {
+            PlaceholderImageView(
+                height: AppTheme.Sizing.detailPlaceholderHeight,
+                cornerRadius: AppTheme.CornerRadius.large,
+                iconFont: .largeTitle
+            )
             .padding(.horizontal)
         }
     }

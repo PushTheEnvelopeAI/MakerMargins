@@ -198,6 +198,11 @@ totalSaleFees            = grossRevenue × (platformFee + paymentProcessingFee)
                          + actualPrice × effectiveMarketing + paymentProcessingFixed
 actualProfit             = grossRevenue - totalSaleFees - productionCostExShipping - shippingCost
 actualProfitMargin       = actualProfit / grossRevenue  // nil if grossRevenue = 0
+
+// Take-Home Metrics (solo-maker)
+totalLaborHours          = sum of laborHoursPerProduct across all ProductWorkSteps
+takeHomePerSale          = actualProfit + totalLaborCostBuffered
+takeHomePerHour          = takeHomePerSale / totalLaborHours   // nil if hours = 0
 ```
 
 **Division-by-zero guards:** `batchUnitsCompleted` and `bulkQuantity` both default to 1. CostingEngine must still guard against zero before dividing. `targetRetailPrice` returns `nil` when the denominator is not positive. `actualProfitMargin` returns `nil` when gross revenue is zero.
@@ -246,12 +251,12 @@ MakerMargins/                              ← repo root
 │   └── Views/                             ← SwiftUI views, grouped by feature
 │       ├── Products/                      ← Tab 1 root + all product-owned views
 │       │   ├── ProductListView.swift      ← Tab 1 root (NavigationStack), product duplication, template picker menu — Epic 1+4.5
-│       │   ├── ProductDetailView.swift    ← scrollable hub: header, cost summary, labor, materials — Epic 1+2
+│       │   ├── ProductDetailView.swift    ← pinned header + segmented sub-tabs (Build/Price/Forecast) — Epic 1+2+4
 │       │   ├── ProductFormView.swift      ← create/edit sheet, inline category creation — Epic 1
 │       │   ├── ProductCostSummaryCard.swift ← cost breakdown card (labor + materials live) — Epic 2+3
-│       │   ├── PricingCalculatorView.swift  ← inline tabbed target price calculator + profit analysis in ProductDetailView — Epic 4
+│       │   ├── PricingCalculatorView.swift  ← target price calculator + profit analysis, rendered in Price sub-tab — Epic 4
 │       │   ├── TemplatePickerView.swift     ← sheet: 2-column grid of template cards — Epic 4.5
-│       │   └── BatchForecastView.swift      ← inline section in ProductDetailView — STUB
+│       │   └── BatchForecastView.swift      ← batch forecasting in Forecast sub-tab — STUB (Epic 5)
 │       ├── Workshop/                      ← Tab 2 (Labor): shared step library
 │       │   └── WorkshopView.swift         ← searchable list of all WorkSteps, titled "Labor" — Epic 2
 │       ├── Labor/
@@ -301,16 +306,26 @@ MakerMargins/                              ← repo root
 ### Tab 1 — Products (primary workspace)
 ```
 ProductListView                            [ROOT — context menu: Duplicate, Delete]
-└── [push] ProductDetailView               [Level 1 — scrollable hub; auto-navigates to newly created steps/materials]
-    │   Cost Summary (ProductCostSummaryCard)
-    │   Labor Workflow section (inline WorkStepListView — VStack, not List)
-    │   Materials section (inline MaterialListView content)
-    │   Shipping section (inline GroupBox with editable Average Shipping Cost)
-    │   Pricing section (inline PricingCalculatorView — tabbed by platform, target price calculator + profit analysis)
-    │   Forecast section (inline BatchForecastView content)
-    ├── [push] WorkStepDetailView          [Level 2 — edit in toolbar; delete only from library; "Remove from Product" button in product context]
+└── [push] ProductDetailView               [Level 1 — pinned header + segmented sub-tabs]
+    │   Pinned Header: category badge, description, sub-tab picker
+    │   Sub-tabs: Build | Price | Forecast
+    │
+    │   Build Tab:
+    │       Product image + header details
+    │       Cost Summary (ProductCostSummaryCard)
+    │       Labor Workflow section (inline WorkStepListView — VStack, not List)
+    │       Materials section (inline MaterialListView content)
+    │       Shipping section (inline GroupBox with editable Average Shipping Cost)
+    │
+    │   Price Tab:
+    │       Pricing Calculator (PricingCalculatorView — platform tabs, target price + profit analysis)
+    │
+    │   Forecast Tab:
+    │       Batch Forecast (BatchForecastView — Epic 5 stub)
+    │
+    ├── [push] WorkStepDetailView          [Level 2 — from Build tab; edit in toolbar; "Remove from Product" button in product context]
     │   └── [fullScreenCover] StopwatchView  [Level 3 — MAX DEPTH, pause/resume]
-    ├── [push] MaterialDetailView          [Level 2 — edit in toolbar; delete only from library; "Remove from Product" button in product context]
+    ├── [push] MaterialDetailView          [Level 2 — from Build tab; edit in toolbar; "Remove from Product" button in product context]
     │   └── [sheet] MaterialFormView       [edit]
     ├── [sheet] ProductFormView            [create / edit, inline category creation]
     ├── [sheet] WorkStepFormView           [create / edit, FocusState, time validation]
@@ -638,7 +653,9 @@ SettingsView                              [ROOT — currency, appearance, labor 
 - [x] Fee rows hidden when amount is zero
 - [x] Profit per Sale hero (green positive, red negative)
 - [x] Profit Margin percentage display
-- [x] Labor callout: "Your labor ($X) is also your income. Take-home: $Y"
+- [x] Take-home math in hero card: Profit per Sale → + Your Labor → Take-Home/Sale (shown when labor > 0)
+- [x] Take-Home / Hr in hero card (shown when totalLaborHours > 0)
+- [x] Total Fees percentage subtotal row in Marketing and Fees section
 - [x] Shipping absorbed callout when charging $0 but shipping costs exist
 - [x] Zero production cost warning in breakdown
 - [x] Per-product per-platform actual pricing persists across app launches
@@ -654,6 +671,11 @@ SettingsView                              [ROOT — currency, appearance, labor 
 - [x] Test: actualProfit positive, negative, and free-shipping-absorbed scenarios
 - [x] Test: actualProfitMargin nil for zero revenue, correct for known values
 - [x] Test: productionCostExShipping equals totalProductionCost minus shipping
+- [x] Test: totalLaborHours sums across work steps
+- [x] Test: totalLaborHours returns 0 for no steps
+- [x] Test: takeHomePerHour raw-value known values
+- [x] Test: takeHomePerHour nil for zero hours
+- [x] Test: takeHomePerHour model overload matches raw-value
 - [x] Test: ProductPricing CRUD with actualPrice and actualShippingCharge
 - [x] Test: Duplication copies actual pricing fields
 - [x] Test: Template PricingTemplate has actual prices > 0
@@ -780,6 +802,9 @@ Runs on every push:
 
 ## Key Decisions & Notes
 
+- **Sub-tabs in ProductDetailView (Build | Price | Forecast):** Replaces the single-scrollable layout. Pinned header shows compact product context (category badge, description) + segmented picker. Product image moved to Build tab to keep pinned area compact. `.navigationBarTitleDisplayMode(.inline)` used to save vertical space. NavigationDestination modifiers remain on the outer VStack so navigation works across all tabs. Auto-switches to Build tab when a new step/material is created via `pendingWorkStep`/`pendingMaterial`.
+- **Solo-maker focus:** The app targets individual makers, not businesses with employees. All labor is framed as the maker's own time. Take-home (profit + labor) is a first-class metric. No employee-specific features.
+- **Solo-maker language:** Settings and work step detail views use personal framing ("Your Hourly Rate", "Your Hours / Product", "Your Time Cost") to reinforce that labor = the maker's own time and income. Cost summary and production cost labels keep generic terms ("Labor", "Labor Cost") for consistency in tabular contexts.
 - **`summary` not `description`:** The schema's "description" field is `summary` in all Swift models to avoid shadowing `NSObject.description`. This applies to `Product.summary`, `WorkStep.summary`, `Material.summary`.
 - **Labor rate on ProductWorkStep (join model), not WorkStep:** Allows the same step to have different rates in different product contexts (e.g. shop rate vs. commissioned rate). Defaults from LaborRateManager. Supports mixed-skill workflows (e.g. machining at $25/hr vs. finishing at $15/hr) while also allowing per-product overrides.
 - **`batchUnitsCompleted` defaults to 1:** Prevents division-by-zero in `CostingEngine`. Never allow 0. Validate in forms.
@@ -823,7 +848,7 @@ Runs on every push:
 - **Template names are workflow-focused:** Titles like "Woodworking Template" (not "Hardwood Cutting Board") to communicate that templates are starting points for any product in that category. Each has a TMPL-prefixed SKU.
 - **Fees on price + shipping in profit analysis:** Platform and processing percentage fees apply to `actualPrice + actualShippingCharge` (the full customer payment), matching real Etsy/Shopify/Amazon behavior. Marketing fees apply to `actualPrice` only (Etsy offsite ads don't apply to shipping).
 - **Separate GroupBox for profit analysis:** "Target Price Calculator" answers "what should I charge?" and "Profit Analysis" answers "what am I actually making?" Separate GroupBoxes maintain clear mental models while sharing the same platform tabs via `selectedPlatform` state.
-- **Labor-as-income callout:** Solo makers' labor cost is their income, not a true expense. Callout shows `profit + laborCostBuffered` as take-home to prevent panic-based mispricing. Only shown when `laborCostBuffered > 0` and `actualPrice > 0`.
+- **Take-home as first-class metric:** Solo makers' labor cost is their income. The hero card shows explicit take-home math (Profit + Labor = Take-Home/Sale) and Take-Home/Hr as the maker's effective hourly wage. Take-home rows shown when `laborCostBuffered > 0`; per-hour shown when `totalLaborHours > 0`. Total Fees percentage subtotal in the Marketing and Fees section helps quick platform comparison.
 - **Template actual prices below target:** All 5 templates set `actualPrice` below the computed target price, demonstrating the common real-world scenario that motivates the "What am I actually making?" question. Shipping strategies vary (absorb, pass-through, mark up).
 - **No actual price defaults in PlatformFeeProfile:** Actual pricing is inherently per-product — a $15 candle and $85 cutting board from the same shop have different prices. Only fee-related defaults are stored globally.
 - **No CloudKit, no authentication, no sync.** Single-user, local-only.

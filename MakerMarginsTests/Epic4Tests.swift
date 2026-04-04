@@ -751,6 +751,104 @@ struct Epic4Tests {
         #expect(rawResult == modelResult)
     }
 
+    // MARK: - Take-Home Metrics
+
+    @Test("totalLaborHours sums across work steps")
+    func totalLaborHoursSumsAcrossSteps() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+
+        let product = Product(title: "Test", materialBuffer: 0, laborBuffer: 0)
+
+        // Step A: 3600s recorded, 2 batch units → 0.5 hrs/unit, 1 unit/product → 0.5 hrs
+        let stepA = WorkStep(title: "A", recordedTime: 3600, batchUnitsCompleted: 2)
+        let linkA = ProductWorkStep(product: product, workStep: stepA, sortOrder: 0, unitsRequiredPerProduct: 1, laborRate: 10)
+
+        // Step B: 7200s recorded, 1 batch unit → 2 hrs/unit, 2 units/product → 4 hrs
+        let stepB = WorkStep(title: "B", recordedTime: 7200, batchUnitsCompleted: 1)
+        let linkB = ProductWorkStep(product: product, workStep: stepB, sortOrder: 1, unitsRequiredPerProduct: 2, laborRate: 10)
+
+        product.productWorkSteps.append(linkA)
+        stepA.productWorkSteps.append(linkA)
+        product.productWorkSteps.append(linkB)
+        stepB.productWorkSteps.append(linkB)
+
+        ctx.insert(product)
+        ctx.insert(stepA)
+        ctx.insert(linkA)
+        ctx.insert(stepB)
+        ctx.insert(linkB)
+        try ctx.save()
+
+        let hours = CostingEngine.totalLaborHours(product: product)
+        #expect(hours == Decimal(string: "4.5")!)
+    }
+
+    @Test("totalLaborHours returns 0 for product with no steps")
+    func totalLaborHoursNoSteps() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+
+        let product = Product(title: "Empty")
+        ctx.insert(product)
+        try ctx.save()
+
+        #expect(CostingEngine.totalLaborHours(product: product) == 0)
+    }
+
+    @Test("takeHomePerHour raw-value known values")
+    func takeHomePerHourKnownValues() {
+        // profit $20, labor $10, 2 hours → ($20 + $10) / 2 = $15/hr
+        let result = CostingEngine.takeHomePerHour(
+            actualProfit: 20,
+            laborCostBuffered: 10,
+            totalLaborHours: 2
+        )
+        #expect(result == 15)
+    }
+
+    @Test("takeHomePerHour nil for zero hours")
+    func takeHomePerHourZeroHours() {
+        let result = CostingEngine.takeHomePerHour(
+            actualProfit: 20,
+            laborCostBuffered: 10,
+            totalLaborHours: 0
+        )
+        #expect(result == nil)
+    }
+
+    @Test("takeHomePerHour model overload matches raw-value overload")
+    func takeHomePerHourModelOverload() throws {
+        let container = try makeContainer()
+        let ctx = ModelContext(container)
+
+        // Product: 1 step, 3600s, 1 batch unit, 1 unit/product → 1 hour labor
+        // laborRate $10, no buffers → laborCost = $10
+        let product = Product(title: "Test", shippingCost: 5, materialBuffer: 0, laborBuffer: 0)
+        let step = WorkStep(title: "Step", recordedTime: 3600, batchUnitsCompleted: 1)
+        let link = ProductWorkStep(product: product, workStep: step, sortOrder: 0, unitsRequiredPerProduct: 1, laborRate: 10)
+
+        product.productWorkSteps.append(link)
+        step.productWorkSteps.append(link)
+
+        ctx.insert(product)
+        ctx.insert(step)
+        ctx.insert(link)
+        try ctx.save()
+
+        let profit: Decimal = 20
+        let modelResult = CostingEngine.takeHomePerHour(product: product, actualProfit: profit)
+        let rawResult = CostingEngine.takeHomePerHour(
+            actualProfit: profit,
+            laborCostBuffered: CostingEngine.totalLaborCostBuffered(product: product),
+            totalLaborHours: CostingEngine.totalLaborHours(product: product)
+        )
+
+        #expect(modelResult != nil)
+        #expect(modelResult == rawResult)
+        #expect(modelResult == 30) // ($20 + $10) / 1 hour
+    }
+
     @Test("actualProfit model overload matches raw-value overload")
     func actualProfitModelOverloadMatchesRawValue() throws {
         let container = try makeContainer()
