@@ -3,7 +3,9 @@
 //
 // Portfolio-level product comparison view. Ranks all products side-by-side
 // on key financial metrics — earnings, profitability, cost structure.
-// Pushed from ProductListView toolbar within the same NavigationStack.
+// Tabs switch which metric's ranking is visible (one section at a time),
+// matching the Build/Price/Forecast tab pattern in ProductDetailView.
+// Pushed from ProductListView portfolio card within the same NavigationStack.
 // Epic 6.
 
 import SwiftUI
@@ -16,9 +18,9 @@ struct PortfolioView: View {
     // MARK: - State
 
     @State private var selectedPlatform: PlatformType = .general
-    @State private var sortMetric: SortMetric = .earnings
+    @State private var selectedTab: PortfolioTab = .earnings
 
-    private enum SortMetric: String, CaseIterable {
+    private enum PortfolioTab: String, CaseIterable {
         case earnings = "Earnings"
         case profitMargin = "Margin"
         case hourlyRate = "$/Hour"
@@ -46,282 +48,196 @@ struct PortfolioView: View {
     /// Main scrollable content. Computes snapshots once and threads the array
     /// through all sections to avoid redundant CostingEngine calls.
     private var portfolioContent: some View {
-        let snapshots = buildSortedSnapshots()
-        let priced = snapshots.filter { $0.hasPricing }
-        let unpriced = snapshots.filter { !$0.hasPricing }
+        let snapshots = CostingEngine.portfolioSnapshots(products: products, platform: selectedPlatform)
         let avg = CostingEngine.portfolioAverages(snapshots: snapshots)
 
         return ScrollView {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
-                platformPicker
-                portfolioSummaryCard(avg: avg, priced: priced)
-                sortPicker
-
-                if priced.isEmpty {
-                    noPricingHint
-                } else {
-                    earningsLeaderboard(priced: priced, unpriced: unpriced)
-                    profitabilitySection(priced: priced)
-                }
-
-                costBreakdownSection(snapshots: snapshots)
+                portfolioSummaryCard(avg: avg, snapshots: snapshots)
+                tabPicker
+                tabContent(snapshots: snapshots)
             }
             .padding(.horizontal)
             .padding(.bottom)
         }
     }
 
-    /// Builds and sorts snapshots once per render cycle.
-    private func buildSortedSnapshots() -> [CostingEngine.ProductSnapshot] {
-        let all = CostingEngine.portfolioSnapshots(products: products, platform: selectedPlatform)
-        switch sortMetric {
+    // MARK: - Tab Picker
+
+    private var tabPicker: some View {
+        Picker("View", selection: $selectedTab) {
+            ForEach(PortfolioTab.allCases, id: \.self) { tab in
+                Text(tab.rawValue).tag(tab)
+            }
+        }
+        .pickerStyle(.segmented)
+    }
+
+    // MARK: - Tab Content (one section at a time)
+
+    @ViewBuilder
+    private func tabContent(snapshots: [CostingEngine.ProductSnapshot]) -> some View {
+        switch selectedTab {
         case .earnings:
-            return all.sorted { $0.earnings > $1.earnings }
+            earningsTab(snapshots: snapshots)
         case .profitMargin:
-            return all.sorted { ($0.profitMargin ?? Decimal(-999)) > ($1.profitMargin ?? Decimal(-999)) }
+            marginTab(snapshots: snapshots)
         case .hourlyRate:
-            return all.sorted { ($0.hourlyRate ?? Decimal(-999)) > ($1.hourlyRate ?? Decimal(-999)) }
+            hourlyRateTab(snapshots: snapshots)
         case .productionCost:
-            return all.sorted { $0.productionCost > $1.productionCost }
+            costTab(snapshots: snapshots)
         }
     }
 
-    // MARK: - Platform & Sort Pickers
+    // MARK: - Earnings Tab
 
-    private var platformPicker: some View {
-        Picker("Platform", selection: $selectedPlatform) {
-            ForEach(PlatformType.allCases, id: \.self) { platform in
-                Text(platform.rawValue).tag(platform)
-            }
-        }
-        .pickerStyle(.segmented)
-    }
-
-    private var sortPicker: some View {
-        Picker("Sort by", selection: $sortMetric) {
-            ForEach(SortMetric.allCases, id: \.self) { metric in
-                Text(metric.rawValue).tag(metric)
-            }
-        }
-        .pickerStyle(.segmented)
-    }
-
-    // MARK: - Summary Card
-
-    private func portfolioSummaryCard(
-        avg: (avgEarnings: Decimal, avgProfitMargin: Decimal?,
-              avgHourlyRate: Decimal?, pricedCount: Int, totalCount: Int),
-        priced: [CostingEngine.ProductSnapshot]
-    ) -> some View {
-        let top = priced.max(by: { $0.earnings < $1.earnings })
-        let worst = priced.min(by: { $0.earnings < $1.earnings })
-
-        return GroupBox {
-            VStack(spacing: AppTheme.Spacing.sm) {
-                CalculatorSectionHeader(title: "Portfolio Overview", icon: "chart.pie")
-
-                DetailRow(label: "Products Priced", value: "\(avg.pricedCount) of \(avg.totalCount)")
-
-                HStack {
-                    Text("Avg. Earnings / Sale")
-                        .font(AppTheme.Typography.bodyText)
-                    Spacer()
-                    Text(formatter.format(avg.avgEarnings))
-                        .font(AppTheme.Typography.heroPrice)
-                        .foregroundStyle(avg.avgEarnings >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive)
-                }
-
-                if let margin = avg.avgProfitMargin {
-                    DetailRow(label: "Avg. Profit Margin", value: PercentageFormat.toDisplay(margin) + "%")
-                }
-
-                if let rate = avg.avgHourlyRate {
-                    DetailRow(label: "Avg. Hourly Rate", value: formatter.format(rate) + "/hr")
-                }
-
-                if top != nil || (worst != nil && worst!.earnings < 0) {
-                    Divider()
-                }
-
-                if let top {
-                    calloutRow(
-                        icon: "trophy.fill",
-                        color: AppTheme.Colors.accent,
-                        label: "Top Earner",
-                        product: top.product.title,
-                        value: formatter.format(top.earnings)
-                    )
-                }
-
-                if let worst, worst.earnings < 0 {
-                    calloutRow(
-                        icon: "exclamationmark.triangle.fill",
-                        color: AppTheme.Colors.destructive,
-                        label: "Needs Attention",
-                        product: worst.product.title,
-                        value: formatter.format(worst.earnings)
-                    )
-                }
-            }
-        }
-        .heroCardStyle()
-    }
-
-    private func calloutRow(icon: String, color: Color,
-                            label: String, product: String,
-                            value: String) -> some View {
-        HStack(spacing: AppTheme.Spacing.sm) {
-            Image(systemName: icon)
-                .font(.caption)
-                .foregroundStyle(color)
-            VStack(alignment: .leading, spacing: 0) {
-                Text(label)
-                    .font(AppTheme.Typography.note)
-                    .foregroundStyle(.secondary)
-                Text(product)
-                    .font(AppTheme.Typography.bodyText)
-                    .lineLimit(1)
-            }
-            Spacer()
-            Text(value)
-                .font(AppTheme.Typography.sectionHeader)
-                .foregroundStyle(color)
-        }
-    }
-
-    // MARK: - Earnings Leaderboard
-
-    private func earningsLeaderboard(
-        priced: [CostingEngine.ProductSnapshot],
-        unpriced: [CostingEngine.ProductSnapshot]
-    ) -> some View {
+    private func earningsTab(snapshots: [CostingEngine.ProductSnapshot]) -> some View {
+        let sorted = snapshots.sorted { $0.earnings > $1.earnings }
+        let priced = sorted.filter { $0.hasPricing }
+        let unpriced = sorted.filter { !$0.hasPricing }
         let maxVal = priced.map { $0.earnings }.max() ?? 0
 
         return GroupBox {
             VStack(spacing: AppTheme.Spacing.xs) {
                 CalculatorSectionHeader(title: "Earnings / Sale", icon: "trophy")
 
-                ForEach(priced, id: \.product.persistentModelID) { snap in
-                    NavigationLink(value: snap.product) {
-                        portfolioBarRow(
-                            imageData: snap.product.image,
-                            title: snap.product.title,
-                            value: formatter.format(snap.earnings),
-                            proportion: proportion(snap.earnings, max: maxVal),
-                            barColor: snap.earnings >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive,
-                            valueColor: snap.earnings >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive
-                        )
+                if priced.isEmpty {
+                    noPricingHint
+                } else {
+                    ForEach(priced, id: \.product.persistentModelID) { snap in
+                        NavigationLink(value: snap.product) {
+                            portfolioBarRow(
+                                imageData: snap.product.image,
+                                title: snap.product.title,
+                                value: formatter.format(snap.earnings),
+                                proportion: proportion(snap.earnings, max: maxVal),
+                                barColor: snap.earnings >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive,
+                                valueColor: snap.earnings >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive,
+                                subtitle: secondaryMetrics(margin: snap.profitMargin, hourlyRate: snap.hourlyRate)
+                            )
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
 
-                ForEach(unpriced, id: \.product.persistentModelID) { snap in
-                    NavigationLink(value: snap.product) {
-                        HStack(spacing: AppTheme.Spacing.md) {
-                            ProductThumbnailView(imageData: snap.product.image, size: 32)
-                            Text(snap.product.title)
-                                .font(AppTheme.Typography.bodyText)
-                                .lineLimit(1)
-                            Spacer()
-                            Text("No \(selectedPlatform.rawValue) price")
-                                .font(AppTheme.Typography.note)
-                                .foregroundStyle(.tertiary)
-                        }
-                        .padding(.vertical, AppTheme.Spacing.xs)
-                    }
-                    .buttonStyle(.plain)
-                }
+                unpricedRows(unpriced)
             }
         }
         .backgroundStyle(AppTheme.Colors.pricingSurface)
     }
 
-    // MARK: - Profitability
+    // MARK: - Margin Tab
 
-    private func profitabilitySection(priced: [CostingEngine.ProductSnapshot]) -> some View {
-        let withMargin = priced.filter { $0.profitMargin != nil }
-        let withRate = priced.filter { $0.hourlyRate != nil }
-        let noHours = priced.filter { $0.hourlyRate == nil }
-        let maxMarginVal = withMargin.compactMap { $0.profitMargin }.max() ?? 0
-        let maxRateVal = withRate.compactMap { $0.hourlyRate }.max() ?? 0
+    private func marginTab(snapshots: [CostingEngine.ProductSnapshot]) -> some View {
+        let sorted = snapshots.sorted { ($0.profitMargin ?? Decimal(-999)) > ($1.profitMargin ?? Decimal(-999)) }
+        let withMargin = sorted.filter { $0.hasPricing && $0.profitMargin != nil }
+        let unpriced = sorted.filter { !$0.hasPricing }
+        let maxVal = withMargin.compactMap { $0.profitMargin }.max() ?? 0
 
         return GroupBox {
             VStack(spacing: AppTheme.Spacing.xs) {
-                CalculatorSectionHeader(title: "Profitability", icon: "percent")
+                CalculatorSectionHeader(title: "Profit Margin", icon: "percent")
 
-                // Sub-group: Profit Margin
-                Text("Profit Margin")
-                    .font(AppTheme.Typography.sectionLabel)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                ForEach(withMargin, id: \.product.persistentModelID) { snap in
-                    if let margin = snap.profitMargin {
-                        NavigationLink(value: snap.product) {
-                            portfolioBarRow(
-                                imageData: snap.product.image,
-                                title: snap.product.title,
-                                value: PercentageFormat.toDisplay(margin) + "%",
-                                proportion: proportion(margin, max: maxMarginVal),
-                                barColor: margin >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive,
-                                valueColor: margin >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive
-                            )
+                if withMargin.isEmpty {
+                    noPricingHint
+                } else {
+                    ForEach(withMargin, id: \.product.persistentModelID) { snap in
+                        if let margin = snap.profitMargin {
+                            NavigationLink(value: snap.product) {
+                                portfolioBarRow(
+                                    imageData: snap.product.image,
+                                    title: snap.product.title,
+                                    value: PercentageFormat.toDisplay(margin) + "%",
+                                    proportion: proportion(margin, max: maxVal),
+                                    barColor: margin >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive,
+                                    valueColor: margin >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive,
+                                    subtitle: secondaryMetrics(earnings: snap.earnings, hourlyRate: snap.hourlyRate)
+                                )
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
 
-                Divider()
-                    .padding(.vertical, AppTheme.Spacing.xs)
-
-                // Sub-group: Effective Hourly Rate
-                Text("Effective Hourly Rate")
-                    .font(AppTheme.Typography.sectionLabel)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                ForEach(withRate, id: \.product.persistentModelID) { snap in
-                    if let rate = snap.hourlyRate {
-                        NavigationLink(value: snap.product) {
-                            portfolioBarRow(
-                                imageData: snap.product.image,
-                                title: snap.product.title,
-                                value: formatter.format(rate) + "/hr",
-                                proportion: proportion(rate, max: maxRateVal),
-                                barColor: rate >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive,
-                                valueColor: rate >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive
-                            )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-
-                ForEach(noHours, id: \.product.persistentModelID) { snap in
-                    HStack(spacing: AppTheme.Spacing.md) {
-                        ProductThumbnailView(imageData: snap.product.image, size: 32)
-                        Text(snap.product.title)
-                            .font(AppTheme.Typography.bodyText)
-                            .lineLimit(1)
-                        Spacer()
-                        Text("N/A")
-                            .font(AppTheme.Typography.note)
-                            .foregroundStyle(.tertiary)
-                    }
-                    .padding(.vertical, AppTheme.Spacing.xs)
-                }
+                unpricedRows(unpriced)
             }
         }
         .backgroundStyle(AppTheme.Colors.pricingSurface)
     }
 
-    // MARK: - Cost Breakdown
+    // MARK: - Hourly Rate Tab
 
-    private func costBreakdownSection(snapshots: [CostingEngine.ProductSnapshot]) -> some View {
-        GroupBox {
+    private func hourlyRateTab(snapshots: [CostingEngine.ProductSnapshot]) -> some View {
+        let sorted = snapshots.sorted { ($0.hourlyRate ?? Decimal(-999)) > ($1.hourlyRate ?? Decimal(-999)) }
+        let withRate = sorted.filter { $0.hasPricing && $0.hourlyRate != nil }
+        let noHours = sorted.filter { $0.hasPricing && $0.hourlyRate == nil }
+        let unpriced = sorted.filter { !$0.hasPricing }
+        let maxVal = withRate.compactMap { $0.hourlyRate }.max() ?? 0
+
+        return GroupBox {
+            VStack(spacing: AppTheme.Spacing.xs) {
+                CalculatorSectionHeader(title: "Effective Hourly Rate", icon: "clock")
+
+                if withRate.isEmpty && noHours.isEmpty {
+                    noPricingHint
+                } else {
+                    ForEach(withRate, id: \.product.persistentModelID) { snap in
+                        if let rate = snap.hourlyRate {
+                            NavigationLink(value: snap.product) {
+                                portfolioBarRow(
+                                    imageData: snap.product.image,
+                                    title: snap.product.title,
+                                    value: formatter.format(rate) + "/hr",
+                                    proportion: proportion(rate, max: maxVal),
+                                    barColor: rate >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive,
+                                    valueColor: rate >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive,
+                                    subtitle: secondaryMetrics(earnings: snap.earnings, margin: snap.profitMargin)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    // Products with pricing but no labor hours
+                    ForEach(noHours, id: \.product.persistentModelID) { snap in
+                        NavigationLink(value: snap.product) {
+                            HStack(spacing: AppTheme.Spacing.md) {
+                                ProductThumbnailView(imageData: snap.product.image, size: 32)
+                                VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                                    Text(snap.product.title)
+                                        .font(AppTheme.Typography.bodyText)
+                                        .lineLimit(1)
+                                    Text("No labor steps")
+                                        .font(AppTheme.Typography.note)
+                                        .foregroundStyle(.tertiary)
+                                }
+                                Spacer()
+                                Text("N/A")
+                                    .font(AppTheme.Typography.note)
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .padding(.vertical, AppTheme.Spacing.xs)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                unpricedRows(unpriced)
+            }
+        }
+        .backgroundStyle(AppTheme.Colors.pricingSurface)
+    }
+
+    // MARK: - Cost Tab
+
+    private func costTab(snapshots: [CostingEngine.ProductSnapshot]) -> some View {
+        let sorted = snapshots.sorted { $0.productionCost > $1.productionCost }
+
+        return GroupBox {
             VStack(spacing: AppTheme.Spacing.xs) {
                 CalculatorSectionHeader(title: "Cost Breakdown", icon: "chart.bar")
 
-                ForEach(snapshots, id: \.product.persistentModelID) { snap in
+                ForEach(sorted, id: \.product.persistentModelID) { snap in
                     NavigationLink(value: snap.product) {
                         costBreakdownRow(snap: snap)
                     }
@@ -367,9 +283,22 @@ struct PortfolioView: View {
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 3))
             }
-            .frame(height: 8)
+            .frame(height: 12)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Cost: \(formatter.format(snap.productionCost))")
+
+            // Text breakdown
+            HStack(spacing: AppTheme.Spacing.sm) {
+                Text("Labor \(formatter.format(snap.laborCostBuffered))")
+                Text("·").foregroundStyle(.quaternary)
+                Text("Materials \(formatter.format(snap.materialCostBuffered))")
+                if snap.shippingCost > 0 {
+                    Text("·").foregroundStyle(.quaternary)
+                    Text("Ship \(formatter.format(snap.shippingCost))")
+                }
+            }
+            .font(AppTheme.Typography.note)
+            .foregroundStyle(.tertiary)
         }
         .padding(.vertical, AppTheme.Spacing.xs)
     }
@@ -393,17 +322,120 @@ struct PortfolioView: View {
         }
     }
 
-    // MARK: - Empty States
+    // MARK: - Summary Card
 
-    private var noPricingHint: some View {
-        ContentUnavailableView(
-            "No \(selectedPlatform.rawValue) Prices Set",
-            systemImage: "tag",
-            description: Text("Set actual prices on the \(selectedPlatform.rawValue) tab in each product's Price section to see earnings and profitability.")
-        )
+    private func portfolioSummaryCard(
+        avg: (avgEarnings: Decimal, avgProfitMargin: Decimal?,
+              avgHourlyRate: Decimal?, pricedCount: Int, totalCount: Int),
+        snapshots: [CostingEngine.ProductSnapshot]
+    ) -> some View {
+        let priced = snapshots.filter { $0.hasPricing }
+        let top = priced.max(by: { $0.earnings < $1.earnings })
+        let worst = priced.min(by: { $0.earnings < $1.earnings })
+
+        return VStack(spacing: AppTheme.Spacing.sm) {
+            Text("Portfolio Overview")
+                .font(AppTheme.Typography.sectionHeader)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Picker("Platform", selection: $selectedPlatform) {
+                ForEach(PlatformType.allCases, id: \.self) { platform in
+                    Text(platform.rawValue).tag(platform)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            DetailRow(label: "Products Priced", value: "\(avg.pricedCount) of \(avg.totalCount)")
+
+            HStack {
+                Text("Avg. Earnings / Sale")
+                    .font(AppTheme.Typography.bodyText)
+                Spacer()
+                Text(formatter.format(avg.avgEarnings))
+                    .font(AppTheme.Typography.heroPrice)
+                    .foregroundStyle(avg.avgEarnings >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive)
+            }
+
+            if let margin = avg.avgProfitMargin {
+                DetailRow(label: "Avg. Profit Margin", value: PercentageFormat.toDisplay(margin) + "%")
+            }
+
+            if let rate = avg.avgHourlyRate {
+                DetailRow(label: "Avg. Hourly Rate", value: formatter.format(rate) + "/hr")
+            }
+
+            if top != nil || (worst != nil && worst!.earnings < 0) {
+                Divider()
+            }
+
+            if let top {
+                calloutRow(
+                    icon: "trophy.fill",
+                    color: AppTheme.Colors.accent,
+                    label: "Top Earner",
+                    product: top.product.title,
+                    value: formatter.format(top.earnings)
+                )
+            }
+
+            if let worst, worst.earnings < 0 {
+                calloutRow(
+                    icon: "exclamationmark.triangle.fill",
+                    color: AppTheme.Colors.destructive,
+                    label: "Needs Attention",
+                    product: worst.product.title,
+                    value: formatter.format(worst.earnings)
+                )
+            }
+        }
+        .padding(AppTheme.Spacing.md)
+        .cardStyle()
     }
 
-    // MARK: - Helpers
+    private func calloutRow(icon: String, color: Color,
+                            label: String, product: String,
+                            value: String) -> some View {
+        HStack(spacing: AppTheme.Spacing.sm) {
+            Image(systemName: icon)
+                .font(.caption)
+                .foregroundStyle(color)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(label)
+                    .font(AppTheme.Typography.note)
+                    .foregroundStyle(.secondary)
+                Text(product)
+                    .font(AppTheme.Typography.bodyText)
+                    .lineLimit(1)
+            }
+            Spacer()
+            Text(value)
+                .font(AppTheme.Typography.sectionHeader)
+                .foregroundStyle(color)
+        }
+    }
+
+    // MARK: - Shared Components
+
+    /// Unpriced product rows shown at the bottom of Earnings, Margin, and $/Hour tabs.
+    @ViewBuilder
+    private func unpricedRows(_ unpriced: [CostingEngine.ProductSnapshot]) -> some View {
+        ForEach(unpriced, id: \.product.persistentModelID) { snap in
+            NavigationLink(value: snap.product) {
+                HStack(spacing: AppTheme.Spacing.md) {
+                    ProductThumbnailView(imageData: snap.product.image, size: 32)
+                    Text(snap.product.title)
+                        .font(AppTheme.Typography.bodyText)
+                        .lineLimit(1)
+                    Spacer()
+                    Text("No \(selectedPlatform.rawValue) price")
+                        .font(AppTheme.Typography.note)
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.vertical, AppTheme.Spacing.xs)
+            }
+            .buttonStyle(.plain)
+        }
+    }
 
     @ViewBuilder
     private func portfolioBarRow(
@@ -412,7 +444,8 @@ struct PortfolioView: View {
         value: String,
         proportion: CGFloat,
         barColor: Color,
-        valueColor: Color
+        valueColor: Color,
+        subtitle: String? = nil
     ) -> some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
             HStack(spacing: AppTheme.Spacing.md) {
@@ -432,10 +465,50 @@ struct PortfolioView: View {
                     .frame(width: max(geo.size.width * proportion, 2), height: 6)
             }
             .frame(height: 6)
+
+            if let subtitle {
+                Text(subtitle)
+                    .font(AppTheme.Typography.note)
+                    .foregroundStyle(.tertiary)
+            }
         }
         .padding(.vertical, AppTheme.Spacing.xs)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(title), \(value)")
+    }
+
+    // MARK: - Empty States
+
+    private var noPricingHint: some View {
+        ContentUnavailableView(
+            "No \(selectedPlatform.rawValue) Prices Set",
+            systemImage: "tag",
+            description: Text("Set actual prices on the \(selectedPlatform.rawValue) tab in each product's Price section to see this ranking.")
+        )
+    }
+
+    // MARK: - Helpers
+
+    /// Builds secondary metrics string for Earnings tab (shows margin + hourly rate).
+    private func secondaryMetrics(margin: Decimal?, hourlyRate: Decimal?) -> String {
+        var parts: [String] = []
+        if let margin { parts.append(PercentageFormat.toDisplay(margin) + "% margin") }
+        if let hourlyRate { parts.append(formatter.format(hourlyRate) + "/hr") }
+        return parts.joined(separator: " · ")
+    }
+
+    /// Builds secondary metrics string for Margin tab (shows earnings + hourly rate).
+    private func secondaryMetrics(earnings: Decimal, hourlyRate: Decimal?) -> String {
+        var parts: [String] = [formatter.format(earnings) + " earnings"]
+        if let hourlyRate { parts.append(formatter.format(hourlyRate) + "/hr") }
+        return parts.joined(separator: " · ")
+    }
+
+    /// Builds secondary metrics string for $/Hour tab (shows earnings + margin).
+    private func secondaryMetrics(earnings: Decimal, margin: Decimal?) -> String {
+        var parts: [String] = [formatter.format(earnings) + " earnings"]
+        if let margin { parts.append(PercentageFormat.toDisplay(margin) + "% margin") }
+        return parts.joined(separator: " · ")
     }
 
     private func proportion(_ value: Decimal, max: Decimal) -> CGFloat {

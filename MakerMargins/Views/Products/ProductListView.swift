@@ -71,17 +71,10 @@ struct ProductListView: View {
                 }
             }
             ToolbarItem(placement: .topBarLeading) {
-                HStack(spacing: 0) {
-                    Button {
-                        isGridMode.toggle()
-                    } label: {
-                        Image(systemName: isGridMode ? "list.bullet" : "square.grid.2x2")
-                    }
-                    NavigationLink {
-                        PortfolioView()
-                    } label: {
-                        Image(systemName: "chart.bar.xaxis.ascending")
-                    }
+                Button {
+                    isGridMode.toggle()
+                } label: {
+                    Image(systemName: isGridMode ? "list.bullet" : "square.grid.2x2")
                 }
             }
         }
@@ -139,6 +132,13 @@ struct ProductListView: View {
                     .listRowSeparator(.hidden)
             }
 
+            if !products.isEmpty {
+                portfolioCard
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+            }
+
             if filteredProducts.isEmpty {
                 emptyState
                     .listRowBackground(Color.clear)
@@ -181,6 +181,11 @@ struct ProductListView: View {
                 categoryChips
                     .padding(.horizontal)
                     .padding(.top, AppTheme.Spacing.sm)
+            }
+
+            if !products.isEmpty {
+                portfolioCard
+                    .padding(.horizontal)
             }
 
             if filteredProducts.isEmpty {
@@ -269,6 +274,30 @@ struct ProductListView: View {
         } else {
             ContentUnavailableView.search(text: searchText)
         }
+    }
+
+    // MARK: - Portfolio Card
+
+    private var portfolioCard: some View {
+        NavigationLink {
+            PortfolioView()
+        } label: {
+            HStack(spacing: AppTheme.Spacing.md) {
+                Image(systemName: "chart.bar.xaxis.ascending")
+                    .font(.body)
+                    .foregroundStyle(AppTheme.Colors.accent)
+                Text("Compare your \(products.count) product\(products.count == 1 ? "" : "s")")
+                    .font(AppTheme.Typography.bodyText)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(AppTheme.Spacing.md)
+            .cardStyle()
+        }
+        .buttonStyle(.plain)
+        .padding(.vertical, AppTheme.Spacing.xs)
     }
 
     // MARK: - Actions
