@@ -42,6 +42,9 @@ struct PortfolioView: View {
             }
         }
         .navigationTitle("Portfolio")
+        .navigationDestination(for: Product.self) { product in
+            ProductDetailView(product: product)
+        }
         .appBackground()
     }
 
@@ -118,9 +121,9 @@ struct PortfolioView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                }
 
-                unpricedRows(unpriced)
+                    unpricedRows(unpriced)
+                }
             }
         }
         .backgroundStyle(AppTheme.Colors.pricingSurface)
@@ -157,9 +160,9 @@ struct PortfolioView: View {
                             .buttonStyle(.plain)
                         }
                     }
-                }
 
-                unpricedRows(unpriced)
+                    unpricedRows(unpriced)
+                }
             }
         }
         .backgroundStyle(AppTheme.Colors.pricingSurface)
@@ -220,9 +223,9 @@ struct PortfolioView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                }
 
-                unpricedRows(unpriced)
+                    unpricedRows(unpriced)
+                }
             }
         }
         .backgroundStyle(AppTheme.Colors.pricingSurface)

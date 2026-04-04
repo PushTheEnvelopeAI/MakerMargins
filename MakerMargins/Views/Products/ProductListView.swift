@@ -289,9 +289,6 @@ struct ProductListView: View {
                 Text("Compare your \(products.count) product\(products.count == 1 ? "" : "s")")
                     .font(AppTheme.Typography.bodyText)
                 Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
             }
             .padding(AppTheme.Spacing.md)
             .cardStyle()
