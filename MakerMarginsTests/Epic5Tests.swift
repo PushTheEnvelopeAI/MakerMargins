@@ -173,6 +173,8 @@ struct Epic5Tests {
         #expect(CostingEngine.formatHoursReadable(Decimal(string: "0.5")!) == "0h 30m")
         #expect(CostingEngine.formatHoursReadable(Decimal(string: "4.75")!) == "4h 45m")
         #expect(CostingEngine.formatHoursReadable(Decimal(string: "25.5")!) == "25h 30m")
+        #expect(CostingEngine.formatHoursReadable(Decimal(string: "7.50")!) == "7h 30m")
+        #expect(CostingEngine.formatHoursReadable(Decimal(string: "12.50")!) == "12h 30m")
     }
 
     // MARK: - Batch Materials
