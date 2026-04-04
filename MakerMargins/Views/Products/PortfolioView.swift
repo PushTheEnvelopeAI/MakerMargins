@@ -334,16 +334,18 @@ struct PortfolioView: View {
         let worst = priced.min(by: { $0.earnings < $1.earnings })
 
         return VStack(spacing: AppTheme.Spacing.sm) {
-            Text("Portfolio Overview")
-                .font(AppTheme.Typography.sectionHeader)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            Picker("Platform", selection: $selectedPlatform) {
-                ForEach(PlatformType.allCases, id: \.self) { platform in
-                    Text(platform.rawValue).tag(platform)
+            HStack {
+                Text("Portfolio Overview")
+                    .font(AppTheme.Typography.sectionHeader)
+                Spacer()
+                Picker("Platform", selection: $selectedPlatform) {
+                    ForEach(PlatformType.allCases, id: \.self) { platform in
+                        Text(platform.rawValue).tag(platform)
+                    }
                 }
+                .pickerStyle(.menu)
+                .tint(AppTheme.Colors.accent)
             }
-            .pickerStyle(.segmented)
 
             DetailRow(label: "Products Priced", value: "\(avg.pricedCount) of \(avg.totalCount)")
 
