@@ -418,7 +418,7 @@ enum CostingEngine {
     /// Drops seconds — batch-level display doesn't need second-level precision.
     /// Examples: 0.5 → "0h 30m", 4.75 → "4h 45m", 0 → "0h 0m"
     static func formatHoursReadable(_ hours: Decimal) -> String {
-        let totalSeconds = NSDecimalNumber(decimal: hours * 3600).intValue
+        let totalSeconds = Int(NSDecimalNumber(decimal: hours).doubleValue * 3600)
         let h = totalSeconds / 3600
         let m = (totalSeconds % 3600) / 60
         return "\(h)h \(m)m"

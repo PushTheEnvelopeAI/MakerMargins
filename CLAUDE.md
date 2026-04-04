@@ -37,7 +37,8 @@ iOS 26 is the minimum. The Liquid Glass design language is a first-class iOS 26 
 | 4 | Pricing Calculator & Platform Tabs + E2E Tests | **Complete** |
 | 4.5 | Template Products + Bundled Images + E2E Tests | **Complete** |
 | 5 | Batch Forecasting Calculator + E2E Tests | **Complete** |
-| 6 | Production Readiness & App Store Launch | Pending |
+| 6 | Portfolio Metrics & Product Comparison + E2E Tests | Pending |
+| 7 | Production Readiness & App Store Launch | Pending |
 
 ---
 
@@ -790,7 +791,7 @@ SettingsView                              [ROOT — currency, appearance, labor 
 - [x] Test: batchLaborHours sums all steps and multiplies by batch size
 - [x] Test: batchLaborHours raw-value overload matches model overload
 - [x] Test: batchLaborHours returns zero when step has zero recorded time
-- [x] Test: formatHoursReadable formats various hour values correctly (0h 0m, 0h 30m, 4h 45m, 25h 30m)
+- [x] Test: formatHoursReadable formats various hour values correctly (0h 0m, 0h 30m, 4h 45m, 25h 30m, 7h 30m, 12h 30m)
 - [x] Test: batchMaterialUnits multiplies units per product by batch size
 - [x] Test: batchMaterialLineCost multiplies line cost by batch size
 - [x] Test: bulkPurchasesNeeded exact fit (zero leftover)
@@ -884,7 +885,7 @@ Runs on every push:
 - **Shared Materials (many-to-many):** Materials are reusable across products via the `ProductMaterial` join model (mirrors WorkStep/ProductWorkStep exactly). Edit once, updates everywhere. The Materials tab serves as the material library. Per-product ordering is stored in `ProductMaterial.sortOrder`.
 - **Per-section buffers:** `laborBuffer` applies only to labor cost, `materialBuffer` applies only to material cost. Shipping is never buffered. Formula: `labor × (1 + laborBuffer) + material × (1 + materialBuffer) + shipping`.
 - **Product duplication re-links materials:** Duplicated products get new `ProductMaterial` associations pointing to the same shared Material entities (not deep-copied). Consistent with WorkStep duplication behavior.
-- **Image storage:** `Data?` blob in SwiftData for Epic 0–5. Migrate to file-system URLs in Epic 6 if performance requires it.
+- **Image storage:** `Data?` blob in SwiftData for Epic 0–6. Migrate to file-system URLs in Epic 7 if performance requires it.
 - **Currency:** USD default, EUR option. Stored `Decimal` values are always in the user's chosen currency. No conversion logic — user picks one currency and sticks with it.
 - **Appearance management pattern:** `AppearanceManager` follows the same `@Observable` + `EnvironmentKey` + `UserDefaults` pattern as `CurrencyFormatter`. New app-level managers should follow this pattern. Injected at root in `MakerMarginsApp.swift`, accessed via `@Environment`.
 - **Background layering:** Two-tier warm background system — `surface` (page-level, subtle warm cream) and `surfaceElevated` (card-level, near-white in light / warm charcoal in dark). All colors use `UIColor { traits in ... }` closures for automatic dark/light adaptation.
@@ -925,5 +926,8 @@ Runs on every push:
 - **Material shopping list with purchase recommendations:** `bulkPurchasesNeeded` uses ceiling division to tell makers exactly how many packages to buy. Shows leftover units. "Total Purchase Cost" (what you spend at the store) is distinct from "Material Cost" (what goes into production cost) — the difference is surplus from bulk packaging.
 - **Revenue forecast is conditional:** Only shown when at least one `ProductPricing` has `actualPrice > 0`. Uses the first matching pricing record. When no pricing exists, a hint directs users to the Price tab.
 - **Batch functions delegate to existing per-unit functions:** All `batchX` functions in CostingEngine are `existingPerUnitFunction × batchSize`. This ensures batch calculations are always consistent with single-unit calculations and avoids duplicating math.
-- **`formatHoursReadable` drops seconds:** Batch-level time display uses "Xh Ym" format (not "Xh Ym Zs") because second-level precision is meaningless for multi-unit production forecasts.
+- **`formatHoursReadable` drops seconds:** Batch-level time display uses "Xh Ym" format (not "Xh Ym Zs") because second-level precision is meaningless for multi-unit production forecasts. Converts Decimal hours to Double before multiplying by 3600 to avoid `NSDecimalNumber.intValue` truncation on chained Decimal arithmetic.
+- **`activePricing` prefers platform-specific over General:** Revenue forecast selects the pricing with the highest `actualPrice` among platform-specific records (Etsy/Shopify/Amazon), falling back to General only if no platform-specific pricing exists. This prevents lazily-created General records from shadowing template Etsy pricing.
+- **Per-unit labor time uses minutes:** The per-unit context line in labor forecast rows shows "23m/ea" or "1h 15m/ea" instead of "0.375 hrs/ea" — more intuitive for makers. Batch totals keep decimal precision.
+- **Zero-value rows hidden in revenue breakdown:** Fee, production cost, and shipping rows in the revenue forecast section are hidden when their value is zero, avoiding "-$0.00" display artifacts.
 - **No CloudKit, no authentication, no sync.** Single-user, local-only.

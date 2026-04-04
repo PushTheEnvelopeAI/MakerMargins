@@ -57,8 +57,17 @@ struct BatchForecastView: View {
 
     // MARK: - Revenue
 
+    /// Selects the best pricing for revenue forecasting.
+    /// Prefers platform-specific (Etsy/Shopify/Amazon) over General,
+    /// since General is lazily created with defaults and may have a
+    /// placeholder actualPrice. Among equals, picks highest actualPrice.
     private var activePricing: ProductPricing? {
-        product.productPricings.first { $0.actualPrice > 0 }
+        let withPrice = product.productPricings.filter { $0.actualPrice > 0 }
+        let platformSpecific = withPrice.filter { $0.platformType != .general }
+        if let best = platformSpecific.max(by: { $0.actualPrice < $1.actualPrice }) {
+            return best
+        }
+        return withPrice.first
     }
 
     // MARK: - Body
@@ -176,25 +185,32 @@ struct BatchForecastView: View {
             VStack(spacing: AppTheme.Spacing.xs) {
                 CalculatorSectionHeader(title: "Labor Time", icon: "clock")
 
-                ForEach(sortedStepLinks, id: \.persistentModelID) { link in
-                    let perProduct = CostingEngine.laborHoursPerProduct(link: link)
-                    let batchHours = CostingEngine.batchStepHours(link: link, batchSize: batchSize)
+                VStack(spacing: 0) {
+                    ForEach(Array(sortedStepLinks.enumerated()), id: \.element.persistentModelID) { index, link in
+                        let perProduct = CostingEngine.laborHoursPerProduct(link: link)
+                        let batchHours = CostingEngine.batchStepHours(link: link, batchSize: batchSize)
 
-                    HStack {
-                        Text(link.workStep?.title ?? "—")
-                            .font(AppTheme.Typography.bodyText)
-                        Spacer()
-                        VStack(alignment: .trailing, spacing: AppTheme.Spacing.xxxs) {
-                            Text("\(CostingEngine.formatHours(perProduct)) hrs/ea")
-                                .font(AppTheme.Typography.note)
-                                .foregroundStyle(.secondary)
-                            Text("\(CostingEngine.formatHours(batchHours)) hrs")
+                        HStack {
+                            Text(link.workStep?.title ?? "—")
                                 .font(AppTheme.Typography.bodyText)
-                                .foregroundStyle(AppTheme.Colors.accent)
+                            Spacer()
+                            VStack(alignment: .trailing, spacing: AppTheme.Spacing.xxxs) {
+                                Text(formatPerUnit(perProduct))
+                                    .font(AppTheme.Typography.note)
+                                    .foregroundStyle(.secondary)
+                                Text("\(CostingEngine.formatHours(batchHours)) hrs")
+                                    .font(AppTheme.Typography.bodyText)
+                                    .foregroundStyle(AppTheme.Colors.accent)
+                            }
+                        }
+                        .padding(.vertical, AppTheme.Spacing.sm)
+
+                        if index < sortedStepLinks.count - 1 {
+                            Divider()
                         }
                     }
-                    .sectionGroupStyle()
                 }
+                .sectionGroupStyle()
 
                 VStack(spacing: AppTheme.Spacing.xs) {
                     HStack {
@@ -428,10 +444,14 @@ struct BatchForecastView: View {
 
                     VStack(spacing: 0) {
                         DetailRow(label: "Revenue", value: formatter.format(revenue))
-                        DetailRow(label: "Total Fees", value: "-\(formatter.format(fees))")
-                            .foregroundStyle(.secondary)
-                        DetailRow(label: "Production Cost", value: "-\(formatter.format(batchProductionExShipping))")
-                            .foregroundStyle(.secondary)
+                        if fees > 0 {
+                            DetailRow(label: "Total Fees", value: "-\(formatter.format(fees))")
+                                .foregroundStyle(.secondary)
+                        }
+                        if batchProductionExShipping > 0 {
+                            DetailRow(label: "Production Cost", value: "-\(formatter.format(batchProductionExShipping))")
+                                .foregroundStyle(.secondary)
+                        }
                         if batchShippingCost > 0 {
                             DetailRow(label: "Shipping", value: "-\(formatter.format(batchShippingCost))")
                                 .foregroundStyle(.secondary)
@@ -545,5 +565,15 @@ struct BatchForecastView: View {
     /// Formats a Decimal quantity, stripping unnecessary trailing zeros.
     private func formatUnits(_ value: Decimal) -> String {
         Self.unitsFormatter.string(from: NSDecimalNumber(decimal: value)) ?? "\(value)"
+    }
+
+    /// Formats per-unit labor hours in human-readable minutes/hours.
+    /// Under 1 hour: "23m/ea". 1 hour+: "1h 15m/ea".
+    private func formatPerUnit(_ hours: Decimal) -> String {
+        let totalMinutes = Int(NSDecimalNumber(decimal: hours).doubleValue * 60)
+        if totalMinutes >= 60 {
+            return "\(totalMinutes / 60)h \(totalMinutes % 60)m/ea"
+        }
+        return "\(totalMinutes)m/ea"
     }
 }
