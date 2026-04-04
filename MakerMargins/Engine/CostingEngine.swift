@@ -413,4 +413,157 @@ enum CostingEngine {
         }
         return "\(m)m \(s)s"
     }
+
+    /// Formats Decimal hours to a human-readable "Xh Ym" string.
+    /// Drops seconds — batch-level display doesn't need second-level precision.
+    /// Examples: 0.5 → "0h 30m", 4.75 → "4h 45m", 0 → "0h 0m"
+    static func formatHoursReadable(_ hours: Decimal) -> String {
+        let totalSeconds = NSDecimalNumber(decimal: hours * 3600).intValue
+        let h = totalSeconds / 3600
+        let m = (totalSeconds % 3600) / 60
+        return "\(h)h \(m)m"
+    }
+
+    // MARK: - Batch Forecasting (Epic 5)
+
+    // MARK: Batch Labor
+
+    /// Labor hours for a single step across the entire batch.
+    static func batchStepHours(link: ProductWorkStep, batchSize: Int) -> Decimal {
+        laborHoursPerProduct(link: link) * Decimal(batchSize)
+    }
+
+    /// Raw-value overload.
+    static func batchStepHours(laborHoursPerProduct: Decimal, batchSize: Int) -> Decimal {
+        laborHoursPerProduct * Decimal(batchSize)
+    }
+
+    /// Total labor hours for all steps across the entire batch.
+    static func batchLaborHours(product: Product, batchSize: Int) -> Decimal {
+        totalLaborHours(product: product) * Decimal(batchSize)
+    }
+
+    /// Raw-value overload.
+    static func batchLaborHours(totalLaborHoursPerUnit: Decimal, batchSize: Int) -> Decimal {
+        totalLaborHoursPerUnit * Decimal(batchSize)
+    }
+
+    // MARK: Batch Materials
+
+    /// Units of a single material needed for the entire batch.
+    static func batchMaterialUnits(link: ProductMaterial, batchSize: Int) -> Decimal {
+        link.unitsRequiredPerProduct * Decimal(batchSize)
+    }
+
+    /// Raw-value overload.
+    static func batchMaterialUnits(unitsRequiredPerProduct: Decimal, batchSize: Int) -> Decimal {
+        unitsRequiredPerProduct * Decimal(batchSize)
+    }
+
+    /// Cost of a single material line across the entire batch (before buffer).
+    static func batchMaterialLineCost(link: ProductMaterial, batchSize: Int) -> Decimal {
+        materialLineCost(link: link) * Decimal(batchSize)
+    }
+
+    /// Raw-value overload.
+    static func batchMaterialLineCost(materialLineCostPerUnit: Decimal, batchSize: Int) -> Decimal {
+        materialLineCostPerUnit * Decimal(batchSize)
+    }
+
+    /// Number of bulk purchases required to fulfill a batch's material needs.
+    /// Uses ceiling division. Returns (0, 0, 0) if bulkQuantity is zero or negative.
+    static func bulkPurchasesNeeded(
+        unitsNeeded: Decimal,
+        bulkQuantity: Decimal
+    ) -> (purchases: Int, totalBulkUnits: Decimal, leftover: Decimal) {
+        guard bulkQuantity > 0 else { return (0, 0, 0) }
+        let ratio = unitsNeeded / bulkQuantity
+        let purchases = Int(NSDecimalNumber(decimal: ratio).doubleValue.rounded(.up))
+        let totalBulkUnits = Decimal(purchases) * bulkQuantity
+        let leftover = totalBulkUnits - unitsNeeded
+        return (purchases, totalBulkUnits, leftover)
+    }
+
+    /// Total cost to purchase enough bulk units for the batch.
+    static func batchPurchaseCost(purchases: Int, bulkCost: Decimal) -> Decimal {
+        Decimal(purchases) * bulkCost
+    }
+
+    // MARK: Batch Cost Summary
+
+    /// Total production cost for the entire batch (with buffers and shipping).
+    static func batchProductionCost(product: Product, batchSize: Int) -> Decimal {
+        totalProductionCost(product: product) * Decimal(batchSize)
+    }
+
+    /// Raw-value overload.
+    static func batchProductionCost(totalProductionCostPerUnit: Decimal, batchSize: Int) -> Decimal {
+        totalProductionCostPerUnit * Decimal(batchSize)
+    }
+
+    /// Cost per unit within a batch. Returns 0 if batchSize is zero.
+    static func batchCostPerUnit(batchProductionCost: Decimal, batchSize: Int) -> Decimal {
+        guard batchSize > 0 else { return 0 }
+        return batchProductionCost / Decimal(batchSize)
+    }
+
+    // MARK: Batch Revenue
+
+    /// Gross revenue for the entire batch.
+    static func batchRevenue(
+        actualPrice: Decimal,
+        actualShippingCharge: Decimal,
+        batchSize: Int
+    ) -> Decimal {
+        (actualPrice + actualShippingCharge) * Decimal(batchSize)
+    }
+
+    /// Total platform fees for the entire batch.
+    /// Each sale is an independent transaction — fixed fees apply per sale.
+    static func batchTotalFees(
+        actualPrice: Decimal,
+        actualShippingCharge: Decimal,
+        platformFee: Decimal,
+        paymentProcessingFee: Decimal,
+        paymentProcessingFixed: Decimal,
+        marketingFee: Decimal,
+        percentSalesFromMarketing: Decimal,
+        batchSize: Int
+    ) -> Decimal {
+        totalSaleFees(
+            actualPrice: actualPrice,
+            actualShippingCharge: actualShippingCharge,
+            platformFee: platformFee,
+            paymentProcessingFee: paymentProcessingFee,
+            paymentProcessingFixed: paymentProcessingFixed,
+            marketingFee: marketingFee,
+            percentSalesFromMarketing: percentSalesFromMarketing
+        ) * Decimal(batchSize)
+    }
+
+    /// Total profit for the entire batch.
+    static func batchProfit(
+        actualPrice: Decimal,
+        actualShippingCharge: Decimal,
+        productionCostExShipping: Decimal,
+        shippingCost: Decimal,
+        platformFee: Decimal,
+        paymentProcessingFee: Decimal,
+        paymentProcessingFixed: Decimal,
+        marketingFee: Decimal,
+        percentSalesFromMarketing: Decimal,
+        batchSize: Int
+    ) -> Decimal {
+        actualProfit(
+            actualPrice: actualPrice,
+            actualShippingCharge: actualShippingCharge,
+            productionCostExShipping: productionCostExShipping,
+            shippingCost: shippingCost,
+            platformFee: platformFee,
+            paymentProcessingFee: paymentProcessingFee,
+            paymentProcessingFixed: paymentProcessingFixed,
+            marketingFee: marketingFee,
+            percentSalesFromMarketing: percentSalesFromMarketing
+        ) * Decimal(batchSize)
+    }
 }
