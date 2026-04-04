@@ -582,8 +582,8 @@ SettingsView                              [ROOT — currency, appearance, labor 
 
 **PricingCalculatorView (Inline in ProductDetailView)**
 - [x] Segmented platform picker (General | Etsy | Shopify | Amazon)
-- [x] Consistent section layout across all tabs: Production Cost, Shipping Cost, Marketing and Fees, Profit Margin, Target Price
-- [x] Production Cost sub-section shows Material Cost + Labor Cost
+- [x] Consistent section layout across all tabs: Production Costs, Marketing and Fees, Profit Margin, Target Price
+- [x] Production Costs sub-section shows Material Cost + Labor Cost + Shipping Cost + Total
 - [x] Marketing and Fees sub-section: Platform Fee, Payment Processing, Marketing Fees, % Sales from Ads
 - [x] General tab: all fee fields editable (percentages only, no fixed fees)
 - [x] Etsy tab: all 3 fee rows locked (6.5%, "3% + $0.25", 15%)

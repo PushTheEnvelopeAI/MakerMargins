@@ -196,7 +196,7 @@ struct MaterialListView: View {
                         .foregroundStyle(.secondary)
                     Text("·")
                         .foregroundStyle(.tertiary)
-                    Text("\(link.unitsRequiredPerProduct) \(material.unitName)/product")
+                    Text(verbatim: "\(link.unitsRequiredPerProduct) \(material.unitName)/product")
                         .font(AppTheme.Typography.rowCaption)
                         .foregroundStyle(.tertiary)
                 }
@@ -337,10 +337,12 @@ struct MaterialListView: View {
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add (\(selectedMaterialIDs.count))") {
+                    Button {
                         addSelectedMaterials()
                         selectedMaterialIDs.removeAll()
                         showingExistingMaterialPicker = false
+                    } label: {
+                        Text(verbatim: "Add (\(selectedMaterialIDs.count))")
                     }
                     .disabled(selectedMaterialIDs.isEmpty)
                 }

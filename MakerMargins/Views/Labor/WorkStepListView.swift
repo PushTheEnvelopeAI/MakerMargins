@@ -197,7 +197,7 @@ struct WorkStepListView: View {
                         .foregroundStyle(.secondary)
                     Text("·")
                         .foregroundStyle(.tertiary)
-                    Text("\(link.unitsRequiredPerProduct) \(step.unitName)/product")
+                    Text(verbatim: "\(link.unitsRequiredPerProduct) \(step.unitName)/product")
                         .font(AppTheme.Typography.rowCaption)
                         .foregroundStyle(.tertiary)
                 }
@@ -338,10 +338,12 @@ struct WorkStepListView: View {
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add (\(selectedStepIDs.count))") {
+                    Button {
                         addSelectedSteps()
                         selectedStepIDs.removeAll()
                         showingExistingStepPicker = false
+                    } label: {
+                        Text(verbatim: "Add (\(selectedStepIDs.count))")
                     }
                     .disabled(selectedStepIDs.isEmpty)
                 }

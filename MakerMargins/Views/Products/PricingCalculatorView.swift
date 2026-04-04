@@ -122,18 +122,12 @@ struct PricingCalculatorView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
             GroupBox("Target Price Calculator") {
-                VStack(spacing: 0) {
+                VStack(spacing: AppTheme.Spacing.md) {
                     platformPicker
-                    Divider()
                     productionCostSection
-                    Divider()
-                    shippingCostRow
-                    Divider()
                     marketingAndFeesSection
-                    Divider()
-                    profitMarginRow
-                    Divider()
-                    targetPriceRow
+                    profitMarginSection
+                    targetPriceHero
                 }
             }
             .backgroundStyle(AppTheme.Colors.pricingSurface)
@@ -175,27 +169,36 @@ struct PricingCalculatorView: View {
     // MARK: Production Cost
 
     private var productionCostSection: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Production Cost")
-                    .font(AppTheme.Typography.note)
-                    .foregroundStyle(.tertiary)
-                Spacer()
-            }
-            .padding(.top, AppTheme.Spacing.sm)
+        VStack(spacing: AppTheme.Spacing.xs) {
+            CalculatorSectionHeader(title: "Production Costs", icon: "hammer")
 
             if productionCost == 0 {
                 emptyCostHint
             } else {
-                DetailRow(
-                    label: "Material Cost",
-                    value: formatter.format(CostingEngine.totalMaterialCostBuffered(product: product))
-                )
-                Divider()
-                DetailRow(
-                    label: "Labor Cost",
-                    value: formatter.format(CostingEngine.totalLaborCostBuffered(product: product))
-                )
+                VStack(spacing: 0) {
+                    DetailRow(
+                        label: "Material Cost",
+                        value: formatter.format(CostingEngine.totalMaterialCostBuffered(product: product))
+                    )
+                    DetailRow(
+                        label: "Labor Cost",
+                        value: formatter.format(CostingEngine.totalLaborCostBuffered(product: product))
+                    )
+                    DetailRow(
+                        label: "Shipping Cost",
+                        value: formatter.format(product.shippingCost)
+                    )
+                    HStack {
+                        Text("Total")
+                            .font(AppTheme.Typography.sectionHeader)
+                        Spacer()
+                        Text(formatter.format(productionCost))
+                            .font(AppTheme.Typography.sectionHeader)
+                            .foregroundStyle(AppTheme.Colors.accent)
+                    }
+                    .padding(.vertical, AppTheme.Spacing.sm)
+                }
+                .sectionGroupStyle()
             }
         }
     }
@@ -215,65 +218,50 @@ struct PricingCalculatorView: View {
             .padding(.vertical, AppTheme.Spacing.lg)
             Spacer()
         }
-    }
-
-    // MARK: Shipping Cost
-
-    private var shippingCostRow: some View {
-        DetailRow(
-            label: "Shipping Cost",
-            value: formatter.format(product.shippingCost)
-        )
+        .sectionGroupStyle()
     }
 
     // MARK: Marketing and Fees
 
     private var marketingAndFeesSection: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Marketing and Fees")
-                    .font(AppTheme.Typography.note)
-                    .foregroundStyle(.tertiary)
-                Spacer()
+        VStack(spacing: AppTheme.Spacing.xs) {
+            CalculatorSectionHeader(title: "Marketing and Fees", icon: "percent")
+
+            VStack(spacing: AppTheme.Spacing.xxs) {
+                feeRow(
+                    label: "Platform Fee",
+                    lockedDisplay: selectedPlatform.platformFeeDisplay,
+                    text: $platformFeeText,
+                    field: .platformFee,
+                    writeBack: { currentPricing?.platformFee = $0 }
+                )
+
+                feeRow(
+                    label: "Payment Processing",
+                    lockedDisplay: selectedPlatform.paymentProcessingDisplay,
+                    text: $paymentProcessingFeeText,
+                    field: .paymentProcessingFee,
+                    writeBack: { currentPricing?.paymentProcessingFee = $0 }
+                )
+
+                feeRow(
+                    label: "Marketing Fees",
+                    lockedDisplay: selectedPlatform.marketingFeeDisplay,
+                    text: $marketingFeeText,
+                    field: .marketingFee,
+                    writeBack: { currentPricing?.marketingFee = $0 }
+                )
+
+                PercentageInputField(
+                    label: "% Sales from Ads",
+                    text: $percentSalesFromMarketingText,
+                    field: FocusableField.percentSalesFromMarketing,
+                    focusBinding: $focusedField,
+                    writeBack: { currentPricing?.percentSalesFromMarketing = $0 }
+                )
+                .padding(.vertical, AppTheme.Spacing.xs)
             }
-            .padding(.top, AppTheme.Spacing.sm)
-
-            // Platform Fee
-            feeRow(
-                label: "Platform Fee",
-                lockedDisplay: selectedPlatform.platformFeeDisplay,
-                text: $platformFeeText,
-                field: .platformFee,
-                writeBack: { currentPricing?.platformFee = $0 }
-            )
-
-            // Payment Processing
-            feeRow(
-                label: "Payment Processing",
-                lockedDisplay: selectedPlatform.paymentProcessingDisplay,
-                text: $paymentProcessingFeeText,
-                field: .paymentProcessingFee,
-                writeBack: { currentPricing?.paymentProcessingFee = $0 }
-            )
-
-            // Marketing Fees
-            feeRow(
-                label: "Marketing Fees",
-                lockedDisplay: selectedPlatform.marketingFeeDisplay,
-                text: $marketingFeeText,
-                field: .marketingFee,
-                writeBack: { currentPricing?.marketingFee = $0 }
-            )
-
-            // % Sales from Ads — always editable
-            PercentageInputField(
-                label: "% Sales from Ads",
-                text: $percentSalesFromMarketingText,
-                field: FocusableField.percentSalesFromMarketing,
-                focusBinding: $focusedField,
-                writeBack: { currentPricing?.percentSalesFromMarketing = $0 }
-            )
-            .padding(.vertical, AppTheme.Spacing.xs)
+            .sectionGroupStyle()
         }
     }
 
@@ -292,9 +280,15 @@ struct PricingCalculatorView: View {
                     .font(AppTheme.Typography.bodyText)
                     .foregroundStyle(.tertiary)
                 Spacer()
-                Text(display)
-                    .font(AppTheme.Typography.bodyText)
-                    .foregroundStyle(.tertiary)
+                HStack(spacing: AppTheme.Spacing.xs) {
+                    Text(display)
+                        .font(AppTheme.Typography.bodyText)
+                        .foregroundStyle(.tertiary)
+                    Image(systemName: "lock.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.quaternary)
+                        .accessibilityLabel("Locked by platform")
+                }
             }
             .padding(.vertical, AppTheme.Spacing.xs)
         } else {
@@ -311,7 +305,7 @@ struct PricingCalculatorView: View {
 
     // MARK: Profit Margin
 
-    private var profitMarginRow: some View {
+    private var profitMarginSection: some View {
         PercentageInputField(
             label: "Profit Margin",
             text: $profitMarginText,
@@ -320,18 +314,19 @@ struct PricingCalculatorView: View {
             writeBack: { currentPricing?.profitMargin = $0 }
         )
         .padding(.vertical, AppTheme.Spacing.xs)
+        .sectionGroupStyle()
     }
 
     // MARK: Target Price
 
-    private var targetPriceRow: some View {
+    private var targetPriceHero: some View {
         HStack {
             Text("Target Price")
                 .font(AppTheme.Typography.sectionHeader)
             Spacer()
             if let price = computedTargetPrice {
                 Text(formatter.format(price))
-                    .font(.title3.weight(.bold))
+                    .font(AppTheme.Typography.heroPrice)
                     .foregroundStyle(AppTheme.Colors.accent)
             } else {
                 Text("— (fees too high)")
@@ -339,23 +334,22 @@ struct PricingCalculatorView: View {
                     .foregroundStyle(.red)
             }
         }
-        .padding(.vertical, AppTheme.Spacing.md)
+        .heroCardStyle()
     }
 
     // MARK: - Profit Analysis
 
     private var profitAnalysisGroupBox: some View {
         GroupBox("Profit Analysis") {
-            VStack(spacing: 0) {
+            VStack(spacing: AppTheme.Spacing.md) {
                 actualPricingSection
 
                 if hasActualPrice {
-                    Divider()
                     profitBreakdownSection
                     Divider()
+                        .padding(.vertical, AppTheme.Spacing.xs)
                     profitHeroSection
                 } else if computedTargetPrice != nil {
-                    Divider()
                     useTargetPriceButton
                 }
             }
@@ -372,40 +366,35 @@ struct PricingCalculatorView: View {
     }
 
     private var actualPricingSection: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Your Actual Pricing")
-                    .font(AppTheme.Typography.note)
-                    .foregroundStyle(.tertiary)
-                Spacer()
-            }
-            .padding(.top, AppTheme.Spacing.sm)
+        VStack(spacing: AppTheme.Spacing.xs) {
+            CalculatorSectionHeader(title: "Your Actual Pricing", icon: "dollarsign.circle")
 
-            HStack {
-                Text("Selling Price")
-                    .font(AppTheme.Typography.bodyText)
-                Spacer()
-                CurrencyInputField(
-                    symbol: formatter.symbol,
-                    text: $actualPriceText
-                )
-                .editableFieldStyle()
-            }
-            .padding(.vertical, AppTheme.Spacing.xs)
+            VStack(spacing: AppTheme.Spacing.xxs) {
+                HStack {
+                    Text("Selling Price")
+                        .font(AppTheme.Typography.bodyText)
+                    Spacer()
+                    CurrencyInputField(
+                        symbol: formatter.symbol,
+                        text: $actualPriceText
+                    )
+                    .editableFieldStyle()
+                }
+                .padding(.vertical, AppTheme.Spacing.xs)
 
-            Divider()
-
-            HStack {
-                Text("Shipping Charge")
-                    .font(AppTheme.Typography.bodyText)
-                Spacer()
-                CurrencyInputField(
-                    symbol: formatter.symbol,
-                    text: $actualShippingChargeText
-                )
-                .editableFieldStyle()
+                HStack {
+                    Text("Shipping Charge")
+                        .font(AppTheme.Typography.bodyText)
+                    Spacer()
+                    CurrencyInputField(
+                        symbol: formatter.symbol,
+                        text: $actualShippingChargeText
+                    )
+                    .editableFieldStyle()
+                }
+                .padding(.vertical, AppTheme.Spacing.xs)
             }
-            .padding(.vertical, AppTheme.Spacing.xs)
+            .sectionGroupStyle()
         }
     }
 
@@ -435,127 +424,113 @@ struct PricingCalculatorView: View {
     }
 
     private var profitBreakdownSection: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Breakdown")
-                    .font(AppTheme.Typography.note)
-                    .foregroundStyle(.tertiary)
-                Spacer()
-            }
-            .padding(.top, AppTheme.Spacing.sm)
+        VStack(spacing: AppTheme.Spacing.xs) {
+            CalculatorSectionHeader(title: "Breakdown", icon: "list.bullet.rectangle")
 
-            DetailRow(
-                label: "Revenue",
-                value: formatter.format(grossRevenue)
-            )
-
-            let f = resolved
-
-            // Platform Fees
-            let platformFeeAmount = grossRevenue * f.platformFee
-            if platformFeeAmount > 0 {
-                Divider()
+            VStack(spacing: 0) {
                 DetailRow(
-                    label: "Platform Fees",
-                    value: "-\(formatter.format(platformFeeAmount))"
+                    label: "Revenue",
+                    value: formatter.format(grossRevenue)
                 )
-            }
 
-            // Processing Fees (includes fixed fee)
-            let processingAmount = grossRevenue * f.paymentProcessingFee + f.paymentProcessingFixed
-            if processingAmount > 0 {
-                Divider()
-                DetailRow(
-                    label: "Processing Fees",
-                    value: "-\(formatter.format(processingAmount))"
-                )
-            }
+                let f = resolved
 
-            // Marketing Fees (hidden when effective rate is zero)
-            let effectiveMarketing = CostingEngine.effectiveMarketingRate(
-                marketingFee: f.marketingFee,
-                percentSalesFromMarketing: f.percentSalesFromMarketing
-            )
-            let marketingAmount = (currentPricing?.actualPrice ?? 0) * effectiveMarketing
-            if marketingAmount > 0 {
-                Divider()
-                DetailRow(
-                    label: "Marketing Fees",
-                    value: "-\(formatter.format(marketingAmount))"
-                )
-            }
-
-            // Production Cost (labor + material buffered, no shipping)
-            let prodCost = CostingEngine.productionCostExShipping(product: product)
-            Divider()
-            DetailRow(
-                label: "Production Cost",
-                value: "-\(formatter.format(prodCost))"
-            )
-
-            // Your Shipping Cost (maker's actual cost)
-            if product.shippingCost > 0 {
-                Divider()
-                DetailRow(
-                    label: "Your Shipping Cost",
-                    value: "-\(formatter.format(product.shippingCost))"
-                )
-            }
-
-            // Zero production cost warning
-            if prodCost == 0 {
-                HStack {
-                    Image(systemName: "exclamationmark.triangle")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("Production cost is $0 — add materials or labor for accurate profit.")
-                        .font(AppTheme.Typography.note)
-                        .foregroundStyle(.secondary)
+                let platformFeeAmount = grossRevenue * f.platformFee
+                if platformFeeAmount > 0 {
+                    DetailRow(
+                        label: "Platform Fees",
+                        value: "-\(formatter.format(platformFeeAmount))"
+                    )
+                    .foregroundStyle(.secondary)
                 }
-                .padding(.vertical, AppTheme.Spacing.sm)
+
+                let processingAmount = grossRevenue * f.paymentProcessingFee + f.paymentProcessingFixed
+                if processingAmount > 0 {
+                    DetailRow(
+                        label: "Processing Fees",
+                        value: "-\(formatter.format(processingAmount))"
+                    )
+                    .foregroundStyle(.secondary)
+                }
+
+                let effectiveMarketing = CostingEngine.effectiveMarketingRate(
+                    marketingFee: f.marketingFee,
+                    percentSalesFromMarketing: f.percentSalesFromMarketing
+                )
+                let marketingAmount = (currentPricing?.actualPrice ?? 0) * effectiveMarketing
+                if marketingAmount > 0 {
+                    DetailRow(
+                        label: "Marketing Fees",
+                        value: "-\(formatter.format(marketingAmount))"
+                    )
+                    .foregroundStyle(.secondary)
+                }
+
+                let prodCost = CostingEngine.productionCostExShipping(product: product)
+                DetailRow(
+                    label: "Production Cost",
+                    value: "-\(formatter.format(prodCost))"
+                )
+                .foregroundStyle(.secondary)
+
+                if product.shippingCost > 0 {
+                    DetailRow(
+                        label: "Your Shipping Cost",
+                        value: "-\(formatter.format(product.shippingCost))"
+                    )
+                    .foregroundStyle(.secondary)
+                }
+
+                if prodCost == 0 {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("Production cost is $0 — add materials or labor for accurate profit.")
+                            .font(AppTheme.Typography.note)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, AppTheme.Spacing.sm)
+                }
             }
+            .sectionGroupStyle()
         }
     }
 
     private var profitHeroSection: some View {
-        VStack(spacing: 0) {
-            // Profit per Sale
-            HStack {
-                Text("Profit per Sale")
-                    .font(AppTheme.Typography.sectionHeader)
-                Spacer()
-                Text(formatter.format(computedActualProfit))
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(computedActualProfit >= 0 ? AppTheme.Colors.accent : .red)
-            }
-            .padding(.vertical, AppTheme.Spacing.md)
-
-            // Profit Margin
-            if let margin = computedActualProfitMargin {
-                Divider()
+        VStack(spacing: AppTheme.Spacing.xs) {
+            VStack(spacing: AppTheme.Spacing.sm) {
                 HStack {
-                    Text("Profit Margin")
-                        .font(AppTheme.Typography.bodyText)
-                    Spacer()
-                    Text("\(PercentageFormat.toDisplay(margin))%")
+                    Text("Profit per Sale")
                         .font(AppTheme.Typography.sectionHeader)
+                    Spacer()
+                    Text(formatter.format(computedActualProfit))
+                        .font(AppTheme.Typography.heroPrice)
                         .foregroundStyle(computedActualProfit >= 0 ? AppTheme.Colors.accent : .red)
                 }
-                .padding(.vertical, AppTheme.Spacing.sm)
-            }
 
-            // Labor callout
+                if let margin = computedActualProfitMargin {
+                    Divider()
+                    HStack {
+                        Text("Profit Margin")
+                            .font(AppTheme.Typography.bodyText)
+                        Spacer()
+                        Text("\(PercentageFormat.toDisplay(margin))%")
+                            .font(AppTheme.Typography.sectionHeader)
+                            .foregroundStyle(computedActualProfit >= 0 ? AppTheme.Colors.accent : .red)
+                    }
+                }
+            }
+            .heroCardStyle()
+
             let laborCost = CostingEngine.totalLaborCostBuffered(product: product)
             if laborCost > 0 {
-                Divider()
                 laborCallout(laborCost: laborCost)
             }
 
-            // Shipping absorbed callout
             if let pricing = currentPricing,
                pricing.actualShippingCharge == 0,
                product.shippingCost > 0 {
-                Divider()
                 shippingAbsorbedCallout
             }
         }
@@ -563,21 +538,31 @@ struct PricingCalculatorView: View {
 
     private func laborCallout(laborCost: Decimal) -> some View {
         let takeHome = computedActualProfit + laborCost
-        return VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+        return HStack(alignment: .top, spacing: AppTheme.Spacing.sm) {
+            Image(systemName: "info.circle")
+                .font(.caption)
+                .foregroundStyle(AppTheme.Colors.accent)
+                .accessibilityLabel("Info")
             Text("Your labor (\(formatter.format(laborCost))) is also your income. Total take-home per sale: \(formatter.format(takeHome))")
                 .font(AppTheme.Typography.note)
                 .foregroundStyle(.secondary)
         }
-        .padding(.vertical, AppTheme.Spacing.sm)
+        .padding(.vertical, AppTheme.Spacing.xs)
+        .sectionGroupStyle()
     }
 
     private var shippingAbsorbedCallout: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
+        HStack(alignment: .top, spacing: AppTheme.Spacing.sm) {
+            Image(systemName: "info.circle")
+                .font(.caption)
+                .foregroundStyle(AppTheme.Colors.accent)
+                .accessibilityLabel("Info")
             Text("You're absorbing \(formatter.format(product.shippingCost)) in shipping costs on this platform.")
                 .font(AppTheme.Typography.note)
                 .foregroundStyle(.secondary)
         }
-        .padding(.vertical, AppTheme.Spacing.sm)
+        .padding(.vertical, AppTheme.Spacing.xs)
+        .sectionGroupStyle()
     }
 
     // MARK: - Data Loading
