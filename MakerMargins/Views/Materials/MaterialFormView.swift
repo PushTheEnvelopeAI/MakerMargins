@@ -239,6 +239,12 @@ struct MaterialFormView: View {
 
     private func fieldDefault(for field: FocusableField) -> FormFieldDefault {
         switch field {
+        case .title:
+            FormFieldDefault(get: { title }, set: { title = $0 }, defaultValue: "")
+        case .summary:
+            FormFieldDefault(get: { summary }, set: { summary = $0 }, defaultValue: "")
+        case .link:
+            FormFieldDefault(get: { link }, set: { link = $0 }, defaultValue: "")
         case .bulkCost:
             FormFieldDefault(get: { bulkCostText }, set: { bulkCostText = $0 }, defaultValue: "0")
         case .bulkQuantity:

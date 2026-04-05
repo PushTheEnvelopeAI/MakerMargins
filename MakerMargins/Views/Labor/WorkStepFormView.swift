@@ -318,6 +318,10 @@ struct WorkStepFormView: View {
 
     private func fieldDefault(for field: FocusableField) -> FormFieldDefault {
         switch field {
+        case .title:
+            FormFieldDefault(get: { title }, set: { title = $0 }, defaultValue: "")
+        case .summary:
+            FormFieldDefault(get: { summary }, set: { summary = $0 }, defaultValue: "")
         case .hours:
             FormFieldDefault(get: { hoursText }, set: { hoursText = $0 }, defaultValue: "")
         case .minutes:
