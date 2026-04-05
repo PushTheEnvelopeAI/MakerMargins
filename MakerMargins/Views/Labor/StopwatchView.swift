@@ -5,12 +5,15 @@
 // Presented as .fullScreenCover from WorkStepDetailView or WorkStepFormView.
 // Uses an onSave closure so the caller decides what to do with the elapsed time.
 // Supports pause/resume — accumulated time is tracked across multiple intervals.
+// After recording, prompts for batch units so Hours/Unit calculates correctly.
 
 import SwiftUI
 
 struct StopwatchView: View {
     var stepTitle: String? = nil
-    let onSave: (TimeInterval) -> Void
+    var unitName: String = "unit"
+    var currentBatchUnits: Decimal = 1
+    let onSave: (TimeInterval, Decimal) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -19,6 +22,9 @@ struct StopwatchView: View {
     @State private var startDate: Date? = nil
     @State private var accumulatedTime: TimeInterval = 0
     @State private var showingDiscardConfirmation = false
+    @State private var showingSaveConfirmation = false
+    @State private var batchUnitsText: String = ""
+    @FocusState private var batchUnitsFocused: Bool
 
     private enum TimerState {
         case idle, running, paused
@@ -43,6 +49,9 @@ struct StopwatchView: View {
                 .padding(.bottom, AppTheme.Spacing.xl * 2)
         }
         .appBackground()
+        .onAppear {
+            batchUnitsText = "\(currentBatchUnits)"
+        }
         .confirmationDialog("Stop Timer?", isPresented: $showingDiscardConfirmation) {
             Button("Stop and Discard", role: .destructive) {
                 dismiss()
@@ -61,6 +70,9 @@ struct StopwatchView: View {
             Button {
                 if timerState == .running {
                     showingDiscardConfirmation = true
+                } else if showingSaveConfirmation {
+                    showingSaveConfirmation = false
+                    timerState = .paused
                 } else {
                     dismiss()
                 }
@@ -84,12 +96,12 @@ struct StopwatchView: View {
                 Text(CostingEngine.formatStopwatchTime(live))
                     .font(AppTheme.Typography.timerDisplay)
                     .contentTransition(reduceMotion ? .identity : .numericText())
-                    .accessibilityLabel(accessibleTime(live))
+                    .accessibilityLabel(CostingEngine.accessibleTimeDescription(live))
             }
         } else {
             Text(CostingEngine.formatStopwatchTime(accumulatedTime))
                 .font(AppTheme.Typography.timerDisplay)
-                .accessibilityLabel(accessibleTime(accumulatedTime))
+                .accessibilityLabel(CostingEngine.accessibleTimeDescription(accumulatedTime))
         }
     }
 
@@ -97,39 +109,85 @@ struct StopwatchView: View {
 
     @ViewBuilder
     private var buttons: some View {
-        switch timerState {
-        case .idle:
-            Button(action: start) {
-                stopwatchButton(label: "Start", style: .accent)
-            }
-
-        case .running:
-            Button(action: pause) {
-                stopwatchButton(label: "Pause", style: .destructive)
-            }
-
-        case .paused:
-            VStack(spacing: AppTheme.Spacing.lg) {
-                HStack(spacing: AppTheme.Spacing.xl) {
-                    Button(action: resume) {
-                        stopwatchButton(label: "Resume", style: .accent)
-                    }
-                    Button(action: save) {
-                        stopwatchButton(label: "Save", style: .secondary)
-                    }
+        if showingSaveConfirmation {
+            batchUnitsConfirmation
+        } else {
+            switch timerState {
+            case .idle:
+                Button(action: start) {
+                    stopwatchButton(label: "Start", style: .accent)
                 }
-                HStack(spacing: AppTheme.Spacing.xl) {
-                    Button("Discard", action: discard)
-                        .font(AppTheme.Typography.bodyText)
-                        .foregroundStyle(.secondary)
-                    Text("·")
-                        .foregroundStyle(.tertiary)
-                    Button("Re-record", action: rerecord)
-                        .font(AppTheme.Typography.bodyText)
-                        .foregroundStyle(.secondary)
+
+            case .running:
+                Button(action: pause) {
+                    stopwatchButton(label: "Pause", style: .destructive)
+                }
+
+            case .paused:
+                VStack(spacing: AppTheme.Spacing.lg) {
+                    HStack(spacing: AppTheme.Spacing.xl) {
+                        Button(action: resume) {
+                            stopwatchButton(label: "Resume", style: .accent)
+                        }
+                        Button { showingSaveConfirmation = true } label: {
+                            stopwatchButton(label: "Save", style: .secondary)
+                        }
+                    }
+                    HStack(spacing: AppTheme.Spacing.xl) {
+                        Button("Discard", action: discard)
+                            .font(AppTheme.Typography.bodyText)
+                            .foregroundStyle(.secondary)
+                        Text("·")
+                            .foregroundStyle(.tertiary)
+                        Button("Re-record", action: rerecord)
+                            .font(AppTheme.Typography.bodyText)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
         }
+    }
+
+    // MARK: - Batch Units Confirmation
+
+    private var batchUnitsConfirmation: some View {
+        VStack(spacing: AppTheme.Spacing.lg) {
+            VStack(spacing: AppTheme.Spacing.sm) {
+                Text("How many \(unitName)s were produced?")
+                    .font(AppTheme.Typography.sectionHeader)
+                    .foregroundStyle(.secondary)
+
+                TextField("Units", text: $batchUnitsText)
+                    .keyboardType(.decimalPad)
+                    .multilineTextAlignment(.center)
+                    .font(AppTheme.Typography.heroPrice)
+                    .frame(width: 120)
+                    .padding(.vertical, AppTheme.Spacing.sm)
+                    .background(AppTheme.Colors.inputBackground, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small))
+                    .focused($batchUnitsFocused)
+
+                Text("\(unitName)s in this batch")
+                    .font(AppTheme.Typography.note)
+                    .foregroundStyle(.tertiary)
+            }
+
+            HStack(spacing: AppTheme.Spacing.xl) {
+                Button {
+                    showingSaveConfirmation = false
+                } label: {
+                    stopwatchButton(label: "Back", style: .secondary)
+                }
+                Button(action: confirmSave) {
+                    stopwatchButton(label: "Save", style: .accent)
+                }
+                .disabled(parsedBatchUnits <= 0)
+            }
+        }
+        .onAppear { batchUnitsFocused = true }
+    }
+
+    private var parsedBatchUnits: Decimal {
+        Decimal(string: batchUnitsText) ?? 0
     }
 
     // MARK: - Button Style Helper
@@ -155,27 +213,12 @@ struct StopwatchView: View {
         }
     }
 
-    // MARK: - Time Formatting
-
-    private func accessibleTime(_ seconds: TimeInterval) -> String {
-        let total = max(0, Int(seconds))
-        let h = total / 3600
-        let m = (total % 3600) / 60
-        let s = total % 60
-        if h > 0 {
-            return "\(h) hour\(h == 1 ? "" : "s"), \(m) minute\(m == 1 ? "" : "s"), \(s) second\(s == 1 ? "" : "s")"
-        } else if m > 0 {
-            return "\(m) minute\(m == 1 ? "" : "s"), \(s) second\(s == 1 ? "" : "s")"
-        } else {
-            return "\(s) second\(s == 1 ? "" : "s")"
-        }
-    }
-
     // MARK: - Actions
 
     private func start() {
         startDate = Date.now
         timerState = .running
+        AccessibilityNotification.Announcement("Timer started").post()
     }
 
     private func pause() {
@@ -184,15 +227,18 @@ struct StopwatchView: View {
         }
         startDate = nil
         timerState = .paused
+        AccessibilityNotification.Announcement("Timer paused").post()
     }
 
     private func resume() {
         startDate = Date.now
         timerState = .running
+        AccessibilityNotification.Announcement("Timer resumed").post()
     }
 
-    private func save() {
-        onSave(accumulatedTime)
+    private func confirmSave() {
+        let units = parsedBatchUnits > 0 ? parsedBatchUnits : 1
+        onSave(accumulatedTime, units)
         dismiss()
     }
 
@@ -204,5 +250,7 @@ struct StopwatchView: View {
         accumulatedTime = 0
         startDate = nil
         timerState = .idle
+        showingSaveConfirmation = false
+        AccessibilityNotification.Announcement("Timer reset").post()
     }
 }

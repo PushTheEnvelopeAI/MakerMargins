@@ -123,7 +123,7 @@ struct MaterialListView: View {
                     if reduceMotion { isReordering.toggle() } else { withAnimation { isReordering.toggle() } }
                 } label: {
                     Text(isReordering ? "Done" : "Reorder")
-                        .font(.caption.weight(.medium))
+                        .font(AppTheme.Typography.badge)
                         .foregroundStyle(.tint)
                 }
             }

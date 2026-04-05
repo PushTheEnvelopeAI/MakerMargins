@@ -45,9 +45,12 @@ struct MakerMarginsApp: App {
                 self.container = try ModelContainer(for: schema, configurations: [config])
             } catch {
                 // Last resort: run in-memory so the app at least launches.
-                // In-memory containers have no disk/migration issues, so force-try is safe here.
                 let inMemory = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-                self.container = try! ModelContainer(for: schema, configurations: [inMemory])
+                do {
+                    self.container = try ModelContainer(for: schema, configurations: [inMemory])
+                } catch {
+                    fatalError("Unable to create even an in-memory ModelContainer: \(error)")
+                }
                 _showStoreCorruptionAlert = State(initialValue: true)
             }
         }

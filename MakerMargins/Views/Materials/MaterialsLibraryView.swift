@@ -6,6 +6,7 @@
 // Each row shows material title, product usage count, and cost per unit.
 // Tapping a row pushes MaterialDetailView for viewing and editing.
 // Materials can also be created here as standalone library entries (no product link).
+// Supports multi-select deletion via Edit mode.
 
 import SwiftUI
 import SwiftData
@@ -13,11 +14,15 @@ import SwiftData
 struct MaterialsLibraryView: View {
     @Query(sort: \Material.title) private var allMaterials: [Material]
     @Environment(\.currencyFormatter) private var formatter
+    @Environment(\.modelContext) private var modelContext
 
     @State private var searchText = ""
     @State private var showingCreateForm = false
     @State private var navigationPath = NavigationPath()
     @State private var materialCountBeforeSheet = 0
+    @State private var editMode: EditMode = .inactive
+    @State private var selection = Set<Material.ID>()
+    @State private var showingDeleteConfirmation = false
 
     // MARK: - Computed
 
@@ -57,7 +62,26 @@ struct MaterialsLibraryView: View {
                     } label: {
                         Image(systemName: "plus")
                     }
+                    .accessibilityLabel("Create material")
                 }
+                ToolbarItem(placement: .topBarLeading) {
+                    if !allMaterials.isEmpty {
+                        EditButton()
+                    }
+                }
+                ToolbarItem(placement: .bottomBar) {
+                    if editMode.isEditing && !selection.isEmpty {
+                        Button(role: .destructive) {
+                            showingDeleteConfirmation = true
+                        } label: {
+                            Text("Delete \(selection.count) Material\(selection.count == 1 ? "" : "s")")
+                        }
+                    }
+                }
+            }
+            .environment(\.editMode, $editMode)
+            .onChange(of: editMode) { _, newValue in
+                if !newValue.isEditing { selection.removeAll() }
             }
             .navigationDestination(for: Material.self) { material in
                 MaterialDetailView(material: material)
@@ -73,15 +97,25 @@ struct MaterialsLibraryView: View {
             }) {
                 MaterialFormView(material: nil, product: nil)
             }
+            .confirmationDialog(
+                "Delete \(selection.count) Material\(selection.count == 1 ? "" : "s")?",
+                isPresented: $showingDeleteConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Delete \(selection.count) Material\(selection.count == 1 ? "" : "s")", role: .destructive) {
+                    deleteSelected()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will permanently delete the selected material\(selection.count == 1 ? "" : "s") and remove \(selection.count == 1 ? "it" : "them") from all products. This action cannot be undone.")
+            }
         }
     }
-
-    // MARK: - Helpers
 
     // MARK: - Material List
 
     private var materialList: some View {
-        List(filteredMaterials, id: \.persistentModelID) { material in
+        List(filteredMaterials, id: \.persistentModelID, selection: $selection) { material in
             NavigationLink(value: material) {
                 HStack(spacing: AppTheme.Spacing.md) {
                     MaterialThumbnailView(imageData: material.image)
@@ -109,5 +143,16 @@ struct MaterialsLibraryView: View {
         }
         .scrollContentBackground(.hidden)
         .appBackground()
+    }
+
+    // MARK: - Actions
+
+    private func deleteSelected() {
+        let materialsToDelete = allMaterials.filter { selection.contains($0.persistentModelID) }
+        for material in materialsToDelete {
+            modelContext.delete(material)
+        }
+        selection.removeAll()
+        editMode = .inactive
     }
 }

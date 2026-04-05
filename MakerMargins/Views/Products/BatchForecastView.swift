@@ -188,7 +188,7 @@ struct BatchForecastView: View {
                                 .font(AppTheme.Typography.bodyText)
                             Spacer()
                             VStack(alignment: .trailing, spacing: AppTheme.Spacing.xxxs) {
-                                Text(formatPerUnit(perProduct))
+                                Text(CostingEngine.formatPerUnitTime(hours: perProduct))
                                     .font(AppTheme.Typography.note)
                                     .foregroundStyle(.secondary)
                                 Text("\(CostingEngine.formatHours(batchHours)) hrs")
@@ -256,13 +256,13 @@ struct BatchForecastView: View {
                 Text(material?.title ?? "—")
                     .font(AppTheme.Typography.bodyText)
                 Spacer()
-                Text("\(formatUnits(unitsNeeded)) \(unitName)")
+                Text("\(CostingEngine.formatUnits(unitsNeeded)) \(unitName)")
                     .font(AppTheme.Typography.bodyText)
                     .foregroundStyle(AppTheme.Colors.accent)
             }
 
             HStack {
-                Text("Buy \(purchaseInfo.purchases) \u{00d7} \(formatUnits(bulkQty)) \(unitName)")
+                Text("Buy \(purchaseInfo.purchases) \u{00d7} \(CostingEngine.formatUnits(bulkQty)) \(unitName)")
                     .font(AppTheme.Typography.rowCaption)
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -272,7 +272,7 @@ struct BatchForecastView: View {
             }
 
             if purchaseInfo.leftover > 0 {
-                Text("\(formatUnits(purchaseInfo.leftover)) \(unitName) leftover")
+                Text("\(CostingEngine.formatUnits(purchaseInfo.leftover)) \(unitName) leftover")
                     .font(AppTheme.Typography.note)
                     .foregroundStyle(.tertiary)
             }
@@ -393,7 +393,7 @@ struct BatchForecastView: View {
                             Text("Batch Earnings")
                                 .font(AppTheme.Typography.sectionHeader)
                             Spacer()
-                            Text(formatter.format(batchEarnings))
+                            Text(CostingEngine.signedProfitPrefix(batchEarnings) + formatter.format(batchEarnings))
                                 .font(AppTheme.Typography.heroPrice)
                                 .foregroundStyle(batchEarnings >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive)
                         }
@@ -410,10 +410,22 @@ struct BatchForecastView: View {
                             }
                         }
 
-                        // Profit Margin
+                        // Per-unit profit (used for margin and hourly pay)
+                        let perUnitProfit = CostingEngine.actualProfit(
+                            product: product,
+                            actualPrice: pricing.actualPrice,
+                            actualShippingCharge: pricing.actualShippingCharge,
+                            platformFee: f.platformFee,
+                            paymentProcessingFee: f.paymentProcessingFee,
+                            paymentProcessingFixed: f.paymentProcessingFixed,
+                            marketingFee: f.marketingFee,
+                            percentSalesFromMarketing: f.percentSalesFromMarketing
+                        )
+
+                        // Profit Margin — uses per-unit profit / per-unit revenue (independent of batch size)
                         if grossRevenue > 0 {
                             let margin = CostingEngine.actualProfitMargin(
-                                profit: profit,
+                                profit: perUnitProfit,
                                 actualPrice: pricing.actualPrice,
                                 actualShippingCharge: pricing.actualShippingCharge
                             ) ?? 0
@@ -421,7 +433,7 @@ struct BatchForecastView: View {
                                 Text("Profit Margin")
                                     .font(AppTheme.Typography.bodyText)
                                 Spacer()
-                                Text("\(PercentageFormat.toDisplay(margin))%")
+                                Text(CostingEngine.signedProfitPrefix(margin) + "\(PercentageFormat.toDisplay(margin))%")
                                     .font(AppTheme.Typography.sectionHeader)
                                     .foregroundStyle(batchEarnings >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive)
                             }
@@ -429,16 +441,6 @@ struct BatchForecastView: View {
 
                         // Effective Hourly Rate — only when labor hours exist
                         if totalBatchLaborHours > 0 {
-                            let perUnitProfit = CostingEngine.actualProfit(
-                                product: product,
-                                actualPrice: pricing.actualPrice,
-                                actualShippingCharge: pricing.actualShippingCharge,
-                                platformFee: f.platformFee,
-                                paymentProcessingFee: f.paymentProcessingFee,
-                                paymentProcessingFixed: f.paymentProcessingFixed,
-                                marketingFee: f.marketingFee,
-                                percentSalesFromMarketing: f.percentSalesFromMarketing
-                            )
                             if let perHour = CostingEngine.takeHomePerHour(
                                 product: product,
                                 actualProfit: perUnitProfit
@@ -447,7 +449,7 @@ struct BatchForecastView: View {
                                     Text("Your Hourly Pay")
                                         .font(AppTheme.Typography.bodyText)
                                     Spacer()
-                                    Text("\(formatter.format(perHour)) / hr")
+                                    Text(CostingEngine.signedProfitPrefix(perHour) + "\(formatter.format(perHour)) / hr")
                                         .font(AppTheme.Typography.sectionHeader)
                                         .foregroundStyle(batchEarnings >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive)
                                 }
@@ -486,28 +488,4 @@ struct BatchForecastView: View {
     }
 
     // MARK: - Helpers
-
-    /// Cached formatter for unit quantities — avoids allocating per call.
-    private static let unitsFormatter: NumberFormatter = {
-        let f = NumberFormatter()
-        f.minimumFractionDigits = 0
-        f.maximumFractionDigits = 4
-        f.numberStyle = .decimal
-        return f
-    }()
-
-    /// Formats a Decimal quantity, stripping unnecessary trailing zeros.
-    private func formatUnits(_ value: Decimal) -> String {
-        Self.unitsFormatter.string(from: NSDecimalNumber(decimal: value)) ?? "\(value)"
-    }
-
-    /// Formats per-unit labor hours in human-readable minutes/hours.
-    /// Under 1 hour: "23m/ea". 1 hour+: "1h 15m/ea".
-    private func formatPerUnit(_ hours: Decimal) -> String {
-        let totalMinutes = Int(NSDecimalNumber(decimal: hours).doubleValue * 60)
-        if totalMinutes >= 60 {
-            return "\(totalMinutes / 60)h \(totalMinutes % 60)m/ea"
-        }
-        return "\(totalMinutes)m/ea"
-    }
 }

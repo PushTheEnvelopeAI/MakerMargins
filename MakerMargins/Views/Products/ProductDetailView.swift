@@ -38,6 +38,9 @@ struct ProductDetailView: View {
 
     @Environment(\.currencyFormatter) private var formatter
 
+    /// When true, skip the auto-switch to Price tab (e.g. after template creation).
+    var skipPriceAutoSwitch: Bool = false
+
     // MARK: - Sub-tabs
 
     private enum DetailTab: String, CaseIterable {
@@ -69,7 +72,8 @@ struct ProductDetailView: View {
         .appBackground()
         .onAppear {
             shippingCostText = "\(product.shippingCost)"
-            if !hasAutoSwitchedTab,
+            if !skipPriceAutoSwitch,
+               !hasAutoSwitchedTab,
                product.productPricings.contains(where: { $0.actualPrice > 0 }) {
                 selectedTab = .price
                 hasAutoSwitchedTab = true

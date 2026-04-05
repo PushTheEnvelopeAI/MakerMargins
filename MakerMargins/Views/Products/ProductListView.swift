@@ -21,6 +21,7 @@ struct ProductListView: View {
     @State private var productToDelete: Product? = nil
     @State private var navigationPath = NavigationPath()
     @State private var newlyCreatedProduct: Product?
+    @State private var navigatingFromTemplate = false
 
     // MARK: - Filtering
 
@@ -69,6 +70,7 @@ struct ProductListView: View {
                 } label: {
                     Image(systemName: "plus")
                 }
+                .accessibilityLabel("Create product")
             }
             ToolbarItem(placement: .topBarLeading) {
                 Button {
@@ -91,6 +93,7 @@ struct ProductListView: View {
         }
         .sheet(isPresented: $showingTemplatePicker, onDismiss: {
             if let product = newlyCreatedProduct {
+                navigatingFromTemplate = true
                 navigationPath.append(product)
                 newlyCreatedProduct = nil
             }
@@ -100,7 +103,8 @@ struct ProductListView: View {
             })
         }
         .navigationDestination(for: Product.self) { product in
-            ProductDetailView(product: product)
+            ProductDetailView(product: product, skipPriceAutoSwitch: navigatingFromTemplate)
+                .onDisappear { navigatingFromTemplate = false }
         }
         .confirmationDialog(
             "Delete \"\(productToDelete?.title ?? "")\"?",

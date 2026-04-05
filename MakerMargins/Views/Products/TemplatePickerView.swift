@@ -52,6 +52,7 @@ struct TemplatePickerView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("\(template.title): \(template.summary)")
+                .accessibilityHint("Creates a product from this template")
             }
         }
         .padding()
@@ -97,7 +98,7 @@ private struct TemplateCardView: View {
                     .lineLimit(2)
 
                 Text("\(template.workSteps.count) steps, \(template.materials.count) materials, Etsy pricing")
-                    .font(.caption2)
+                    .font(AppTheme.Typography.note)
                     .foregroundStyle(.tertiary)
             }
         }

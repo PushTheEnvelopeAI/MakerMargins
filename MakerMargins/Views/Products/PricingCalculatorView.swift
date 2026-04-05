@@ -53,7 +53,7 @@ struct PricingCalculatorView: View {
                            paymentProcessingFixed: Decimal, marketingFee: Decimal,
                            percentSalesFromMarketing: Decimal, profitMargin: Decimal) {
         guard let pricing = currentPricing else {
-            return (0, 0, 0, 0, 0, Decimal(string: "0.30")!)
+            return (0, 0, 0, 0, 0, Decimal(3) / Decimal(10))
         }
         return CostingEngine.resolvedFees(
             platformType: selectedPlatform,
@@ -150,7 +150,7 @@ struct PricingCalculatorView: View {
             HStack(spacing: AppTheme.Spacing.sm) {
                 VStack { Divider() }
                 Text("YOUR ACTUAL RESULTS")
-                    .font(.caption2.weight(.semibold))
+                    .font(AppTheme.Typography.sectionLabel)
                     .foregroundStyle(.secondary)
                     .layoutPriority(1)
                 VStack { Divider() }
@@ -340,11 +340,11 @@ struct PricingCalculatorView: View {
                             .font(AppTheme.Typography.bodyText)
                             .foregroundStyle(.tertiary)
                         Image(systemName: "lock.fill")
-                            .font(.caption2)
+                            .font(AppTheme.Typography.note)
                             .foregroundStyle(.tertiary)
                     }
                     Text("Set by \(selectedPlatform.rawValue)")
-                        .font(.caption2)
+                        .font(AppTheme.Typography.note)
                         .foregroundStyle(.tertiary)
                 }
             }
@@ -594,7 +594,7 @@ struct PricingCalculatorView: View {
                     Text("Your Earnings / Sale")
                         .font(AppTheme.Typography.sectionHeader)
                     Spacer()
-                    Text(formatter.format(earnings))
+                    Text(CostingEngine.signedProfitPrefix(earnings) + formatter.format(earnings))
                         .font(AppTheme.Typography.heroPrice)
                         .foregroundStyle(earnings >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive)
                 }
@@ -628,7 +628,7 @@ struct PricingCalculatorView: View {
                         Text("Profit Margin")
                             .font(AppTheme.Typography.bodyText)
                         Spacer()
-                        Text("\(PercentageFormat.toDisplay(margin))%")
+                        Text(CostingEngine.signedProfitPrefix(margin) + "\(PercentageFormat.toDisplay(margin))%")
                             .font(AppTheme.Typography.sectionHeader)
                             .foregroundStyle(earnings >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive)
                     }
@@ -640,7 +640,7 @@ struct PricingCalculatorView: View {
                         Text("Your Hourly Pay")
                             .font(AppTheme.Typography.bodyText)
                         Spacer()
-                        Text("\(formatter.format(perHour)) / hr")
+                        Text(CostingEngine.signedProfitPrefix(perHour) + "\(formatter.format(perHour)) / hr")
                             .font(AppTheme.Typography.sectionHeader)
                             .foregroundStyle(earnings >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive)
                     }

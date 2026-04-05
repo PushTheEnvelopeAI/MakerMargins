@@ -166,7 +166,7 @@ struct MaterialDetailView: View {
                         .font(AppTheme.Typography.bodyText)
                     Spacer()
                     Text(formatter.format(CostingEngine.materialUnitCost(material: material)))
-                        .font(.title2.weight(.semibold))
+                        .font(AppTheme.Typography.derivedValue)
                         .foregroundStyle(AppTheme.Colors.accent)
                 }
                 .padding(.vertical, AppTheme.Spacing.sm)
@@ -205,7 +205,7 @@ struct MaterialDetailView: View {
                         .font(AppTheme.Typography.bodyText)
                     Spacer()
                     Text(formatter.format(materialCost))
-                        .font(.title2.weight(.semibold))
+                        .font(AppTheme.Typography.derivedValue)
                         .foregroundStyle(AppTheme.Colors.accent)
                 }
                 .padding(.vertical, AppTheme.Spacing.sm)

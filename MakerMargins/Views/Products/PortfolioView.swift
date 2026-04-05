@@ -109,7 +109,7 @@ struct PortfolioView: View {
                             portfolioBarRow(
                                 imageData: snap.product.image,
                                 title: snap.product.title,
-                                value: formatter.format(snap.earnings),
+                                value: CostingEngine.signedProfitPrefix(snap.earnings) + formatter.format(snap.earnings),
                                 proportion: proportion(snap.earnings, max: maxVal),
                                 barColor: snap.earnings >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive,
                                 valueColor: snap.earnings >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive,
@@ -147,7 +147,7 @@ struct PortfolioView: View {
                                 portfolioBarRow(
                                     imageData: snap.product.image,
                                     title: snap.product.title,
-                                    value: PercentageFormat.toDisplay(margin) + "%",
+                                    value: CostingEngine.signedProfitPrefix(margin) + PercentageFormat.toDisplay(margin) + "%",
                                     proportion: proportion(margin, max: maxVal),
                                     barColor: margin >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive,
                                     valueColor: margin >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive,
