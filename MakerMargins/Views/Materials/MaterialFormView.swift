@@ -87,6 +87,7 @@ struct MaterialFormView: View {
                 purchaseSection
                 previewSection
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle(material == nil ? "New Material" : "Edit Material")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -96,10 +97,6 @@ struct MaterialFormView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }
                         .disabled(isSaveDisabled)
-                }
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Done") { focusedField = nil }
                 }
             }
             .onChange(of: photoItem) { _, newItem in
@@ -139,7 +136,7 @@ struct MaterialFormView: View {
                     .onTapGesture { titleHasBeenTouched = true }
                 if titleHasBeenTouched && title.trimmingCharacters(in: .whitespaces).isEmpty {
                     Text("Title is required")
-                        .font(.caption)
+                        .font(AppTheme.Typography.rowCaption)
                         .foregroundStyle(AppTheme.Colors.destructive)
                 }
             }
@@ -219,7 +216,7 @@ struct MaterialFormView: View {
                         .font(AppTheme.Typography.bodyText)
                     Spacer()
                     Text(currencyFormatter.format(unitCost))
-                        .font(.title2.weight(.semibold))
+                        .font(AppTheme.Typography.derivedValue)
                         .foregroundStyle(AppTheme.Colors.accent)
                 }
                 Text("This is the key cost metric for this material")

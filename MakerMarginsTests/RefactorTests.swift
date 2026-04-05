@@ -471,4 +471,99 @@ struct RefactorTests {
     func formatStopwatchNegative() {
         #expect(CostingEngine.formatStopwatchTime(-10) == "00:00.0")
     }
+
+    // MARK: - Phase 5 Engine Functions
+
+    @Test("formatUnits strips trailing zeros")
+    func formatUnitsStripsZeros() {
+        #expect(CostingEngine.formatUnits(Decimal(string: "3.50")!) == "3.5")
+        #expect(CostingEngine.formatUnits(Decimal(5)) == "5")
+        #expect(CostingEngine.formatUnits(Decimal(string: "0.1234")!) == "0.1234")
+    }
+
+    @Test("formatUnits handles zero")
+    func formatUnitsZero() {
+        #expect(CostingEngine.formatUnits(Decimal(0)) == "0")
+    }
+
+    @Test("formatPerUnitTime under one hour shows minutes only")
+    func formatPerUnitTimeMinutes() {
+        // 0.5 hours = 30 minutes
+        #expect(CostingEngine.formatPerUnitTime(hours: Decimal(string: "0.5")!) == "30m/ea")
+        // 23 minutes exactly
+        let hrs = Decimal(23) / Decimal(60)
+        #expect(CostingEngine.formatPerUnitTime(hours: hrs) == "23m/ea")
+    }
+
+    @Test("formatPerUnitTime one hour or more shows hours and minutes")
+    func formatPerUnitTimeHours() {
+        // 1.25 hours = 1h 15m
+        #expect(CostingEngine.formatPerUnitTime(hours: Decimal(string: "1.25")!) == "1h 15m/ea")
+        // 2.0 hours = 2h 0m
+        #expect(CostingEngine.formatPerUnitTime(hours: Decimal(2)) == "2h 0m/ea")
+    }
+
+    @Test("accessibleTimeDescription formats seconds only")
+    func accessibleTimeSeconds() {
+        #expect(CostingEngine.accessibleTimeDescription(45) == "45 seconds")
+        #expect(CostingEngine.accessibleTimeDescription(1) == "1 second")
+    }
+
+    @Test("accessibleTimeDescription formats minutes and seconds")
+    func accessibleTimeMinutes() {
+        #expect(CostingEngine.accessibleTimeDescription(90) == "1 minute, 30 seconds")
+        #expect(CostingEngine.accessibleTimeDescription(121) == "2 minutes, 1 second")
+    }
+
+    @Test("accessibleTimeDescription formats hours, minutes, and seconds")
+    func accessibleTimeHours() {
+        #expect(CostingEngine.accessibleTimeDescription(3661) == "1 hour, 1 minute, 1 second")
+        #expect(CostingEngine.accessibleTimeDescription(7200) == "2 hours, 0 minutes, 0 seconds")
+    }
+
+    @Test("accessibleTimeDescription clamps negative to zero")
+    func accessibleTimeNegative() {
+        #expect(CostingEngine.accessibleTimeDescription(-5) == "0 seconds")
+    }
+
+    @Test("signedProfitPrefix returns + for positive values")
+    func signedProfitPrefixPositive() {
+        #expect(CostingEngine.signedProfitPrefix(Decimal(string: "12.50")!) == "+")
+        #expect(CostingEngine.signedProfitPrefix(Decimal(1)) == "+")
+    }
+
+    @Test("signedProfitPrefix returns empty for zero and negative")
+    func signedProfitPrefixZeroNegative() {
+        #expect(CostingEngine.signedProfitPrefix(Decimal(0)) == "")
+        #expect(CostingEngine.signedProfitPrefix(Decimal(-5)) == "")
+    }
+
+    @Test("actualProfitMargin is independent of batch size")
+    func profitMarginBatchIndependent() {
+        let perUnitProfit = Decimal(10)
+        let price = Decimal(50)
+        let shipping = Decimal(5)
+
+        let perUnitMargin = CostingEngine.actualProfitMargin(
+            profit: perUnitProfit,
+            actualPrice: price,
+            actualShippingCharge: shipping
+        )
+
+        // Batch margin should use per-unit profit, NOT batch profit.
+        // If someone mistakenly passed batchProfit (perUnit * 10), margin would be 10x too high.
+        let batchProfit = perUnitProfit * 10
+        let wrongMargin = CostingEngine.actualProfitMargin(
+            profit: batchProfit,
+            actualPrice: price,
+            actualShippingCharge: shipping
+        )
+
+        // Per-unit margin = 10/55 ≈ 0.1818
+        #expect(perUnitMargin != nil)
+        #expect(abs(perUnitMargin! - (Decimal(10) / Decimal(55))) < Decimal(string: "0.0001")!)
+
+        // Wrong margin would be 10x higher — this is the bug we fixed
+        #expect(wrongMargin! == perUnitMargin! * 10)
+    }
 }

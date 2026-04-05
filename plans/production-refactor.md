@@ -64,7 +64,7 @@ Add `.confirmationDialog`: "Remove this category? Products in this category will
 - [x] Keyboard "Done" button appears above all numeric keyboards
 - [x] Whitespace-only titles rejected; inline hint visible
 - [x] Category deletion shows confirmation dialog
-- [ ] All existing tests pass — requires CI run to confirm
+- [x] All existing tests pass — CI green 2026-04-05, 192 tests, 1 issue fixed (float precision)
 
 ---
 
@@ -135,7 +135,7 @@ Add `@Environment(\.accessibilityReduceMotion) var reduceMotion` and guard `with
 - [x] Touch targets ≥ 44x44pt (test with Accessibility Inspector)
 - [x] Timer font scales with Dynamic Type
 - [x] Reduce Motion disables reorder and stopwatch animations
-- [ ] All existing tests pass — requires CI run to confirm
+- [x] All existing tests pass — CI green 2026-04-05, 192 tests, 1 issue fixed (float precision)
 
 ---
 
@@ -220,7 +220,7 @@ Replace `"Production cost is $0"` with `"Production cost is \(formatter.format(0
 - [x] Zero hardcoded colors, font sizes, spacing, or corner radii in view files
 - [x] Zero-production-cost message respects EUR currency
 - [x] Portfolio renders correctly after N+1 fix
-- [ ] All existing tests pass — requires CI run to confirm
+- [x] All existing tests pass — CI green 2026-04-05, 192 tests, 1 issue fixed (float precision)
 
 ---
 
@@ -405,9 +405,9 @@ Add debug assertion before creating a new ProductPricing: `assert(product.produc
 - [x] WorkStepDetailView and MaterialDetailView use shared header, UsedBy, and remove components
 - [x] MaterialFormView and SettingsView use CurrencyInputField
 - [x] CategoryListView.swift and CategoryFormView.swift deleted
-- [ ] No compilation errors — requires CI run to confirm
+- [x] No compilation errors — CI green 2026-04-05
 - [x] CLAUDE.md updated — comprehensive rewrite: 1072 -> 416 lines, stale references removed, new sections added
-- [ ] All existing tests pass — requires CI run to confirm
+- [x] All existing tests pass — CI green 2026-04-05, 192 tests, 1 issue fixed (float precision)
 
 ---
 
@@ -499,7 +499,7 @@ Add "Duplicate Product" to toolbar menu alongside Edit and Delete.
 - [x] Target Price Calculator is collapsible
 - [x] Portfolio rows show secondary metrics
 - [x] Duplicate available from product detail
-- [ ] Full test suite passes: all ~200+ tests green — 192 tests written, requires CI run to confirm
+- [x] Full test suite passes — CI green 2026-04-05, 192 tests passing
 
 ---
 

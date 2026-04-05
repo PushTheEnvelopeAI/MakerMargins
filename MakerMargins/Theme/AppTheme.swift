@@ -158,6 +158,8 @@ enum AppTheme {
         static let heroPrice:     Font = .title2.weight(.bold)
         static let badge:         Font = .caption.weight(.medium)
         static let note:          Font = .caption2
+        static let derivedValue:  Font = .title2.weight(.semibold)
+        static let formSectionValue: Font = .title3
         static let timerDisplay:  Font = .system(.largeTitle, design: .monospaced).weight(.light)
         static let templateIcon:  Font = .system(.title, design: .default)
     }

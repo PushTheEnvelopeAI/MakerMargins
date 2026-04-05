@@ -6,6 +6,7 @@
 // Each row shows step title, product usage count, and hours per unit.
 // Tapping a row pushes WorkStepDetailView for quick stopwatch access.
 // Steps can also be created here as standalone library entries (no product link).
+// Supports multi-select deletion via Edit mode.
 
 import SwiftUI
 import SwiftData
@@ -13,11 +14,15 @@ import SwiftData
 struct WorkshopView: View {
     @Query(sort: \WorkStep.title) private var allSteps: [WorkStep]
     @Environment(\.currencyFormatter) private var formatter
+    @Environment(\.modelContext) private var modelContext
 
     @State private var searchText = ""
     @State private var showingCreateForm = false
     @State private var navigationPath = NavigationPath()
     @State private var stepCountBeforeSheet = 0
+    @State private var editMode: EditMode = .inactive
+    @State private var selection = Set<WorkStep.ID>()
+    @State private var showingDeleteConfirmation = false
 
     // MARK: - Computed
 
@@ -57,7 +62,26 @@ struct WorkshopView: View {
                     } label: {
                         Image(systemName: "plus")
                     }
+                    .accessibilityLabel("Create work step")
                 }
+                ToolbarItem(placement: .topBarLeading) {
+                    if !allSteps.isEmpty {
+                        EditButton()
+                    }
+                }
+                ToolbarItem(placement: .bottomBar) {
+                    if editMode.isEditing && !selection.isEmpty {
+                        Button(role: .destructive) {
+                            showingDeleteConfirmation = true
+                        } label: {
+                            Text("Delete \(selection.count) Step\(selection.count == 1 ? "" : "s")")
+                        }
+                    }
+                }
+            }
+            .environment(\.editMode, $editMode)
+            .onChange(of: editMode) { _, newValue in
+                if !newValue.isEditing { selection.removeAll() }
             }
             .navigationDestination(for: WorkStep.self) { step in
                 WorkStepDetailView(step: step)
@@ -73,13 +97,25 @@ struct WorkshopView: View {
             }) {
                 WorkStepFormView(step: nil, product: nil)
             }
+            .confirmationDialog(
+                "Delete \(selection.count) Step\(selection.count == 1 ? "" : "s")?",
+                isPresented: $showingDeleteConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Delete \(selection.count) Step\(selection.count == 1 ? "" : "s")", role: .destructive) {
+                    deleteSelected()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will permanently delete the selected step\(selection.count == 1 ? "" : "s") and remove \(selection.count == 1 ? "it" : "them") from all products. This action cannot be undone.")
+            }
         }
     }
 
     // MARK: - Step List
 
     private var stepList: some View {
-        List(filteredSteps, id: \.persistentModelID) { step in
+        List(filteredSteps, id: \.persistentModelID, selection: $selection) { step in
             NavigationLink(value: step) {
                 HStack(spacing: AppTheme.Spacing.md) {
                     WorkStepThumbnailView(imageData: step.image)
@@ -107,5 +143,16 @@ struct WorkshopView: View {
         }
         .scrollContentBackground(.hidden)
         .appBackground()
+    }
+
+    // MARK: - Actions
+
+    private func deleteSelected() {
+        let stepsToDelete = allSteps.filter { selection.contains($0.persistentModelID) }
+        for step in stepsToDelete {
+            modelContext.delete(step)
+        }
+        selection.removeAll()
+        editMode = .inactive
     }
 }

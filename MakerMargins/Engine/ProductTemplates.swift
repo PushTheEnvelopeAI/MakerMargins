@@ -3,6 +3,8 @@
 //
 // Pure-data definitions for starter product templates.
 // Each template describes a complete product with work steps, materials,
+//
+private func d(_ s: String) -> Decimal { Decimal(string: s) ?? 0 }
 // and pricing — ready for TemplateApplier to hydrate into SwiftData entities.
 //
 // No SwiftData dependency. Structs mirror model initializer signatures so
@@ -92,8 +94,8 @@ enum ProductTemplates {
         iconName: "hammer",
         imageName: "template-product-cutting-board",
         shippingCost: 12,
-        materialBuffer: Decimal(string: "0.10")!,
-        laborBuffer: Decimal(string: "0.05")!,
+        materialBuffer: d("0.10"),
+        laborBuffer: d("0.05"),
         workSteps: [
             WorkStepTemplate(
                 title: "Rough Cut & Glue-Up",
@@ -189,13 +191,13 @@ enum ProductTemplates {
         pricings: [
             PricingTemplate(
                 platformType: "Etsy",
-                platformFee: Decimal(string: "0.065")!,
-                paymentProcessingFee: Decimal(string: "0.03")!,
-                marketingFee: Decimal(string: "0.15")!,
-                percentSalesFromMarketing: Decimal(string: "0.20")!,
-                profitMargin: Decimal(string: "0.30")!,
-                actualPrice: Decimal(string: "89.99")!,
-                actualShippingCharge: Decimal(string: "8.95")!
+                platformFee: d("0.065"),
+                paymentProcessingFee: d("0.03"),
+                marketingFee: d("0.15"),
+                percentSalesFromMarketing: d("0.20"),
+                profitMargin: d("0.30"),
+                actualPrice: d("89.99"),
+                actualShippingCharge: d("8.95")
             )
         ]
     )
@@ -209,9 +211,9 @@ enum ProductTemplates {
         summary: "A typical 3D printed product with printing, post-processing, painting, and packaging steps.",
         iconName: "cube",
         imageName: "template-product-phone-stand",
-        shippingCost: Decimal(string: "5.50")!,
-        materialBuffer: Decimal(string: "0.05")!,
-        laborBuffer: Decimal(string: "0.05")!,
+        shippingCost: d("5.50"),
+        materialBuffer: d("0.05"),
+        laborBuffer: d("0.05"),
         workSteps: [
             WorkStepTemplate(
                 title: "3D Print",
@@ -307,13 +309,13 @@ enum ProductTemplates {
         pricings: [
             PricingTemplate(
                 platformType: "Etsy",
-                platformFee: Decimal(string: "0.065")!,
-                paymentProcessingFee: Decimal(string: "0.03")!,
-                marketingFee: Decimal(string: "0.15")!,
-                percentSalesFromMarketing: Decimal(string: "0.15")!,
-                profitMargin: Decimal(string: "0.35")!,
-                actualPrice: Decimal(string: "49.99")!,
-                actualShippingCharge: Decimal(string: "5.50")!
+                platformFee: d("0.065"),
+                paymentProcessingFee: d("0.03"),
+                marketingFee: d("0.15"),
+                percentSalesFromMarketing: d("0.15"),
+                profitMargin: d("0.35"),
+                actualPrice: d("49.99"),
+                actualShippingCharge: d("5.50")
             )
         ]
     )
@@ -328,8 +330,8 @@ enum ProductTemplates {
         iconName: "target",
         imageName: "template-product-coaster-set",
         shippingCost: 6,
-        materialBuffer: Decimal(string: "0.08")!,
-        laborBuffer: Decimal(string: "0.05")!,
+        materialBuffer: d("0.08"),
+        laborBuffer: d("0.05"),
         workSteps: [
             WorkStepTemplate(
                 title: "Design Prep",
@@ -425,13 +427,13 @@ enum ProductTemplates {
         pricings: [
             PricingTemplate(
                 platformType: "Etsy",
-                platformFee: Decimal(string: "0.065")!,
-                paymentProcessingFee: Decimal(string: "0.03")!,
-                marketingFee: Decimal(string: "0.15")!,
-                percentSalesFromMarketing: Decimal(string: "0.25")!,
-                profitMargin: Decimal(string: "0.30")!,
-                actualPrice: Decimal(string: "52.00")!,
-                actualShippingCharge: Decimal(string: "6.50")!
+                platformFee: d("0.065"),
+                paymentProcessingFee: d("0.03"),
+                marketingFee: d("0.15"),
+                percentSalesFromMarketing: d("0.25"),
+                profitMargin: d("0.30"),
+                actualPrice: d("52.00"),
+                actualShippingCharge: d("6.50")
             )
         ]
     )
@@ -445,9 +447,9 @@ enum ProductTemplates {
         summary: "A typical candle making product with melting, pouring, curing, and packaging steps.",
         iconName: "flame",
         imageName: "template-product-soy-candle",
-        shippingCost: Decimal(string: "7.50")!,
-        materialBuffer: Decimal(string: "0.10")!,
-        laborBuffer: Decimal(string: "0.05")!,
+        shippingCost: d("7.50"),
+        materialBuffer: d("0.10"),
+        laborBuffer: d("0.05"),
         workSteps: [
             WorkStepTemplate(
                 title: "Melt & Mix Wax",
@@ -514,8 +516,8 @@ enum ProductTemplates {
                 bulkCost: 18,
                 bulkQuantity: 16,
                 unitName: "oz",
-                defaultUnitsPerProduct: Decimal(string: "0.8")!,
-                unitsRequiredPerProduct: Decimal(string: "0.8")!
+                defaultUnitsPerProduct: d("0.8"),
+                unitsRequiredPerProduct: d("0.8")
             ),
             MaterialTemplate(
                 title: "Cotton Wicks",
@@ -554,13 +556,13 @@ enum ProductTemplates {
         pricings: [
             PricingTemplate(
                 platformType: "Etsy",
-                platformFee: Decimal(string: "0.065")!,
-                paymentProcessingFee: Decimal(string: "0.03")!,
-                marketingFee: Decimal(string: "0.15")!,
-                percentSalesFromMarketing: Decimal(string: "0.20")!,
-                profitMargin: Decimal(string: "0.35")!,
-                actualPrice: Decimal(string: "24.99")!,
-                actualShippingCharge: Decimal(string: "5.99")!
+                platformFee: d("0.065"),
+                paymentProcessingFee: d("0.03"),
+                marketingFee: d("0.15"),
+                percentSalesFromMarketing: d("0.20"),
+                profitMargin: d("0.35"),
+                actualPrice: d("24.99"),
+                actualShippingCharge: d("5.99")
             )
         ]
     )
@@ -575,8 +577,8 @@ enum ProductTemplates {
         iconName: "sparkles",
         imageName: "template-product-resin-earrings",
         shippingCost: 4,
-        materialBuffer: Decimal(string: "0.08")!,
-        laborBuffer: Decimal(string: "0.10")!,
+        materialBuffer: d("0.08"),
+        laborBuffer: d("0.10"),
         workSteps: [
             WorkStepTemplate(
                 title: "Mix Resin",
@@ -694,13 +696,13 @@ enum ProductTemplates {
         pricings: [
             PricingTemplate(
                 platformType: "Etsy",
-                platformFee: Decimal(string: "0.065")!,
-                paymentProcessingFee: Decimal(string: "0.03")!,
-                marketingFee: Decimal(string: "0.15")!,
-                percentSalesFromMarketing: Decimal(string: "0.20")!,
-                profitMargin: Decimal(string: "0.40")!,
-                actualPrice: Decimal(string: "22.00")!,
-                actualShippingCharge: Decimal(string: "4.50")!
+                platformFee: d("0.065"),
+                paymentProcessingFee: d("0.03"),
+                marketingFee: d("0.15"),
+                percentSalesFromMarketing: d("0.20"),
+                profitMargin: d("0.40"),
+                actualPrice: d("22.00"),
+                actualShippingCharge: d("4.50")
             )
         ]
     )

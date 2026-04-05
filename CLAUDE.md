@@ -227,14 +227,14 @@ MakerMargins/                              <- repo root
 |       |   +-- BatchForecastView.swift    <- batch forecasting (labor, shopping list, revenue)
 |       |   +-- PortfolioView.swift        <- portfolio comparison (rankings, cost breakdown)
 |       +-- Workshop/
-|       |   +-- WorkshopView.swift         <- Tab 2 "Labor", searchable step library, auto-navigate on create
+|       |   +-- WorkshopView.swift         <- Tab 2 "Labor", searchable step library, auto-navigate on create, multi-select delete
 |       +-- Labor/
 |       |   +-- WorkStepListView.swift     <- inline step list in ProductDetailView
 |       |   +-- WorkStepDetailView.swift   <- detail with stopwatch shortcut in toolbar
 |       |   +-- WorkStepFormView.swift     <- create/edit sheet
-|       |   +-- StopwatchView.swift        <- fullScreenCover, always-visible dismiss
+|       |   +-- StopwatchView.swift        <- fullScreenCover, always-visible dismiss, prompts for batch units on save
 |       +-- Materials/
-|       |   +-- MaterialsLibraryView.swift <- Tab 3, searchable material library, auto-navigate on create
+|       |   +-- MaterialsLibraryView.swift <- Tab 3, searchable material library, auto-navigate on create, multi-select delete
 |       |   +-- MaterialListView.swift     <- inline material list in ProductDetailView
 |       |   +-- MaterialDetailView.swift   <- detail with tappable "Used By" products
 |       |   +-- MaterialFormView.swift     <- create/edit sheet
@@ -244,7 +244,7 @@ MakerMargins/                              <- repo root
 |
 +-- MakerMarginsTests/
 |   +-- Epic0Tests.swift through Epic6Tests.swift  <- 152 tests across 9 epic files
-|   +-- RefactorTests.swift                         <- 40 tests for formatters, managers, cross-platform, negative inputs
+|   +-- RefactorTests.swift                         <- 51 tests for formatters, managers, cross-platform, negative inputs
 |
 +-- MakerMarginsUITests/
     +-- MakerMarginsUITests.swift          <- STUB
@@ -280,7 +280,7 @@ ProductListView                            [ROOT — context menu: Duplicate (au
 
 ### Tab 2 — Labor (stopwatch in 2 taps)
 ```
-WorkshopView                              [ROOT — searchable step library, auto-navigate on create]
+WorkshopView                              [ROOT — searchable step library, auto-navigate on create, multi-select delete via EditMode]
 +-- [push] WorkStepDetailView             [stopwatch + edit in toolbar; tappable "Used By" products]
     +-- [fullScreenCover] StopwatchView
     +-- [push] ProductDetailView           [from tappable "Used By" link]
@@ -288,7 +288,7 @@ WorkshopView                              [ROOT — searchable step library, aut
 
 ### Tab 3 — Materials
 ```
-MaterialsLibraryView                      [ROOT — searchable material library, auto-navigate on create]
+MaterialsLibraryView                      [ROOT — searchable material library, auto-navigate on create, multi-select delete via EditMode]
 +-- [push] MaterialDetailView             [edit in toolbar; tappable "Used By" products]
     +-- [push] ProductDetailView           [from tappable "Used By" link]
 ```
@@ -330,9 +330,9 @@ Reusable UI components extracted from the WorkStep/Material parallel hierarchies
 - **Display formatting** for platform fees lives in `Engine/PlatformFeeFormatter.swift` (extension on `PlatformType`).
 - **Managers** (CurrencyFormatter, AppearanceManager, LaborRateManager) follow `@Observable` + `EnvironmentKey` + `UserDefaults` pattern. Injected at root, accessed via `@Environment`.
 - **All styling tokens** defined in `Theme/AppTheme.swift` — colors, spacing, corner radii, typography, sizing, shadow. Never hardcode values in views.
-- **Accessibility:** All custom buttons have `.accessibilityLabel`. Hero values include context. Decorative images use `.accessibilityHidden(true)`. Composite cards use `.accessibilityElement(children: .combine)`. Touch targets >= 44pt. `reduceMotion` guards animations.
+- **Accessibility:** All custom buttons have `.accessibilityLabel`. Hero values include context. Decorative images use `.accessibilityHidden(true)`. Composite cards use `.accessibilityElement(children: .combine)`. Touch targets >= 44pt. `reduceMotion` guards animations. Non-obvious actions have `.accessibilityHint`. Stopwatch state changes post `AccessibilityNotification.Announcement`. Profit/loss values use `CostingEngine.signedProfitPrefix` so color is never the sole indicator.
 - **Form safety:** All form sheets use `.interactiveDismissDisabled(hasUnsavedChanges)`. All views with `@FocusState` have a keyboard "Done" toolbar. Title validation trims whitespace and shows inline hint.
-- **Tests** use `import Testing` and `@Test` macros. One file per epic plus `RefactorTests.swift`. 192 tests total. Do NOT use XCTest.
+- **Tests** use `import Testing` and `@Test` macros. One file per epic plus `RefactorTests.swift`. 203 tests total. Do NOT use XCTest.
 - All monetary values use `Decimal` (never `Double`). Buffers/percentages stored as fractions (0.10 = 10%).
 
 ---
@@ -369,10 +369,10 @@ Runs on every push: XcodeGen -> download iOS platform -> create iPhone 16 simula
 - **Template deduplication:** Shared WorkSteps and Materials matched by exact title string. Entity-level fields must be identical across templates sharing a title.
 - **`portfolioPricing` vs `activePricing`:** Portfolio uses strict per-platform lookup; batch forecast uses best-available with platform-specific preference.
 - **productSnapshot single-pass:** Traverses productWorkSteps and productMaterials once each, caching labor/material/hours. Uses raw-value `actualProfit` overload to avoid re-traversal.
-- **Stopwatch accessible from detail view toolbar:** Timer button in WorkStepDetailView presents StopwatchView directly (2 taps from Labor tab), bypassing the edit form.
+- **Stopwatch accessible from detail view toolbar:** Timer button in WorkStepDetailView presents StopwatchView directly (2 taps from Labor tab), bypassing the edit form. On save, prompts for batch units produced so Hours/Unit calculates correctly.
 - **"Used By" products are tappable NavigationLinks** when viewed from library tabs (product == nil). Plain rows when viewed from product context.
 - **Auto-navigation after creation:** Products, steps, and materials auto-navigate to their detail view after creation from any context (list, library, or template).
-- **First-run experience:** Empty ProductListView shows prominent "Start from Template" CTA. After template application, auto-switches to Price tab to demonstrate profit analysis.
+- **First-run experience:** Empty ProductListView shows prominent "Start from Template" CTA. After template application, lands on Build tab so users can customize steps and materials to their use case.
 - **No CloudKit, no authentication, no sync.** Single-user, local-only.
 
 ---

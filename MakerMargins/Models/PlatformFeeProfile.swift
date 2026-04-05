@@ -3,6 +3,8 @@
 //
 // Stores user-configurable default pricing values as a single universal record.
 // Managed in Settings. Created lazily on first access.
+
+private func d(_ s: String) -> Decimal { Decimal(string: s) ?? 0 }
 // Platform-imposed fees are hardcoded constants on PlatformType — only
 // user-configurable values are persisted here.
 
@@ -62,9 +64,9 @@ extension PlatformType {
     var lockedPlatformFee: Decimal? {
         switch self {
         case .general:  return nil
-        case .etsy:     return Decimal(string: "0.065")!   // 6.5% transaction fee
+        case .etsy:     return d("0.065")   // 6.5% transaction fee
         case .shopify:  return Decimal(0)                  // No per-sale commission
-        case .amazon:   return Decimal(string: "0.15")!    // 15% referral fee
+        case .amazon:   return d("0.15")    // 15% referral fee
         }
     }
 
@@ -72,8 +74,8 @@ extension PlatformType {
     var lockedPaymentProcessingFee: Decimal? {
         switch self {
         case .general:  return nil
-        case .etsy:     return Decimal(string: "0.03")!    // 3% payment processing
-        case .shopify:  return Decimal(string: "0.029")!   // 2.9% Shopify Payments
+        case .etsy:     return d("0.03")    // 3% payment processing
+        case .shopify:  return d("0.029")   // 2.9% Shopify Payments
         case .amazon:   return Decimal(0)                  // Bundled into referral fee
         }
     }
@@ -82,8 +84,8 @@ extension PlatformType {
     var lockedPaymentProcessingFixed: Decimal {
         switch self {
         case .general:  return 0
-        case .etsy:     return Decimal(string: "0.25")!    // $0.25 per transaction
-        case .shopify:  return Decimal(string: "0.30")!    // $0.30 per transaction
+        case .etsy:     return d("0.25")    // $0.25 per transaction
+        case .shopify:  return d("0.30")    // $0.30 per transaction
         case .amazon:   return 0
         }
     }
@@ -91,7 +93,7 @@ extension PlatformType {
     /// Marketing/advertising fee rate (fraction). nil = user-editable.
     var lockedMarketingFee: Decimal? {
         switch self {
-        case .etsy:     return Decimal(string: "0.15")!    // 15% offsite ads rate
+        case .etsy:     return d("0.15")    // 15% offsite ads rate
         case .general, .shopify, .amazon: return nil
         }
     }

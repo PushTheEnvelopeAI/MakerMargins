@@ -825,4 +825,51 @@ enum CostingEngine {
 
         return (avgEarnings, avgMargin, avgRate, pricedCount, totalCount)
     }
+
+    // MARK: - Unit & Accessibility Formatting
+
+    /// Cached formatter for unit quantities — strips trailing zeros, max 4 decimals.
+    private static let unitsFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.minimumFractionDigits = 0
+        f.maximumFractionDigits = 4
+        f.numberStyle = .decimal
+        return f
+    }()
+
+    /// Formats a Decimal quantity, stripping unnecessary trailing zeros.
+    static func formatUnits(_ value: Decimal) -> String {
+        unitsFormatter.string(from: NSDecimalNumber(decimal: value)) ?? "\(value)"
+    }
+
+    /// Formats per-unit labor hours in human-readable minutes/hours.
+    /// Under 1 hour: "23m/ea". 1 hour+: "1h 15m/ea".
+    static func formatPerUnitTime(hours: Decimal) -> String {
+        let totalMinutes = Int(NSDecimalNumber(decimal: hours).doubleValue * 60)
+        if totalMinutes >= 60 {
+            return "\(totalMinutes / 60)h \(totalMinutes % 60)m/ea"
+        }
+        return "\(totalMinutes)m/ea"
+    }
+
+    /// VoiceOver-friendly time description: "5 minutes, 30 seconds".
+    static func accessibleTimeDescription(_ seconds: TimeInterval) -> String {
+        let total = max(0, Int(seconds))
+        let h = total / 3600
+        let m = (total % 3600) / 60
+        let s = total % 60
+        if h > 0 {
+            return "\(h) hour\(h == 1 ? "" : "s"), \(m) minute\(m == 1 ? "" : "s"), \(s) second\(s == 1 ? "" : "s")"
+        } else if m > 0 {
+            return "\(m) minute\(m == 1 ? "" : "s"), \(s) second\(s == 1 ? "" : "s")"
+        } else {
+            return "\(s) second\(s == 1 ? "" : "s")"
+        }
+    }
+
+    /// Returns "+" for positive values, "" for zero or negative.
+    /// Negative values already display "-" from NumberFormatter.
+    static func signedProfitPrefix(_ value: Decimal) -> String {
+        value > 0 ? "+" : ""
+    }
 }

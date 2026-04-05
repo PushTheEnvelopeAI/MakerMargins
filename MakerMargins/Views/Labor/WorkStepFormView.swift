@@ -98,6 +98,7 @@ struct WorkStepFormView: View {
                 timeAndBatchSection
                 previewSection
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle(step == nil ? "New Work Step" : "Edit Work Step")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -107,10 +108,6 @@ struct WorkStepFormView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }
                         .disabled(isSaveDisabled)
-                }
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Done") { focusedField = nil }
                 }
             }
             .onChange(of: photoItem) { _, newItem in
@@ -130,11 +127,16 @@ struct WorkStepFormView: View {
                 secondsText = clampTimeComponent(sanitizeDigitsOnly(newValue), max: 59)
             }
             .fullScreenCover(isPresented: $showingStopwatch) {
-                StopwatchView(stepTitle: title.isEmpty ? nil : title) { time in
+                StopwatchView(
+                    stepTitle: title.isEmpty ? nil : title,
+                    unitName: unitName.isEmpty ? "unit" : unitName,
+                    currentBatchUnits: Decimal(string: batchUnitsText) ?? 1
+                ) { time, units in
                     let total = Int(time)
                     hoursText = total >= 3600 ? "\(total / 3600)" : ""
                     minutesText = "\((total % 3600) / 60)"
                     secondsText = "\(total % 60)"
+                    batchUnitsText = "\(units)"
                 }
             }
         }
@@ -172,7 +174,7 @@ struct WorkStepFormView: View {
                     .onTapGesture { titleHasBeenTouched = true }
                 if titleHasBeenTouched && title.trimmingCharacters(in: .whitespaces).isEmpty {
                     Text("Title is required")
-                        .font(.caption)
+                        .font(AppTheme.Typography.rowCaption)
                         .foregroundStyle(AppTheme.Colors.destructive)
                 }
             }
@@ -195,11 +197,11 @@ struct WorkStepFormView: View {
                 HStack(spacing: AppTheme.Spacing.xs) {
                     timeField(text: $hoursText, label: "h", field: .hours)
                     Text(":")
-                        .font(.title3)
+                        .font(AppTheme.Typography.formSectionValue)
                         .foregroundStyle(.tertiary)
                     timeField(text: $minutesText, label: "m", field: .minutes)
                     Text(":")
-                        .font(.title3)
+                        .font(AppTheme.Typography.formSectionValue)
                         .foregroundStyle(.tertiary)
                     timeField(text: $secondsText, label: "s", field: .seconds)
                 }
@@ -266,7 +268,7 @@ struct WorkStepFormView: View {
                         .font(AppTheme.Typography.bodyText)
                     Spacer()
                     Text(CostingEngine.formatHours(hoursPerUnit))
-                        .font(.title2.weight(.semibold))
+                        .font(AppTheme.Typography.derivedValue)
                         .foregroundStyle(AppTheme.Colors.accent)
                 }
                 Text("This is the key efficiency metric for this step")

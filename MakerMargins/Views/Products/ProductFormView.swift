@@ -67,6 +67,7 @@ struct ProductFormView: View {
                 basicInfoSection
                 categorySection
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle(product == nil ? "New Product" : "Edit Product")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -76,10 +77,6 @@ struct ProductFormView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { save() }
                         .disabled(isSaveDisabled)
-                }
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Done") { isFieldFocused = false }
                 }
             }
             .onChange(of: photoItem) { _, newItem in
@@ -117,7 +114,7 @@ struct ProductFormView: View {
                     }
                 if titleHasBeenTouched && title.trimmingCharacters(in: .whitespaces).isEmpty {
                     Text("Title is required")
-                        .font(.caption)
+                        .font(AppTheme.Typography.rowCaption)
                         .foregroundStyle(AppTheme.Colors.destructive)
                 }
             }

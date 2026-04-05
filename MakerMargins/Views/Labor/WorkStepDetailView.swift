@@ -102,6 +102,7 @@ struct WorkStepDetailView: View {
                         Image(systemName: "timer")
                     }
                     .accessibilityLabel("Start timing \(step.title)")
+                    .accessibilityHint("Opens the stopwatch")
                     Button {
                         showingEditForm = true
                     } label: {
@@ -125,8 +126,13 @@ struct WorkStepDetailView: View {
             WorkStepFormView(step: step, product: editProduct)
         }
         .fullScreenCover(isPresented: $showingStopwatch) {
-            StopwatchView(stepTitle: step.title) { time in
+            StopwatchView(
+                stepTitle: step.title,
+                unitName: step.unitName,
+                currentBatchUnits: step.batchUnitsCompleted
+            ) { time, units in
                 step.recordedTime = time
+                step.batchUnitsCompleted = units
             }
         }
         .confirmationDialog(
@@ -177,13 +183,13 @@ struct WorkStepDetailView: View {
                             .font(AppTheme.Typography.bodyText)
                         Spacer()
                         Text(CostingEngine.formatHours(CostingEngine.unitTimeHours(step: step)))
-                            .font(.title2.weight(.semibold))
+                            .font(AppTheme.Typography.derivedValue)
                             .foregroundStyle(AppTheme.Colors.accent)
                     }
                     HStack {
                         Spacer()
                         Text("(\(CostingEngine.formatHoursReadable(CostingEngine.unitTimeHours(step: step))))")
-                            .font(.caption)
+                            .font(AppTheme.Typography.rowCaption)
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -250,7 +256,7 @@ struct WorkStepDetailView: View {
                         .font(AppTheme.Typography.bodyText)
                     Spacer()
                     Text(formatter.format(laborCost))
-                        .font(.title2.weight(.semibold))
+                        .font(AppTheme.Typography.derivedValue)
                         .foregroundStyle(AppTheme.Colors.accent)
                 }
                 .padding(.vertical, AppTheme.Spacing.sm)
