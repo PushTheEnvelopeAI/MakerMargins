@@ -136,17 +136,19 @@ struct MaterialsLibraryView: View {
         .appBackground()
         .safeAreaInset(edge: .bottom) {
             if editMode.isEditing && !selection.isEmpty {
-                Button(role: .destructive) {
+                Button {
                     showingDeleteConfirmation = true
                 } label: {
                     Text("Delete \(selection.count) Material\(selection.count == 1 ? "" : "s")")
                         .font(AppTheme.Typography.sectionHeader)
+                        .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, AppTheme.Spacing.md)
-                        .background(AppTheme.Colors.destructive.opacity(0.1), in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium))
+                        .background(AppTheme.Colors.destructive, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium))
                 }
                 .padding(.horizontal, AppTheme.Spacing.lg)
-                .padding(.bottom, AppTheme.Spacing.sm)
+                .padding(.vertical, AppTheme.Spacing.sm)
+                .background(.ultraThinMaterial)
             }
         }
     }

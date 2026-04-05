@@ -37,6 +37,7 @@ struct MaterialFormView: View {
 
     // Focus tracking for select-on-tap behavior
     enum FocusableField: Hashable {
+        case title, summary, link
         case bulkCost, bulkQuantity, unitName
     }
     @FocusState private var focusedField: FocusableField?
@@ -137,6 +138,7 @@ struct MaterialFormView: View {
         Section("Details") {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                 TextField("Title", text: $title)
+                    .focused($focusedField, equals: .title)
                     .onTapGesture { titleHasBeenTouched = true }
                 if titleHasBeenTouched && title.trimmingCharacters(in: .whitespaces).isEmpty {
                     Text("Title is required")
@@ -145,9 +147,11 @@ struct MaterialFormView: View {
                 }
             }
             TextField("Description", text: $summary, axis: .vertical)
+                .focused($focusedField, equals: .summary)
                 .lineLimit(3...6)
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                 TextField("Supplier Link", text: $link)
+                    .focused($focusedField, equals: .link)
                     .keyboardType(.URL)
                     .textContentType(.URL)
                     .autocorrectionDisabled()
@@ -235,6 +239,12 @@ struct MaterialFormView: View {
 
     private func fieldDefault(for field: FocusableField) -> FormFieldDefault {
         switch field {
+        case .title:
+            FormFieldDefault(get: { title }, set: { title = $0 }, defaultValue: "")
+        case .summary:
+            FormFieldDefault(get: { summary }, set: { summary = $0 }, defaultValue: "")
+        case .link:
+            FormFieldDefault(get: { link }, set: { link = $0 }, defaultValue: "")
         case .bulkCost:
             FormFieldDefault(get: { bulkCostText }, set: { bulkCostText = $0 }, defaultValue: "0")
         case .bulkQuantity:

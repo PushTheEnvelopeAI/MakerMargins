@@ -134,6 +134,12 @@ struct StopwatchView: View {
                         .background(AppTheme.Colors.inputBackground, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small))
                         .focused($batchUnitsFocused)
                         .accessibilityLabel("\(unitName)s produced in this batch")
+
+                    if parsedBatchUnits <= 0 {
+                        Text("Enter units produced to save")
+                            .font(AppTheme.Typography.rowCaption)
+                            .foregroundStyle(AppTheme.Colors.destructive)
+                    }
                 }
 
                 HStack(spacing: AppTheme.Spacing.xl) {
