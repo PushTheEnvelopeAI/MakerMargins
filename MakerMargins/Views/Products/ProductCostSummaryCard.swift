@@ -13,7 +13,7 @@ struct ProductCostSummaryCard: View {
 
     var body: some View {
         VStack(spacing: AppTheme.Spacing.xs) {
-            CalculatorSectionHeader(icon: "dollarsign.circle", title: "COST SUMMARY")
+            CalculatorSectionHeader(title: "COST SUMMARY", icon: "dollarsign.circle")
 
             VStack(spacing: 0) {
                 costRow(label: "Labor", value: CostingEngine.totalLaborCost(product: product))
