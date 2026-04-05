@@ -9,7 +9,6 @@
 // before a model is saved.
 
 import Foundation
-import SwiftData
 
 enum CostingEngine {
 
@@ -414,6 +413,19 @@ enum CostingEngine {
         return "\(m)m \(s)s"
     }
 
+    /// Formats seconds into stopwatch display: "MM:SS.t" or "H:MM:SS.t"
+    static func formatStopwatchTime(_ seconds: TimeInterval) -> String {
+        let total = max(0, seconds)
+        let h = Int(total) / 3600
+        let m = (Int(total) % 3600) / 60
+        let s = Int(total) % 60
+        let tenths = Int((total - Double(Int(total))) * 10)
+        if h > 0 {
+            return String(format: "%d:%02d:%02d.%d", h, m, s, tenths)
+        }
+        return String(format: "%02d:%02d.%d", m, s, tenths)
+    }
+
     /// Formats Decimal hours to a human-readable "Xh Ym" string.
     /// Drops seconds — batch-level display doesn't need second-level precision.
     /// Examples: 0.5 → "0h 30m", 4.75 → "4h 45m", 0 → "0h 0m"
@@ -567,6 +579,76 @@ enum CostingEngine {
         ) * Decimal(batchSize)
     }
 
+    // MARK: - Batch Cost Breakdowns
+
+    /// Buffered labor cost scaled to a batch.
+    static func batchLaborCostBuffered(product: Product, batchSize: Int) -> Decimal {
+        totalLaborCostBuffered(product: product) * Decimal(batchSize)
+    }
+
+    /// Buffered material cost scaled to a batch.
+    static func batchMaterialCostBuffered(product: Product, batchSize: Int) -> Decimal {
+        totalMaterialCostBuffered(product: product) * Decimal(batchSize)
+    }
+
+    /// Shipping cost scaled to a batch.
+    static func batchShippingCost(product: Product, batchSize: Int) -> Decimal {
+        product.shippingCost * Decimal(batchSize)
+    }
+
+    /// Production cost excluding shipping, scaled to a batch.
+    static func batchProductionCostExShipping(product: Product, batchSize: Int) -> Decimal {
+        productionCostExShipping(product: product) * Decimal(batchSize)
+    }
+
+    /// Batch earnings = batch profit + batch labor cost (solo-maker take-home).
+    static func batchEarnings(batchProfit: Decimal, batchLaborCostBuffered: Decimal) -> Decimal {
+        batchProfit + batchLaborCostBuffered
+    }
+
+    /// Earnings per unit in a batch. Returns nil if batch size is zero.
+    static func batchEarningsPerUnit(batchEarnings: Decimal, batchSize: Int) -> Decimal? {
+        guard batchSize > 0 else { return nil }
+        return batchEarnings / Decimal(batchSize)
+    }
+
+    // MARK: - Fee Breakdown Amounts
+
+    /// Dollar amount of platform fee on a transaction.
+    static func platformFeeAmount(grossRevenue: Decimal, platformFee: Decimal) -> Decimal {
+        grossRevenue * platformFee
+    }
+
+    /// Dollar amount of payment processing fee on a transaction.
+    static func processingFeeAmount(grossRevenue: Decimal, processingFee: Decimal, processingFixed: Decimal) -> Decimal {
+        grossRevenue * processingFee + processingFixed
+    }
+
+    /// Dollar amount of marketing fee on a transaction.
+    static func marketingFeeAmount(actualPrice: Decimal, effectiveMarketingRate: Decimal) -> Decimal {
+        actualPrice * effectiveMarketingRate
+    }
+
+    /// Total percentage fees (platform + processing + effective marketing).
+    static func totalPercentFees(platformFee: Decimal, paymentProcessingFee: Decimal, effectiveMarketing: Decimal) -> Decimal {
+        platformFee + paymentProcessingFee + effectiveMarketing
+    }
+
+    // MARK: - Cost Breakdown Fractions
+
+    /// Cost breakdown as fractions for stacked bar visualization.
+    /// Returns (0, 0, 0) when total production cost is zero.
+    static func costBreakdownFractions(
+        laborCostBuffered: Decimal,
+        materialCostBuffered: Decimal,
+        shippingCost: Decimal
+    ) -> (labor: Double, material: Double, shipping: Double) {
+        let total = laborCostBuffered + materialCostBuffered + shippingCost
+        guard total > 0 else { return (0, 0, 0) }
+        let toDouble: (Decimal) -> Double = { NSDecimalNumber(decimal: $0 / total).doubleValue }
+        return (toDouble(laborCostBuffered), toDouble(materialCostBuffered), toDouble(shippingCost))
+    }
+
     // MARK: - Portfolio Metrics (Epic 6)
 
     /// Precomputed metrics snapshot for a single product, used by the portfolio
@@ -614,11 +696,29 @@ enum CostingEngine {
         product: Product,
         platform: PlatformType
     ) -> ProductSnapshot {
-        let laborBuffered = totalLaborCostBuffered(product: product)
-        let materialBuffered = totalMaterialCostBuffered(product: product)
-        let prodCost = totalProductionCost(product: product)
-        let laborHours = totalLaborHours(product: product)
+        // Single pass over productWorkSteps — accumulate both cost and hours
+        var rawLaborCost: Decimal = 0
+        var totalLaborHrs: Decimal = 0
+        for link in product.productWorkSteps {
+            guard link.workStep != nil else { continue }
+            let hours = laborHoursPerProduct(link: link)
+            totalLaborHrs += hours
+            rawLaborCost += hours * link.laborRate
+        }
+
+        // Single pass over productMaterials
+        var rawMaterialCost: Decimal = 0
+        for link in product.productMaterials {
+            guard let mat = link.material else { continue }
+            rawMaterialCost += materialUnitCost(bulkCost: mat.bulkCost, bulkQuantity: mat.bulkQuantity) * link.unitsRequiredPerProduct
+        }
+
+        // Derive buffered costs and production cost from cached values
+        let laborBuffered = rawLaborCost * (1 + product.laborBuffer)
+        let materialBuffered = rawMaterialCost * (1 + product.materialBuffer)
         let shipping = product.shippingCost
+        let prodCostExShipping = laborBuffered + materialBuffered
+        let prodCost = prodCostExShipping + shipping
 
         guard let pricing = portfolioPricing(for: product, platform: platform) else {
             return ProductSnapshot(
@@ -627,7 +727,7 @@ enum CostingEngine {
                 laborCostBuffered: laborBuffered,
                 materialCostBuffered: materialBuffered,
                 shippingCost: shipping,
-                totalLaborHours: laborHours,
+                totalLaborHours: totalLaborHrs,
                 earnings: 0,
                 profit: 0,
                 profitMargin: nil,
@@ -646,10 +746,12 @@ enum CostingEngine {
             userProfitMargin: pricing.profitMargin
         )
 
+        // Use raw-value overload to avoid re-traversing relationships
         let profit = actualProfit(
-            product: product,
             actualPrice: pricing.actualPrice,
             actualShippingCharge: pricing.actualShippingCharge,
+            productionCostExShipping: prodCostExShipping,
+            shippingCost: shipping,
             platformFee: fees.platformFee,
             paymentProcessingFee: fees.paymentProcessingFee,
             paymentProcessingFixed: fees.paymentProcessingFixed,
@@ -666,7 +768,7 @@ enum CostingEngine {
         let hourly = takeHomePerHour(
             actualProfit: profit,
             laborCostBuffered: laborBuffered,
-            totalLaborHours: laborHours
+            totalLaborHours: totalLaborHrs
         )
 
         return ProductSnapshot(
@@ -675,7 +777,7 @@ enum CostingEngine {
             laborCostBuffered: laborBuffered,
             materialCostBuffered: materialBuffered,
             shippingCost: shipping,
-            totalLaborHours: laborHours,
+            totalLaborHours: totalLaborHrs,
             earnings: profit + laborBuffered,
             profit: profit,
             profitMargin: margin,

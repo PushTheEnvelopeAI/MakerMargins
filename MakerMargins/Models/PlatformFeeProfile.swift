@@ -102,33 +102,6 @@ extension PlatformType {
     var isPaymentProcessingFeeEditable: Bool { lockedPaymentProcessingFee == nil }
     var isMarketingFeeEditable: Bool { lockedMarketingFee == nil }
 
-    // MARK: Display Helpers
-
-    /// Formatted display string for locked platform fee, or nil if editable.
-    var platformFeeDisplay: String? {
-        guard let fee = lockedPlatformFee else { return nil }
-        return PercentageFormat.toDisplay(fee) + "%"
-    }
-
-    /// Formatted display string for locked payment processing, or nil if editable.
-    /// Combines percentage and fixed fee when both exist (e.g. "3% + $0.25").
-    var paymentProcessingDisplay: String? {
-        guard let fee = lockedPaymentProcessingFee else { return nil }
-        let percentText = PercentageFormat.toDisplay(fee) + "%"
-        let fixed = lockedPaymentProcessingFixed
-        if fixed > 0 {
-            let fixedStr = String(format: "%.2f", NSDecimalNumber(decimal: fixed).doubleValue)
-            return "\(percentText) + $\(fixedStr)"
-        }
-        return percentText
-    }
-
-    /// Formatted display string for locked marketing fee, or nil if editable.
-    var marketingFeeDisplay: String? {
-        guard let fee = lockedMarketingFee else { return nil }
-        return PercentageFormat.toDisplay(fee) + "%"
-    }
-
     /// SF Symbol name for this platform.
     var iconName: String {
         switch self {

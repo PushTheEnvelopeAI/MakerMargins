@@ -51,6 +51,7 @@ struct TemplatePickerView: View {
                     TemplateCardView(template: template)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("\(template.title): \(template.summary)")
             }
         }
         .padding()
@@ -78,9 +79,9 @@ private struct TemplateCardView: View {
     var body: some View {
         VStack(spacing: AppTheme.Spacing.md) {
             Image(systemName: template.iconName)
-                .font(.system(size: 36))
+                .font(AppTheme.Typography.templateIcon)
                 .foregroundStyle(AppTheme.Colors.accent)
-                .frame(height: 60)
+                .frame(height: AppTheme.Sizing.templateIconHeight)
 
             VStack(spacing: AppTheme.Spacing.xs) {
                 Text(template.title)
@@ -94,6 +95,10 @@ private struct TemplateCardView: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
+
+                Text("\(template.workSteps.count) steps, \(template.materials.count) materials, Etsy pricing")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
             }
         }
         .padding()

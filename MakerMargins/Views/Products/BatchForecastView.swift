@@ -36,15 +36,15 @@ struct BatchForecastView: View {
     }
 
     private var batchLaborCostBuffered: Decimal {
-        CostingEngine.totalLaborCostBuffered(product: product) * Decimal(batchSize)
+        CostingEngine.batchLaborCostBuffered(product: product, batchSize: batchSize)
     }
 
     private var batchMaterialCostBuffered: Decimal {
-        CostingEngine.totalMaterialCostBuffered(product: product) * Decimal(batchSize)
+        CostingEngine.batchMaterialCostBuffered(product: product, batchSize: batchSize)
     }
 
     private var batchShippingCost: Decimal {
-        product.shippingCost * Decimal(batchSize)
+        CostingEngine.batchShippingCost(product: product, batchSize: batchSize)
     }
 
     // MARK: - Revenue
@@ -129,7 +129,9 @@ struct BatchForecastView: View {
                             .foregroundStyle(AppTheme.Colors.accent)
                     }
                     .disabled(batchSize <= 1)
+                    .frame(minWidth: 44, minHeight: 44)
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Decrease batch size")
 
                     TextField("", text: $batchSizeText)
                         .keyboardType(.numberPad)
@@ -146,7 +148,9 @@ struct BatchForecastView: View {
                             .font(.title2)
                             .foregroundStyle(AppTheme.Colors.accent)
                     }
+                    .frame(minWidth: 44, minHeight: 44)
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Increase batch size")
                 }
                 .frame(maxWidth: .infinity)
 
@@ -158,6 +162,7 @@ struct BatchForecastView: View {
                         }
                         .buttonStyle(.bordered)
                         .tint(batchSize == size ? AppTheme.Colors.accent : .secondary)
+                        .accessibilityLabel("Set batch size to \(size)")
                     }
                 }
             }
@@ -213,6 +218,7 @@ struct BatchForecastView: View {
                         .foregroundStyle(AppTheme.Colors.accent)
                         .frame(maxWidth: .infinity, alignment: .center)
                 }
+                .accessibilityLabel("Total Labor Time: \(CostingEngine.formatHoursReadable(totalBatchLaborHours))")
                 .heroCardStyle()
             }
         }
@@ -338,7 +344,7 @@ struct BatchForecastView: View {
                 batchSize: batchSize
             )
 
-            let batchProductionExShipping = CostingEngine.productionCostExShipping(product: product) * Decimal(batchSize)
+            let batchProductionExShipping = CostingEngine.batchProductionCostExShipping(product: product, batchSize: batchSize)
 
             let profit = CostingEngine.batchProfit(
                 actualPrice: pricing.actualPrice,
@@ -375,7 +381,7 @@ struct BatchForecastView: View {
                     .sectionGroupStyle()
 
                     VStack(spacing: AppTheme.Spacing.sm) {
-                        let batchEarnings = profit + batchLaborCostBuffered
+                        let batchEarnings = CostingEngine.batchEarnings(batchProfit: profit, batchLaborCostBuffered: batchLaborCostBuffered)
                         let grossRevenue = CostingEngine.batchRevenue(
                             actualPrice: pricing.actualPrice,
                             actualShippingCharge: pricing.actualShippingCharge,
@@ -398,7 +404,7 @@ struct BatchForecastView: View {
                                     .font(AppTheme.Typography.bodyText)
                                     .foregroundStyle(.secondary)
                                 Spacer()
-                                Text(formatter.format(batchEarnings / Decimal(batchSize)))
+                                Text(formatter.format(CostingEngine.batchEarningsPerUnit(batchEarnings: batchEarnings, batchSize: batchSize) ?? 0))
                                     .font(AppTheme.Typography.sectionHeader)
                                     .foregroundStyle(.secondary)
                             }
@@ -406,7 +412,11 @@ struct BatchForecastView: View {
 
                         // Profit Margin
                         if grossRevenue > 0 {
-                            let margin = profit / grossRevenue
+                            let margin = CostingEngine.actualProfitMargin(
+                                profit: profit,
+                                actualPrice: pricing.actualPrice,
+                                actualShippingCharge: pricing.actualShippingCharge
+                            ) ?? 0
                             HStack {
                                 Text("Profit Margin")
                                     .font(AppTheme.Typography.bodyText)
@@ -434,7 +444,7 @@ struct BatchForecastView: View {
                                 actualProfit: perUnitProfit
                             ) {
                                 HStack {
-                                    Text("Effective Hourly Rate")
+                                    Text("Your Hourly Pay")
                                         .font(AppTheme.Typography.bodyText)
                                     Spacer()
                                     Text("\(formatter.format(perHour)) / hr")
@@ -449,6 +459,7 @@ struct BatchForecastView: View {
                             .foregroundStyle(.tertiary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
+                    .accessibilityLabel("Batch Earnings: \(formatter.format(profit + batchLaborCostBuffered))")
                     .heroCardStyle()
                 }
             }

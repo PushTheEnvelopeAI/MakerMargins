@@ -20,7 +20,7 @@ extension View {
                 RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
                     .strokeBorder(AppTheme.Colors.cardBorder, lineWidth: 0.5)
             )
-            .shadow(color: .black.opacity(0.06), radius: 3, x: 0, y: 1)
+            .shadow(color: AppTheme.Shadow.color, radius: AppTheme.Shadow.radius, x: AppTheme.Shadow.x, y: AppTheme.Shadow.y)
     }
 }
 
@@ -57,6 +57,7 @@ struct WorkStepThumbnailView: View {
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
+                .accessibilityHidden(true)
         }
     }
 }
@@ -85,6 +86,7 @@ struct MaterialThumbnailView: View {
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
+                .accessibilityHidden(true)
         }
     }
 }
@@ -113,6 +115,7 @@ struct ProductThumbnailView: View {
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
+                .accessibilityHidden(true)
         }
     }
 }
@@ -152,6 +155,280 @@ extension View {
                 AppTheme.Colors.inputBackground,
                 in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small)
             )
+    }
+}
+
+// MARK: - Item Header View
+
+/// Shared image + summary header for WorkStep and Material detail views.
+struct ItemHeaderView: View {
+    let imageData: Data?
+    let summary: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
+            if let data = imageData, let uiImage = UIImage(data: data) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: AppTheme.Sizing.detailImageHeight)
+                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large))
+                    .padding(.horizontal)
+            } else {
+                PlaceholderImageView(
+                    height: AppTheme.Sizing.detailPlaceholderHeight,
+                    cornerRadius: AppTheme.CornerRadius.large,
+                    iconFont: .largeTitle
+                )
+                .padding(.horizontal)
+            }
+
+            if !summary.isEmpty {
+                Text(summary)
+                    .font(AppTheme.Typography.bodyText)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+            }
+        }
+    }
+}
+
+// MARK: - Used By Section
+
+/// Shared "Used By" section showing linked products for WorkStep and Material detail views.
+/// When product is nil (library context), products are tappable NavigationLinks.
+struct UsedBySection: View {
+    let linkedProducts: [Product]
+    let product: Product?
+    let emptyText: String
+
+    var body: some View {
+        GroupBox("Used By") {
+            if linkedProducts.isEmpty {
+                HStack {
+                    Text(emptyText)
+                        .font(AppTheme.Typography.bodyText)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+                .padding(.vertical, AppTheme.Spacing.xs)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(linkedProducts, id: \.persistentModelID) { linkedProduct in
+                        if product == nil {
+                            NavigationLink(value: linkedProduct) {
+                                HStack(spacing: AppTheme.Spacing.md) {
+                                    ProductThumbnailView(imageData: linkedProduct.image)
+                                    Text(linkedProduct.title)
+                                        .font(AppTheme.Typography.rowTitle)
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.tertiary)
+                                        .accessibilityHidden(true)
+                                }
+                                .padding(.vertical, AppTheme.Spacing.sm)
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            HStack(spacing: AppTheme.Spacing.md) {
+                                ProductThumbnailView(imageData: linkedProduct.image)
+                                Text(linkedProduct.title)
+                                    .font(AppTheme.Typography.rowTitle)
+                                Spacer()
+                            }
+                            .padding(.vertical, AppTheme.Spacing.sm)
+                        }
+
+                        if linkedProduct.persistentModelID != linkedProducts.last?.persistentModelID {
+                            Divider()
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.horizontal)
+    }
+}
+
+// MARK: - Remove From Product Button
+
+/// Shared destructive button for removing a step or material from a product.
+struct RemoveFromProductButton: View {
+    let productTitle: String
+    let onRemove: () -> Void
+
+    var body: some View {
+        Button(role: .destructive) {
+            onRemove()
+        } label: {
+            HStack {
+                Spacer()
+                Label("Remove from \(productTitle)", systemImage: "minus.circle")
+                    .font(AppTheme.Typography.bodyText)
+                Spacer()
+            }
+            .padding(.vertical, AppTheme.Spacing.md)
+            .background(
+                AppTheme.Colors.destructive.opacity(0.1),
+                in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
+                    .strokeBorder(AppTheme.Colors.destructive.opacity(0.3), lineWidth: 0.5)
+            )
+        }
+        .padding(.horizontal)
+    }
+}
+
+// MARK: - Item Row
+
+/// Shared row layout for items in WorkStep and Material list views.
+/// Shows thumbnail + title + cost subtitle + detail subtitle + chevron.
+struct ItemRow<Thumbnail: View>: View {
+    let thumbnail: Thumbnail
+    let title: String
+    let costText: String
+    let detailText: String
+
+    var body: some View {
+        HStack(spacing: AppTheme.Spacing.md) {
+            thumbnail
+
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                Text(title)
+                    .font(AppTheme.Typography.rowTitle)
+                    .lineLimit(1)
+                HStack(spacing: AppTheme.Spacing.sm) {
+                    Text(costText)
+                        .font(AppTheme.Typography.rowCaption)
+                        .foregroundStyle(.secondary)
+                    Text("·")
+                        .foregroundStyle(.tertiary)
+                    Text(detailText)
+                        .font(AppTheme.Typography.rowCaption)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
+        }
+        .padding(.vertical, AppTheme.Spacing.sm)
+    }
+}
+
+// MARK: - Reorder Row
+
+/// Shared reorder row for WorkStep and Material list views.
+/// Shows thumbnail + title + up/down arrow buttons.
+struct ReorderRow<Thumbnail: View>: View {
+    let thumbnail: Thumbnail
+    let title: String
+    let index: Int
+    let total: Int
+    let onMoveUp: () -> Void
+    let onMoveDown: () -> Void
+
+    var body: some View {
+        HStack(spacing: AppTheme.Spacing.md) {
+            thumbnail
+
+            Text(title)
+                .font(AppTheme.Typography.rowTitle)
+                .lineLimit(1)
+
+            Spacer()
+
+            Button(action: onMoveUp) {
+                Image(systemName: "arrow.up")
+                    .font(.caption.weight(.semibold))
+            }
+            .disabled(index == 0)
+            .frame(minWidth: 44, minHeight: 44)
+            .buttonStyle(.bordered)
+            .accessibilityLabel("Move \(title) up")
+
+            Button(action: onMoveDown) {
+                Image(systemName: "arrow.down")
+                    .font(.caption.weight(.semibold))
+            }
+            .disabled(index == total - 1)
+            .frame(minWidth: 44, minHeight: 44)
+            .buttonStyle(.bordered)
+            .accessibilityLabel("Move \(title) down")
+        }
+        .padding(.vertical, AppTheme.Spacing.sm)
+    }
+}
+
+// MARK: - Buffer Input Section
+
+/// Reusable buffer percentage input with label, helper text, focus behavior, and buffered total.
+/// Used for Labor Cost Buffer and Material Cost Buffer in list views.
+struct BufferInputSection: View {
+    let label: String
+    let helperText: String
+    let totalLabel: String
+    let totalValue: Decimal
+    @Binding var bufferText: String
+    var focusBinding: FocusState<Bool>.Binding
+    let onBufferChanged: (Decimal) -> Void
+
+    @Environment(\.currencyFormatter) private var formatter
+
+    var body: some View {
+        VStack(spacing: AppTheme.Spacing.sm) {
+            Divider()
+
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                HStack {
+                    Text(label)
+                        .font(AppTheme.Typography.bodyText)
+                    Spacer()
+                    HStack(spacing: AppTheme.Spacing.xxs) {
+                        TextField("0", text: $bufferText)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: AppTheme.Sizing.inputBuffer)
+                            .focused(focusBinding)
+                        Text("%")
+                            .font(AppTheme.Typography.bodyText)
+                            .foregroundStyle(.secondary)
+                    }
+                    .editableFieldStyle()
+                }
+                Text(helperText)
+                    .font(AppTheme.Typography.note)
+                    .foregroundStyle(.tertiary)
+            }
+            .onChange(of: bufferText) { _, _ in
+                onBufferChanged(PercentageFormat.fromDisplay(bufferText))
+            }
+            .onChange(of: focusBinding.wrappedValue) { _, focused in
+                if focused {
+                    if bufferText == "0" { bufferText = "" }
+                } else {
+                    if bufferText.trimmingCharacters(in: .whitespaces).isEmpty { bufferText = "0" }
+                }
+            }
+
+            HStack {
+                Text(totalLabel)
+                    .font(AppTheme.Typography.sectionHeader)
+                Spacer()
+                Text(formatter.format(totalValue))
+                    .font(AppTheme.Typography.sectionHeader)
+                    .foregroundStyle(AppTheme.Colors.accent)
+            }
+        }
+        .padding(.top, AppTheme.Spacing.xs)
     }
 }
 
@@ -226,6 +503,7 @@ extension View {
                 AppTheme.Colors.accentSubtle,
                 in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small)
             )
+            .accessibilityElement(children: .combine)
     }
 }
 

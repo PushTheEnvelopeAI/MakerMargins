@@ -18,6 +18,7 @@ struct MaterialListView: View {
     @Query(sort: \Material.title) private var allMaterials: [Material]
     @Environment(\.modelContext) private var modelContext
     @Environment(\.currencyFormatter) private var formatter
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var showingNewMaterialForm = false
     @State private var showingExistingMaterialPicker = false
@@ -52,7 +53,7 @@ struct MaterialListView: View {
     }
 
     private var bufferFraction: Decimal {
-        (Decimal(string: bufferText) ?? 0) / 100
+        PercentageFormat.fromDisplay(bufferText)
     }
 
     // MARK: - Body
@@ -71,6 +72,12 @@ struct MaterialListView: View {
             }
         }
         .padding(.horizontal)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { bufferFocused = false }
+            }
+        }
         .sheet(isPresented: $showingNewMaterialForm, onDismiss: {
             if product.productMaterials.count > materialCountBeforeSheet,
                let newestLink = product.productMaterials
@@ -113,7 +120,7 @@ struct MaterialListView: View {
             Spacer()
             if !sortedLinks.isEmpty {
                 Button {
-                    withAnimation { isReordering.toggle() }
+                    if reduceMotion { isReordering.toggle() } else { withAnimation { isReordering.toggle() } }
                 } label: {
                     Text(isReordering ? "Done" : "Reorder")
                         .font(.caption.weight(.medium))
@@ -137,14 +144,16 @@ struct MaterialListView: View {
                     Image(systemName: "plus.circle")
                         .font(.title3)
                         .foregroundStyle(.tint)
+                        .frame(minWidth: 44, minHeight: 44)
                 }
+                .accessibilityLabel("Add material")
             }
         }
     }
 
     private var emptyState: some View {
         HStack {
-            Text("Add materials to calculate material costs")
+            Text("Tap + above to add materials and calculate costs")
                 .font(AppTheme.Typography.bodyText)
                 .foregroundStyle(.secondary)
             Spacer()
@@ -181,114 +190,42 @@ struct MaterialListView: View {
         }
     }
 
+    @ViewBuilder
     private func materialRow(link: ProductMaterial) -> some View {
-        let material = link.material!
-        return HStack(spacing: AppTheme.Spacing.md) {
-            MaterialThumbnailView(imageData: material.image)
-
-            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
-                Text(material.title)
-                    .font(AppTheme.Typography.rowTitle)
-                    .lineLimit(1)
-                HStack(spacing: AppTheme.Spacing.sm) {
-                    Text(formatter.format(CostingEngine.materialLineCost(link: link)))
-                        .font(AppTheme.Typography.rowCaption)
-                        .foregroundStyle(.secondary)
-                    Text("·")
-                        .foregroundStyle(.tertiary)
-                    Text(verbatim: "\(link.unitsRequiredPerProduct) \(material.unitName)/product")
-                        .font(AppTheme.Typography.rowCaption)
-                        .foregroundStyle(.tertiary)
-                }
-            }
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.tertiary)
+        if let material = link.material {
+            ItemRow(
+                thumbnail: MaterialThumbnailView(imageData: material.image),
+                title: material.title,
+                costText: formatter.format(CostingEngine.materialLineCost(link: link)),
+                detailText: "\(link.unitsRequiredPerProduct) \(material.unitName)/product"
+            )
         }
-        .padding(.vertical, AppTheme.Spacing.sm)
     }
 
+    @ViewBuilder
     private func reorderRow(link: ProductMaterial, index: Int) -> some View {
-        let material = link.material!
-        return HStack(spacing: AppTheme.Spacing.md) {
-            MaterialThumbnailView(imageData: material.image)
-
-            Text(material.title)
-                .font(AppTheme.Typography.rowTitle)
-                .lineLimit(1)
-
-            Spacer()
-
-            Button {
-                moveMaterial(at: index, direction: -1)
-            } label: {
-                Image(systemName: "arrow.up")
-                    .font(.caption.weight(.semibold))
-            }
-            .disabled(index == 0)
-            .buttonStyle(.bordered)
-
-            Button {
-                moveMaterial(at: index, direction: 1)
-            } label: {
-                Image(systemName: "arrow.down")
-                    .font(.caption.weight(.semibold))
-            }
-            .disabled(index == sortedLinks.count - 1)
-            .buttonStyle(.bordered)
+        if let material = link.material {
+            ReorderRow(
+                thumbnail: MaterialThumbnailView(imageData: material.image),
+                title: material.title,
+                index: index,
+                total: sortedLinks.count,
+                onMoveUp: { moveMaterial(at: index, direction: -1) },
+                onMoveDown: { moveMaterial(at: index, direction: 1) }
+            )
         }
-        .padding(.vertical, AppTheme.Spacing.sm)
     }
 
     private var bufferSection: some View {
-        VStack(spacing: AppTheme.Spacing.sm) {
-            Divider()
-
-            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
-                HStack {
-                    Text("Material Cost Buffer")
-                        .font(AppTheme.Typography.bodyText)
-                    Spacer()
-                    HStack(spacing: AppTheme.Spacing.xxs) {
-                        TextField("0", text: $bufferText)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: AppTheme.Sizing.inputBuffer)
-                            .focused($bufferFocused)
-                        Text("%")
-                            .font(AppTheme.Typography.bodyText)
-                            .foregroundStyle(.secondary)
-                    }
-                    .editableFieldStyle()
-                }
-                Text("Adds a percentage on top of the base material cost")
-                    .font(AppTheme.Typography.note)
-                    .foregroundStyle(.tertiary)
-            }
-            .onChange(of: bufferText) { _, _ in
-                product.materialBuffer = bufferFraction
-            }
-            .onChange(of: bufferFocused) { _, focused in
-                if focused {
-                    if bufferText == "0" { bufferText = "" }
-                } else {
-                    if bufferText.trimmingCharacters(in: .whitespaces).isEmpty { bufferText = "0" }
-                }
-            }
-
-            HStack {
-                Text("Total Materials")
-                    .font(AppTheme.Typography.sectionHeader)
-                Spacer()
-                Text(formatter.format(CostingEngine.totalMaterialCostBuffered(product: product)))
-                    .font(AppTheme.Typography.sectionHeader)
-                    .foregroundStyle(AppTheme.Colors.accent)
-            }
-        }
-        .padding(.top, AppTheme.Spacing.xs)
+        BufferInputSection(
+            label: "Material Cost Buffer",
+            helperText: "Adds a percentage on top of the base material cost",
+            totalLabel: "Total Material Cost",
+            totalValue: CostingEngine.totalMaterialCostBuffered(product: product),
+            bufferText: $bufferText,
+            focusBinding: $bufferFocused,
+            onBufferChanged: { product.materialBuffer = $0 }
+        )
     }
 
     // MARK: - Existing Material Picker

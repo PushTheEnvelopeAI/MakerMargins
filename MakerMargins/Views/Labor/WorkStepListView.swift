@@ -19,6 +19,7 @@ struct WorkStepListView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.currencyFormatter) private var formatter
     @Environment(\.laborRateManager) private var laborRateManager
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var showingNewStepForm = false
     @State private var showingExistingStepPicker = false
@@ -53,7 +54,7 @@ struct WorkStepListView: View {
     }
 
     private var bufferFraction: Decimal {
-        (Decimal(string: bufferText) ?? 0) / 100
+        PercentageFormat.fromDisplay(bufferText)
     }
 
     // MARK: - Body
@@ -72,6 +73,12 @@ struct WorkStepListView: View {
             }
         }
         .padding(.horizontal)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { bufferFocused = false }
+            }
+        }
         .sheet(isPresented: $showingNewStepForm, onDismiss: {
             if product.productWorkSteps.count > stepCountBeforeSheet,
                let newestLink = product.productWorkSteps
@@ -114,7 +121,7 @@ struct WorkStepListView: View {
             Spacer()
             if !sortedLinks.isEmpty {
                 Button {
-                    withAnimation { isReordering.toggle() }
+                    if reduceMotion { isReordering.toggle() } else { withAnimation { isReordering.toggle() } }
                 } label: {
                     Text(isReordering ? "Done" : "Reorder")
                         .font(.caption.weight(.medium))
@@ -138,14 +145,16 @@ struct WorkStepListView: View {
                     Image(systemName: "plus.circle")
                         .font(.title3)
                         .foregroundStyle(.tint)
+                        .frame(minWidth: 44, minHeight: 44)
                 }
+                .accessibilityLabel("Add work step")
             }
         }
     }
 
     private var emptyState: some View {
         HStack {
-            Text("Add work steps to calculate labor costs")
+            Text("Tap + above to add labor steps and calculate costs")
                 .font(AppTheme.Typography.bodyText)
                 .foregroundStyle(.secondary)
             Spacer()
@@ -182,114 +191,42 @@ struct WorkStepListView: View {
         }
     }
 
+    @ViewBuilder
     private func stepRow(link: ProductWorkStep) -> some View {
-        let step = link.workStep!
-        return HStack(spacing: AppTheme.Spacing.md) {
-            WorkStepThumbnailView(imageData: step.image)
-
-            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
-                Text(step.title)
-                    .font(AppTheme.Typography.rowTitle)
-                    .lineLimit(1)
-                HStack(spacing: AppTheme.Spacing.sm) {
-                    Text(formatter.format(CostingEngine.stepLaborCost(link: link)))
-                        .font(AppTheme.Typography.rowCaption)
-                        .foregroundStyle(.secondary)
-                    Text("·")
-                        .foregroundStyle(.tertiary)
-                    Text(verbatim: "\(link.unitsRequiredPerProduct) \(step.unitName)/product")
-                        .font(AppTheme.Typography.rowCaption)
-                        .foregroundStyle(.tertiary)
-                }
-            }
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.tertiary)
+        if let step = link.workStep {
+            ItemRow(
+                thumbnail: WorkStepThumbnailView(imageData: step.image),
+                title: step.title,
+                costText: formatter.format(CostingEngine.stepLaborCost(link: link)),
+                detailText: "\(link.unitsRequiredPerProduct) \(step.unitName)/product"
+            )
         }
-        .padding(.vertical, AppTheme.Spacing.sm)
     }
 
+    @ViewBuilder
     private func reorderRow(link: ProductWorkStep, index: Int) -> some View {
-        let step = link.workStep!
-        return HStack(spacing: AppTheme.Spacing.md) {
-            WorkStepThumbnailView(imageData: step.image)
-
-            Text(step.title)
-                .font(AppTheme.Typography.rowTitle)
-                .lineLimit(1)
-
-            Spacer()
-
-            Button {
-                moveStep(at: index, direction: -1)
-            } label: {
-                Image(systemName: "arrow.up")
-                    .font(.caption.weight(.semibold))
-            }
-            .disabled(index == 0)
-            .buttonStyle(.bordered)
-
-            Button {
-                moveStep(at: index, direction: 1)
-            } label: {
-                Image(systemName: "arrow.down")
-                    .font(.caption.weight(.semibold))
-            }
-            .disabled(index == sortedLinks.count - 1)
-            .buttonStyle(.bordered)
+        if let step = link.workStep {
+            ReorderRow(
+                thumbnail: WorkStepThumbnailView(imageData: step.image),
+                title: step.title,
+                index: index,
+                total: sortedLinks.count,
+                onMoveUp: { moveStep(at: index, direction: -1) },
+                onMoveDown: { moveStep(at: index, direction: 1) }
+            )
         }
-        .padding(.vertical, AppTheme.Spacing.sm)
     }
 
     private var bufferSection: some View {
-        VStack(spacing: AppTheme.Spacing.sm) {
-            Divider()
-
-            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
-                HStack {
-                    Text("Labor Cost Buffer")
-                        .font(AppTheme.Typography.bodyText)
-                    Spacer()
-                    HStack(spacing: AppTheme.Spacing.xxs) {
-                        TextField("0", text: $bufferText)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: AppTheme.Sizing.inputBuffer)
-                            .focused($bufferFocused)
-                        Text("%")
-                            .font(AppTheme.Typography.bodyText)
-                            .foregroundStyle(.secondary)
-                    }
-                    .editableFieldStyle()
-                }
-                Text("Adds a percentage on top of the base labor cost")
-                    .font(AppTheme.Typography.note)
-                    .foregroundStyle(.tertiary)
-            }
-            .onChange(of: bufferText) { _, _ in
-                product.laborBuffer = bufferFraction
-            }
-            .onChange(of: bufferFocused) { _, focused in
-                if focused {
-                    if bufferText == "0" { bufferText = "" }
-                } else {
-                    if bufferText.trimmingCharacters(in: .whitespaces).isEmpty { bufferText = "0" }
-                }
-            }
-
-            HStack {
-                Text("Total Labor")
-                    .font(AppTheme.Typography.sectionHeader)
-                Spacer()
-                Text(formatter.format(CostingEngine.totalLaborCostBuffered(product: product)))
-                    .font(AppTheme.Typography.sectionHeader)
-                    .foregroundStyle(AppTheme.Colors.accent)
-            }
-        }
-        .padding(.top, AppTheme.Spacing.xs)
+        BufferInputSection(
+            label: "Labor Cost Buffer",
+            helperText: "Adds a percentage on top of the base labor cost",
+            totalLabel: "Total Labor Cost",
+            totalValue: CostingEngine.totalLaborCostBuffered(product: product),
+            bufferText: $bufferText,
+            focusBinding: $bufferFocused,
+            onBufferChanged: { product.laborBuffer = $0 }
+        )
     }
 
     // MARK: - Existing Step Picker

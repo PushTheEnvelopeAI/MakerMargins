@@ -26,6 +26,7 @@ struct PricingCalculatorView: View {
     // MARK: - State
 
     @State private var selectedPlatform: PlatformType = .general
+    @State private var showTargetCalc = true
     @State private var currentPricing: ProductPricing?
 
     @State private var platformFeeText: String = ""
@@ -131,14 +132,17 @@ struct PricingCalculatorView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            GroupBox("Target Price Calculator") {
-                VStack(spacing: AppTheme.Spacing.md) {
-                    platformPicker
-                    productionCostSection
-                    marketingAndFeesSection
-                    profitMarginSection
-                    targetPriceHero
+            GroupBox {
+                DisclosureGroup("Target Price Calculator", isExpanded: $showTargetCalc) {
+                    VStack(spacing: AppTheme.Spacing.md) {
+                        platformPicker
+                        productionCostSection
+                        marketingAndFeesSection
+                        profitMarginSection
+                        targetPriceHero
+                    }
                 }
+                .font(AppTheme.Typography.sectionHeader)
             }
             .backgroundStyle(AppTheme.Colors.pricingSurface)
 
@@ -168,6 +172,12 @@ struct PricingCalculatorView: View {
         .onChange(of: focusedField) { _, newField in
             handleFocusChange(newField)
         }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { focusedField = nil }
+            }
+        }
     }
 
     // MARK: - Sections
@@ -186,21 +196,21 @@ struct PricingCalculatorView: View {
 
     private var productionCostSection: some View {
         VStack(spacing: AppTheme.Spacing.xs) {
-            CalculatorSectionHeader(title: "Production Costs", icon: "hammer")
+            CalculatorSectionHeader(title: "Cost Breakdown", icon: "hammer")
 
             if productionCost == 0 {
                 emptyCostHint
             } else {
                 VStack(spacing: 0) {
-                    DetailRow(
+                    DerivedRow(
                         label: "Material Cost",
                         value: formatter.format(CostingEngine.totalMaterialCostBuffered(product: product))
                     )
-                    DetailRow(
+                    DerivedRow(
                         label: "Labor Cost",
                         value: formatter.format(CostingEngine.totalLaborCostBuffered(product: product))
                     )
-                    DetailRow(
+                    DerivedRow(
                         label: "Shipping Cost",
                         value: formatter.format(product.shippingCost)
                     )
@@ -246,15 +256,15 @@ struct PricingCalculatorView: View {
             VStack(spacing: AppTheme.Spacing.xxs) {
                 feeRow(
                     label: "Platform Fee",
-                    lockedDisplay: selectedPlatform.platformFeeDisplay,
+                    lockedDisplay: selectedPlatform.platformFeeDisplay(),
                     text: $platformFeeText,
                     field: .platformFee,
                     writeBack: { currentPricing?.platformFee = $0 }
                 )
 
                 feeRow(
-                    label: "Payment Processing",
-                    lockedDisplay: selectedPlatform.paymentProcessingDisplay,
+                    label: "Transaction Fees",
+                    lockedDisplay: selectedPlatform.paymentProcessingDisplay(),
                     text: $paymentProcessingFeeText,
                     field: .paymentProcessingFee,
                     writeBack: { currentPricing?.paymentProcessingFee = $0 }
@@ -262,14 +272,14 @@ struct PricingCalculatorView: View {
 
                 feeRow(
                     label: "Marketing Fees",
-                    lockedDisplay: selectedPlatform.marketingFeeDisplay,
+                    lockedDisplay: selectedPlatform.marketingFeeDisplay(),
                     text: $marketingFeeText,
                     field: .marketingFee,
                     writeBack: { currentPricing?.marketingFee = $0 }
                 )
 
                 PercentageInputField(
-                    label: "% Sales from Ads",
+                    label: "% of Sales from Ads",
                     text: $percentSalesFromMarketingText,
                     field: FocusableField.percentSalesFromMarketing,
                     focusBinding: $focusedField,
@@ -277,13 +287,18 @@ struct PricingCalculatorView: View {
                 )
                 .padding(.vertical, AppTheme.Spacing.xs)
 
+                Text("What fraction of your sales come through paid advertising?")
+                    .font(AppTheme.Typography.note)
+                    .foregroundStyle(.tertiary)
+                    .padding(.bottom, AppTheme.Spacing.xs)
+
                 // Total Fees subtotal
                 let f = resolved
                 let effectiveMktg = CostingEngine.effectiveMarketingRate(
                     marketingFee: f.marketingFee,
                     percentSalesFromMarketing: f.percentSalesFromMarketing
                 )
-                let totalPercentFees = f.platformFee + f.paymentProcessingFee + effectiveMktg
+                let totalPercentFees = CostingEngine.totalPercentFees(platformFee: f.platformFee, paymentProcessingFee: f.paymentProcessingFee, effectiveMarketing: effectiveMktg)
                 HStack {
                     Text("Total Fees")
                         .font(AppTheme.Typography.sectionHeader)
@@ -319,17 +334,23 @@ struct PricingCalculatorView: View {
                     .font(AppTheme.Typography.bodyText)
                     .foregroundStyle(.tertiary)
                 Spacer()
-                HStack(spacing: AppTheme.Spacing.xs) {
-                    Text(display)
-                        .font(AppTheme.Typography.bodyText)
-                        .foregroundStyle(.tertiary)
-                    Image(systemName: "lock.fill")
+                VStack(alignment: .trailing, spacing: AppTheme.Spacing.xxxs) {
+                    HStack(spacing: AppTheme.Spacing.xs) {
+                        Text(display)
+                            .font(AppTheme.Typography.bodyText)
+                            .foregroundStyle(.tertiary)
+                        Image(systemName: "lock.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                    Text("Set by \(selectedPlatform.rawValue)")
                         .font(.caption2)
-                        .foregroundStyle(.quaternary)
-                        .accessibilityLabel("Locked by platform")
+                        .foregroundStyle(.tertiary)
                 }
             }
             .padding(.vertical, AppTheme.Spacing.xs)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(label), \(display), set by \(selectedPlatform.rawValue), not editable")
         } else {
             PercentageInputField(
                 label: label,
@@ -368,11 +389,17 @@ struct PricingCalculatorView: View {
                     .font(AppTheme.Typography.heroPrice)
                     .foregroundStyle(AppTheme.Colors.accent)
             } else {
-                Text("— (fees too high)")
-                    .font(AppTheme.Typography.sectionHeader)
-                    .foregroundStyle(.red)
+                VStack(alignment: .trailing, spacing: AppTheme.Spacing.xxs) {
+                    Text("— Fees + margin exceed 100%")
+                        .font(AppTheme.Typography.sectionHeader)
+                        .foregroundStyle(AppTheme.Colors.destructive)
+                    Text("Try lowering your profit margin or fee percentages")
+                        .font(AppTheme.Typography.note)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
+        .accessibilityLabel(computedTargetPrice != nil ? "Target Price: \(formatter.format(computedTargetPrice!))" : "Target Price: fees too high")
         .heroCardStyle()
     }
 
@@ -388,6 +415,9 @@ struct PricingCalculatorView: View {
                     Divider()
                         .padding(.vertical, AppTheme.Spacing.xs)
                     profitHeroSection
+                    if computedTargetPrice != nil {
+                        resetToTargetPriceButton
+                    }
                 } else if computedTargetPrice != nil {
                     useTargetPriceButton
                 }
@@ -462,6 +492,22 @@ struct PricingCalculatorView: View {
         .padding(.vertical, AppTheme.Spacing.sm)
     }
 
+    private var resetToTargetPriceButton: some View {
+        Button {
+            if var target = computedTargetPrice {
+                var rounded = Decimal()
+                NSDecimalRound(&rounded, &target, 2, .plain)
+                actualPriceText = "\(rounded)"
+                currentPricing?.actualPrice = rounded
+            }
+        } label: {
+            Text("Reset to Target Price")
+                .font(AppTheme.Typography.note)
+        }
+        .buttonStyle(.bordered)
+        .tint(.secondary)
+    }
+
     private var profitBreakdownSection: some View {
         VStack(spacing: AppTheme.Spacing.xs) {
             CalculatorSectionHeader(title: "Breakdown", icon: "list.bullet.rectangle")
@@ -474,7 +520,7 @@ struct PricingCalculatorView: View {
 
                 let f = resolved
 
-                let platformFeeAmount = grossRevenue * f.platformFee
+                let platformFeeAmount = CostingEngine.platformFeeAmount(grossRevenue: grossRevenue, platformFee: f.platformFee)
                 if platformFeeAmount > 0 {
                     DetailRow(
                         label: "Platform Fees",
@@ -483,7 +529,7 @@ struct PricingCalculatorView: View {
                     .foregroundStyle(.secondary)
                 }
 
-                let processingAmount = grossRevenue * f.paymentProcessingFee + f.paymentProcessingFixed
+                let processingAmount = CostingEngine.processingFeeAmount(grossRevenue: grossRevenue, processingFee: f.paymentProcessingFee, processingFixed: f.paymentProcessingFixed)
                 if processingAmount > 0 {
                     DetailRow(
                         label: "Processing Fees",
@@ -496,7 +542,7 @@ struct PricingCalculatorView: View {
                     marketingFee: f.marketingFee,
                     percentSalesFromMarketing: f.percentSalesFromMarketing
                 )
-                let marketingAmount = (currentPricing?.actualPrice ?? 0) * effectiveMarketing
+                let marketingAmount = CostingEngine.marketingFeeAmount(actualPrice: currentPricing?.actualPrice ?? 0, effectiveMarketingRate: effectiveMarketing)
                 if marketingAmount > 0 {
                     DetailRow(
                         label: "Marketing Fees",
@@ -525,7 +571,7 @@ struct PricingCalculatorView: View {
                         Image(systemName: "exclamationmark.triangle")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        Text("Production cost is $0 — add materials or labor for accurate profit.")
+                        Text("Production cost is \(formatter.format(0)) — add materials or labor for accurate profit.")
                             .font(AppTheme.Typography.note)
                             .foregroundStyle(.secondary)
                     }
@@ -550,13 +596,13 @@ struct PricingCalculatorView: View {
                     Spacer()
                     Text(formatter.format(earnings))
                         .font(AppTheme.Typography.heroPrice)
-                        .foregroundStyle(earnings >= 0 ? AppTheme.Colors.accent : .red)
+                        .foregroundStyle(earnings >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive)
                 }
 
                 // Breakdown: Margin After Costs + Your Labor (hidden when no labor — would be redundant with hero)
                 if hasLabor {
                     HStack {
-                        Text("Margin After Costs")
+                        Text("Profit (Excl. Labor)")
                             .font(AppTheme.Typography.bodyText)
                             .foregroundStyle(.secondary)
                         Spacer()
@@ -584,22 +630,23 @@ struct PricingCalculatorView: View {
                         Spacer()
                         Text("\(PercentageFormat.toDisplay(margin))%")
                             .font(AppTheme.Typography.sectionHeader)
-                            .foregroundStyle(earnings >= 0 ? AppTheme.Colors.accent : .red)
+                            .foregroundStyle(earnings >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive)
                     }
                 }
 
                 // Effective Hourly Rate — only when labor hours exist
                 if let perHour = computedTakeHomePerHour {
                     HStack {
-                        Text("Effective Hourly Rate")
+                        Text("Your Hourly Pay")
                             .font(AppTheme.Typography.bodyText)
                         Spacer()
                         Text("\(formatter.format(perHour)) / hr")
                             .font(AppTheme.Typography.sectionHeader)
-                            .foregroundStyle(earnings >= 0 ? AppTheme.Colors.accent : .red)
+                            .foregroundStyle(earnings >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive)
                     }
                 }
             }
+            .accessibilityLabel("Your Earnings per Sale: \(formatter.format(earnings))")
             .heroCardStyle()
 
             // Shipping absorbed callout
@@ -632,6 +679,8 @@ struct PricingCalculatorView: View {
         if let existing = product.productPricings.first(where: { $0.platformType == selectedPlatform }) {
             currentPricing = existing
         } else {
+            assert(product.productPricings.filter { $0.platformType == selectedPlatform }.isEmpty,
+                   "Duplicate ProductPricing for \(selectedPlatform)")
             let defaults = fetchDefaults()
             let pricing = ProductPricing(
                 product: product,

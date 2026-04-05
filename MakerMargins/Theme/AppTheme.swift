@@ -89,6 +89,12 @@ enum AppTheme {
 
         /// Unselected chip / filter background.
         static let chipBackground = Color(.secondarySystemFill)
+        /// Foreground for text on accent-colored chips — black in dark mode for contrast.
+        static let chipSelectedForeground = Color(
+            UIColor { traits in
+                traits.userInterfaceStyle == .dark ? .black : .white
+            }
+        )
 
         /// Editable input field background — subtle fill to indicate tappable/editable fields.
         static let inputBackground = Color(.tertiarySystemFill)
@@ -133,6 +139,7 @@ enum AppTheme {
     // MARK: - Corner Radii
 
     enum CornerRadius {
+        static let xs:     CGFloat = 3
         static let small:  CGFloat = 8
         static let medium: CGFloat = 12
         static let large:  CGFloat = 16
@@ -151,7 +158,17 @@ enum AppTheme {
         static let heroPrice:     Font = .title2.weight(.bold)
         static let badge:         Font = .caption.weight(.medium)
         static let note:          Font = .caption2
-        static let timerDisplay:  Font = .system(size: 56, weight: .light, design: .monospaced)
+        static let timerDisplay:  Font = .system(.largeTitle, design: .monospaced).weight(.light)
+        static let templateIcon:  Font = .system(.title, design: .default)
+    }
+
+    // MARK: - Shadow
+
+    enum Shadow {
+        static let color: Color = .black.opacity(0.06)
+        static let radius: CGFloat = 3
+        static let x: CGFloat = 0
+        static let y: CGFloat = 1
     }
 
     // MARK: - Sizing
@@ -174,5 +191,12 @@ enum AppTheme {
         // Stopwatch
         static let stopwatchButtonWidth:   CGFloat = 130
         static let stopwatchButtonHeight:  CGFloat = 54
+
+        // Bar & chart sizing
+        static let barHeight:              CGFloat = 6
+        static let barMinWidth:            CGFloat = 2
+        static let progressBarHeight:      CGFloat = 12
+        static let legendDot:              CGFloat = 8
+        static let templateIconHeight:     CGFloat = 60
     }
 }

@@ -12,7 +12,9 @@ struct ProductCostSummaryCard: View {
     @Environment(\.currencyFormatter) private var formatter
 
     var body: some View {
-        GroupBox("Cost Summary") {
+        VStack(spacing: AppTheme.Spacing.xs) {
+            CalculatorSectionHeader(title: "COST SUMMARY", icon: "dollarsign.circle")
+
             VStack(spacing: 0) {
                 costRow(label: "Labor", value: CostingEngine.totalLaborCost(product: product))
                 Divider()
@@ -22,6 +24,7 @@ struct ProductCostSummaryCard: View {
                 Divider()
                 costRow(label: "Total Production Cost", value: CostingEngine.totalProductionCost(product: product), bold: true)
             }
+            .sectionGroupStyle()
         }
     }
 
@@ -43,5 +46,6 @@ struct ProductCostSummaryCard: View {
                 .foregroundStyle(bold ? AppTheme.Colors.accent : .secondary)
         }
         .padding(.vertical, AppTheme.Spacing.sm)
+        .accessibilityElement(children: .combine)
     }
 }

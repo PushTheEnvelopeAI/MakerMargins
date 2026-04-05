@@ -42,20 +42,12 @@ struct SettingsView: View {
                 HStack {
                     Text("Hourly Rate")
                     Spacer()
-                    Text(currencyFormatter.symbol)
-                        .foregroundStyle(.secondary)
-                    TextField("0", text: $laborRateText)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: AppTheme.Sizing.inputMedium)
+                    CurrencyInputField(symbol: currencyFormatter.symbol, text: $laborRateText, suffix: "/hr")
                         .focused($laborRateFocused)
                         .onSubmit { commitLaborRate() }
                         .onChange(of: laborRateFocused) { _, focused in
                             if !focused { commitLaborRate() }
                         }
-                    Text("/hr")
-                        .font(AppTheme.Typography.bodyText)
-                        .foregroundStyle(.secondary)
                 }
             } header: {
                 Text("Your Hourly Rate")
@@ -81,6 +73,12 @@ struct SettingsView: View {
         .scrollContentBackground(.hidden)
         .appBackground()
         .navigationTitle("Settings")
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { laborRateFocused = false }
+            }
+        }
     }
 
     private func commitLaborRate() {

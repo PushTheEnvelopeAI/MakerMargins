@@ -45,7 +45,7 @@ struct PlatformPricingDefaultFormView: View {
                 )
 
                 PercentageInputField(
-                    label: "Payment Processing",
+                    label: "Transaction Fees",
                     text: $paymentProcessingFeeText,
                     field: FocusableField.paymentProcessingFee,
                     focusBinding: $focusedField,
@@ -61,12 +61,16 @@ struct PlatformPricingDefaultFormView: View {
                 )
 
                 PercentageInputField(
-                    label: "% Sales from Ads",
+                    label: "% of Sales from Ads",
                     text: $percentSalesFromMarketingText,
                     field: FocusableField.percentSalesFromMarketing,
                     focusBinding: $focusedField,
                     writeBack: { profile?.percentSalesFromMarketing = $0 }
                 )
+
+                Text("What fraction of your sales come through paid advertising?")
+                    .font(AppTheme.Typography.note)
+                    .foregroundStyle(.tertiary)
 
                 PercentageInputField(
                     label: "Profit Margin",
@@ -84,6 +88,12 @@ struct PlatformPricingDefaultFormView: View {
         .scrollContentBackground(.hidden)
         .appBackground()
         .navigationTitle("Pricing Defaults")
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { focusedField = nil }
+            }
+        }
         .onAppear { loadProfile() }
         .onChange(of: focusedField) { _, newField in
             handleFocusChange(newField)

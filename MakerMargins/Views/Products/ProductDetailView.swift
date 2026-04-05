@@ -59,6 +59,7 @@ struct ProductDetailView: View {
     @State private var laborExpanded = true
     @State private var materialsExpanded = true
     @State private var shippingExpanded = true
+    @State private var hasAutoSwitchedTab = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -68,6 +69,11 @@ struct ProductDetailView: View {
         .appBackground()
         .onAppear {
             shippingCostText = "\(product.shippingCost)"
+            if !hasAutoSwitchedTab,
+               product.productPricings.contains(where: { $0.actualPrice > 0 }) {
+                selectedTab = .price
+                hasAutoSwitchedTab = true
+            }
         }
         .navigationDestination(for: WorkStep.self) { step in
             WorkStepDetailView(step: step, product: product)
@@ -91,16 +97,25 @@ struct ProductDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Menu {
-                    Button("Edit Product") {
+                HStack(spacing: AppTheme.Spacing.md) {
+                    Button {
                         showingEditForm = true
+                    } label: {
+                        Image(systemName: "pencil")
                     }
-                    Divider()
-                    Button("Delete Product", role: .destructive) {
-                        showingDeleteConfirmation = true
+                    .accessibilityLabel("Edit \(product.title)")
+                    Menu {
+                        Button("Duplicate Product") {
+                            duplicateCurrentProduct()
+                        }
+                        Divider()
+                        Button("Delete Product", role: .destructive) {
+                            showingDeleteConfirmation = true
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
                     }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
+                    .accessibilityLabel("More options")
                 }
             }
         }
@@ -270,6 +285,56 @@ struct ProductDetailView: View {
             } else {
                 if shippingCostText.trimmingCharacters(in: .whitespaces).isEmpty { shippingCostText = "0" }
             }
+        }
+    }
+
+    private func duplicateCurrentProduct() {
+        let copy = Product(
+            title: "\(product.title) (Copy)",
+            sku: product.sku,
+            summary: product.summary,
+            image: product.image,
+            shippingCost: product.shippingCost,
+            materialBuffer: product.materialBuffer,
+            laborBuffer: product.laborBuffer,
+            category: product.category
+        )
+        modelContext.insert(copy)
+
+        for link in product.productWorkSteps {
+            guard let step = link.workStep else { continue }
+            let newLink = ProductWorkStep(
+                product: copy, workStep: step,
+                sortOrder: link.sortOrder,
+                unitsRequiredPerProduct: link.unitsRequiredPerProduct,
+                laborRate: link.laborRate
+            )
+            modelContext.insert(newLink)
+        }
+
+        for link in product.productMaterials {
+            guard let mat = link.material else { continue }
+            let newLink = ProductMaterial(
+                product: copy, material: mat,
+                sortOrder: link.sortOrder,
+                unitsRequiredPerProduct: link.unitsRequiredPerProduct
+            )
+            modelContext.insert(newLink)
+        }
+
+        for pricing in product.productPricings {
+            let newPricing = ProductPricing(
+                product: copy,
+                platformType: pricing.platformType,
+                platformFee: pricing.platformFee,
+                paymentProcessingFee: pricing.paymentProcessingFee,
+                marketingFee: pricing.marketingFee,
+                percentSalesFromMarketing: pricing.percentSalesFromMarketing,
+                profitMargin: pricing.profitMargin,
+                actualPrice: pricing.actualPrice,
+                actualShippingCharge: pricing.actualShippingCharge
+            )
+            modelContext.insert(newPricing)
         }
     }
 }

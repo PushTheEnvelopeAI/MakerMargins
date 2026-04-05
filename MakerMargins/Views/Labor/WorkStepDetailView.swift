@@ -19,6 +19,7 @@ struct WorkStepDetailView: View {
     @Environment(\.laborRateManager) private var laborRateManager
 
     @State private var showingEditForm = false
+    @State private var showingStopwatch = false
     @State private var showingDeleteConfirmation = false
     @State private var showingRemoveConfirmation = false
 
@@ -96,10 +97,17 @@ struct WorkStepDetailView: View {
             ToolbarItem(placement: .primaryAction) {
                 HStack(spacing: AppTheme.Spacing.md) {
                     Button {
+                        showingStopwatch = true
+                    } label: {
+                        Image(systemName: "timer")
+                    }
+                    .accessibilityLabel("Start timing \(step.title)")
+                    Button {
                         showingEditForm = true
                     } label: {
                         Image(systemName: "pencil")
                     }
+                    .accessibilityLabel("Edit \(step.title)")
                     if product == nil {
                         Menu {
                             Button("Delete Step", role: .destructive) {
@@ -108,12 +116,18 @@ struct WorkStepDetailView: View {
                         } label: {
                             Image(systemName: "ellipsis.circle")
                         }
+                        .accessibilityLabel("More options")
                     }
                 }
             }
         }
         .sheet(isPresented: $showingEditForm) {
             WorkStepFormView(step: step, product: editProduct)
+        }
+        .fullScreenCover(isPresented: $showingStopwatch) {
+            StopwatchView(stepTitle: step.title) { time in
+                step.recordedTime = time
+            }
         }
         .confirmationDialog(
             "Delete \"\(step.title)\"?",
@@ -144,33 +158,8 @@ struct WorkStepDetailView: View {
 
     // MARK: - Sections
 
-    @ViewBuilder
     private var headerSection: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            if let data = step.image, let uiImage = UIImage(data: data) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(maxWidth: .infinity)
-                    .frame(height: AppTheme.Sizing.detailImageHeight)
-                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large))
-                    .padding(.horizontal)
-            } else {
-                PlaceholderImageView(
-                    height: AppTheme.Sizing.detailPlaceholderHeight,
-                    cornerRadius: AppTheme.CornerRadius.large,
-                    iconFont: .largeTitle
-                )
-                .padding(.horizontal)
-            }
-
-            if !step.summary.isEmpty {
-                Text(step.summary)
-                    .font(AppTheme.Typography.bodyText)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal)
-            }
-        }
+        ItemHeaderView(imageData: step.image, summary: step.summary)
     }
 
     private var stepInfoSection: some View {
@@ -182,13 +171,21 @@ struct WorkStepDetailView: View {
                 Divider()
                 DerivedRow(label: "Time per \(step.unitName)", value: CostingEngine.formatDuration(unitTimeSeconds))
                 Divider()
-                HStack {
-                    Text("Hours per \(step.unitName)")
-                        .font(AppTheme.Typography.bodyText)
-                    Spacer()
-                    Text(CostingEngine.formatHours(CostingEngine.unitTimeHours(step: step)))
-                        .font(.title2.weight(.semibold))
-                        .foregroundStyle(AppTheme.Colors.accent)
+                VStack(spacing: AppTheme.Spacing.xxs) {
+                    HStack {
+                        Text("Hours per \(step.unitName)")
+                            .font(AppTheme.Typography.bodyText)
+                        Spacer()
+                        Text(CostingEngine.formatHours(CostingEngine.unitTimeHours(step: step)))
+                            .font(.title2.weight(.semibold))
+                            .foregroundStyle(AppTheme.Colors.accent)
+                    }
+                    HStack {
+                        Spacer()
+                        Text("(\(CostingEngine.formatHoursReadable(CostingEngine.unitTimeHours(step: step))))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 .padding(.vertical, AppTheme.Spacing.sm)
             }
@@ -263,59 +260,19 @@ struct WorkStepDetailView: View {
     }
 
     private var usedBySection: some View {
-        GroupBox("Used By") {
-            if linkedProducts.isEmpty {
-                HStack {
-                    Text("This step is not linked to any products")
-                        .font(AppTheme.Typography.bodyText)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                .padding(.vertical, AppTheme.Spacing.xs)
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(linkedProducts, id: \.persistentModelID) { linkedProduct in
-                        HStack(spacing: AppTheme.Spacing.md) {
-                            ProductThumbnailView(imageData: linkedProduct.image)
-                            Text(linkedProduct.title)
-                                .font(AppTheme.Typography.rowTitle)
-                            Spacer()
-                        }
-                        .padding(.vertical, AppTheme.Spacing.sm)
-
-                        if linkedProduct.persistentModelID != linkedProducts.last?.persistentModelID {
-                            Divider()
-                        }
-                    }
-                }
-            }
-        }
-        .padding(.horizontal)
+        UsedBySection(
+            linkedProducts: linkedProducts,
+            product: product,
+            emptyText: "This step is not linked to any products"
+        )
     }
 
     @ViewBuilder
     private var removeFromProductSection: some View {
         if let product {
-            Button(role: .destructive) {
+            RemoveFromProductButton(productTitle: product.title) {
                 showingRemoveConfirmation = true
-            } label: {
-                HStack {
-                    Spacer()
-                    Label("Remove from \(product.title)", systemImage: "minus.circle")
-                        .font(AppTheme.Typography.bodyText)
-                    Spacer()
-                }
-                .padding(.vertical, AppTheme.Spacing.md)
-                .background(
-                    Color.red.opacity(0.1),
-                    in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
-                        .strokeBorder(Color.red.opacity(0.3), lineWidth: 0.5)
-                )
             }
-            .padding(.horizontal)
         }
     }
 

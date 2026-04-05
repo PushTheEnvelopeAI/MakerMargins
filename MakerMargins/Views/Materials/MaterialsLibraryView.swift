@@ -16,6 +16,8 @@ struct MaterialsLibraryView: View {
 
     @State private var searchText = ""
     @State private var showingCreateForm = false
+    @State private var navigationPath = NavigationPath()
+    @State private var materialCountBeforeSheet = 0
 
     // MARK: - Computed
 
@@ -31,35 +33,46 @@ struct MaterialsLibraryView: View {
     // MARK: - Body
 
     var body: some View {
-        Group {
-            if allMaterials.isEmpty {
-                ContentUnavailableView(
-                    "No Materials",
-                    systemImage: "shippingbox",
-                    description: Text("Tap + to create a material, or add materials from a product's detail view.")
-                )
-            } else if filteredMaterials.isEmpty {
-                ContentUnavailableView.search(text: searchText)
-            } else {
-                materialList
-            }
-        }
-        .navigationTitle("Materials")
-        .searchable(text: $searchText, prompt: "Search materials")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showingCreateForm = true
-                } label: {
-                    Image(systemName: "plus")
+        NavigationStack(path: $navigationPath) {
+            Group {
+                if allMaterials.isEmpty {
+                    ContentUnavailableView(
+                        "No Materials",
+                        systemImage: "shippingbox",
+                        description: Text("Tap + to create a material, or add materials from a product's detail view.")
+                    )
+                } else if filteredMaterials.isEmpty {
+                    ContentUnavailableView.search(text: searchText)
+                } else {
+                    materialList
                 }
             }
-        }
-        .navigationDestination(for: Material.self) { material in
-            MaterialDetailView(material: material)
-        }
-        .sheet(isPresented: $showingCreateForm) {
-            MaterialFormView(material: nil, product: nil)
+            .navigationTitle("Materials")
+            .searchable(text: $searchText, prompt: "Search materials")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        materialCountBeforeSheet = allMaterials.count
+                        showingCreateForm = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
+            .navigationDestination(for: Material.self) { material in
+                MaterialDetailView(material: material)
+            }
+            .navigationDestination(for: Product.self) { product in
+                ProductDetailView(product: product)
+            }
+            .sheet(isPresented: $showingCreateForm, onDismiss: {
+                if allMaterials.count > materialCountBeforeSheet,
+                   let newMaterial = allMaterials.last {
+                    navigationPath.append(newMaterial)
+                }
+            }) {
+                MaterialFormView(material: nil, product: nil)
+            }
         }
     }
 

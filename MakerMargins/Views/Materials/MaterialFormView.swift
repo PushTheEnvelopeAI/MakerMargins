@@ -40,6 +40,7 @@ struct MaterialFormView: View {
         case bulkCost, bulkQuantity, unitName
     }
     @FocusState private var focusedField: FocusableField?
+    @State private var titleHasBeenTouched = false
 
     // MARK: - Init
 
@@ -96,6 +97,10 @@ struct MaterialFormView: View {
                     Button("Save") { save() }
                         .disabled(isSaveDisabled)
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { focusedField = nil }
+                }
             }
             .onChange(of: photoItem) { _, newItem in
                 loadPhoto(from: newItem)
@@ -105,13 +110,39 @@ struct MaterialFormView: View {
                 if let newField { fieldDefault(for: newField).clearOnFocus() }
             }
         }
+        .interactiveDismissDisabled(hasUnsavedChanges)
+    }
+
+    private var hasUnsavedChanges: Bool {
+        if material != nil {
+            return title != (material?.title ?? "")
+                || summary != (material?.summary ?? "")
+                || link != (material?.link ?? "")
+                || bulkCostText != "\(material?.bulkCost ?? 0)"
+                || bulkQuantityText != "\(material?.bulkQuantity ?? 1)"
+                || unitName != (material?.unitName ?? "unit")
+                || imageData != material?.image
+        } else {
+            return !title.trimmingCharacters(in: .whitespaces).isEmpty
+                || !summary.trimmingCharacters(in: .whitespaces).isEmpty
+                || !link.trimmingCharacters(in: .whitespaces).isEmpty
+                || imageData != nil
+        }
     }
 
     // MARK: - Sections
 
     private var detailsSection: some View {
         Section("Details") {
-            TextField("Title", text: $title)
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                TextField("Title", text: $title)
+                    .onTapGesture { titleHasBeenTouched = true }
+                if titleHasBeenTouched && title.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Text("Title is required")
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.Colors.destructive)
+                }
+            }
             TextField("Description", text: $summary, axis: .vertical)
                 .lineLimit(3...6)
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
@@ -133,15 +164,8 @@ struct MaterialFormView: View {
                 HStack {
                     Text("Bulk Cost")
                     Spacer()
-                    HStack(spacing: AppTheme.Spacing.xxs) {
-                        Text(currencyFormatter.symbol)
-                            .foregroundStyle(.secondary)
-                        TextField("0", text: $bulkCostText)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: AppTheme.Sizing.inputMedium)
-                            .focused($focusedField, equals: .bulkCost)
-                    }
+                    CurrencyInputField(symbol: currencyFormatter.symbol, text: $bulkCostText)
+                        .focused($focusedField, equals: .bulkCost)
                 }
                 Text("Total cost of the bulk purchase")
                     .font(AppTheme.Typography.note)

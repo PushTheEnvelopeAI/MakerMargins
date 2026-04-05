@@ -76,6 +76,7 @@ struct ProductListView: View {
                 } label: {
                     Image(systemName: isGridMode ? "list.bullet" : "square.grid.2x2")
                 }
+                .accessibilityLabel(isGridMode ? "Switch to list view" : "Switch to grid view")
             }
         }
         .sheet(isPresented: $showingCreateForm, onDismiss: {
@@ -150,7 +151,8 @@ struct ProductListView: View {
                     }
                     .contextMenu {
                         Button {
-                            duplicateProduct(product)
+                            let copy = duplicateProduct(product)
+                            navigationPath.append(copy)
                         } label: {
                             Label("Duplicate", systemImage: "doc.on.doc")
                         }
@@ -206,7 +208,8 @@ struct ProductListView: View {
                         .buttonStyle(.plain)
                         .contextMenu {
                             Button {
-                                duplicateProduct(product)
+                                let copy = duplicateProduct(product)
+                                navigationPath.append(copy)
                             } label: {
                                 Label("Duplicate", systemImage: "doc.on.doc")
                             }
@@ -251,14 +254,15 @@ struct ProductListView: View {
             Text(label)
                 .font(isSelected ? AppTheme.Typography.sectionHeader : AppTheme.Typography.bodyText)
                 .padding(.horizontal, AppTheme.Spacing.lg)
-                .padding(.vertical, AppTheme.Spacing.sm)
+                .padding(.vertical, AppTheme.Spacing.md)
                 .background(
                     isSelected ? AppTheme.Colors.accent : AppTheme.Colors.chipBackground,
                     in: Capsule()
                 )
-                .foregroundStyle(isSelected ? .white : .primary)
+                .foregroundStyle(isSelected ? AppTheme.Colors.chipSelectedForeground : .primary)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(label) filter")
     }
 
     // MARK: - Empty state
@@ -266,11 +270,16 @@ struct ProductListView: View {
     @ViewBuilder
     private var emptyState: some View {
         if products.isEmpty {
-            ContentUnavailableView(
-                "No Products Yet",
-                systemImage: "square.grid.2x2",
-                description: Text("Tap + to create a blank product or start from a template.")
-            )
+            ContentUnavailableView {
+                Label("No Products Yet", systemImage: "square.grid.2x2")
+            } description: {
+                Text("Track costs and calculate pricing for your products.")
+            } actions: {
+                Button("Start from Template") { showingTemplatePicker = true }
+                    .buttonStyle(.borderedProminent)
+                Button("Create Blank Product") { showingCreateForm = true }
+                    .buttonStyle(.bordered)
+            }
         } else {
             ContentUnavailableView.search(text: searchText)
         }
@@ -299,7 +308,7 @@ struct ProductListView: View {
 
     // MARK: - Actions
 
-    private func duplicateProduct(_ source: Product) {
+    @discardableResult private func duplicateProduct(_ source: Product) -> Product {
         let copy = Product(
             title: "\(source.title) (Copy)",
             sku: source.sku,
@@ -356,6 +365,8 @@ struct ProductListView: View {
             )
             modelContext.insert(newPricing)
         }
+
+        return copy
     }
 }
 

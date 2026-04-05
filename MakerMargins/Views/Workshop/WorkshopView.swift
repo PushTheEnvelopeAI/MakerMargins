@@ -16,6 +16,8 @@ struct WorkshopView: View {
 
     @State private var searchText = ""
     @State private var showingCreateForm = false
+    @State private var navigationPath = NavigationPath()
+    @State private var stepCountBeforeSheet = 0
 
     // MARK: - Computed
 
@@ -31,35 +33,46 @@ struct WorkshopView: View {
     // MARK: - Body
 
     var body: some View {
-        Group {
-            if allSteps.isEmpty {
-                ContentUnavailableView(
-                    "No Work Steps",
-                    systemImage: "wrench.and.screwdriver",
-                    description: Text("Tap + to create a step, or add steps from a product's detail view.")
-                )
-            } else if filteredSteps.isEmpty {
-                ContentUnavailableView.search(text: searchText)
-            } else {
-                stepList
-            }
-        }
-        .navigationTitle("Labor")
-        .searchable(text: $searchText, prompt: "Search steps")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showingCreateForm = true
-                } label: {
-                    Image(systemName: "plus")
+        NavigationStack(path: $navigationPath) {
+            Group {
+                if allSteps.isEmpty {
+                    ContentUnavailableView(
+                        "No Work Steps",
+                        systemImage: "wrench.and.screwdriver",
+                        description: Text("Tap + to create a step, or add steps from a product's detail view.")
+                    )
+                } else if filteredSteps.isEmpty {
+                    ContentUnavailableView.search(text: searchText)
+                } else {
+                    stepList
                 }
             }
-        }
-        .navigationDestination(for: WorkStep.self) { step in
-            WorkStepDetailView(step: step)
-        }
-        .sheet(isPresented: $showingCreateForm) {
-            WorkStepFormView(step: nil, product: nil)
+            .navigationTitle("Labor")
+            .searchable(text: $searchText, prompt: "Search steps")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        stepCountBeforeSheet = allSteps.count
+                        showingCreateForm = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
+            .navigationDestination(for: WorkStep.self) { step in
+                WorkStepDetailView(step: step)
+            }
+            .navigationDestination(for: Product.self) { product in
+                ProductDetailView(product: product)
+            }
+            .sheet(isPresented: $showingCreateForm, onDismiss: {
+                if allSteps.count > stepCountBeforeSheet,
+                   let newStep = allSteps.last {
+                    navigationPath.append(newStep)
+                }
+            }) {
+                WorkStepFormView(step: nil, product: nil)
+            }
         }
     }
 

@@ -36,6 +36,9 @@ struct ProductFormView: View {
     // Inline category creation
     @State private var isCreatingCategory = false
     @State private var newCategoryName: String = ""
+    @State private var categoryToDelete: Category?
+    @FocusState private var isFieldFocused: Bool
+    @State private var titleHasBeenTouched = false
 
     // MARK: - Init
 
@@ -74,10 +77,31 @@ struct ProductFormView: View {
                     Button("Save") { save() }
                         .disabled(isSaveDisabled)
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { isFieldFocused = false }
+                }
             }
             .onChange(of: photoItem) { _, newItem in
                 loadPhoto(from: newItem)
             }
+        }
+        .interactiveDismissDisabled(hasUnsavedChanges)
+    }
+
+    private var hasUnsavedChanges: Bool {
+        if product != nil {
+            return title != (product?.title ?? "")
+                || sku != (product?.sku ?? "")
+                || summary != (product?.summary ?? "")
+                || selectedCategory?.persistentModelID != product?.category?.persistentModelID
+                || imageData != product?.image
+        } else {
+            return !title.trimmingCharacters(in: .whitespaces).isEmpty
+                || !sku.trimmingCharacters(in: .whitespaces).isEmpty
+                || !summary.trimmingCharacters(in: .whitespaces).isEmpty
+                || selectedCategory != nil
+                || imageData != nil
         }
     }
 
@@ -85,7 +109,18 @@ struct ProductFormView: View {
 
     private var basicInfoSection: some View {
         Section {
-            TextField("Title", text: $title)
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                TextField("Title", text: $title)
+                    .focused($isFieldFocused)
+                    .onChange(of: isFieldFocused) { _, focused in
+                        if focused { titleHasBeenTouched = true }
+                    }
+                if titleHasBeenTouched && title.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Text("Title is required")
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.Colors.destructive)
+                }
+            }
             TextField("SKU", text: $sku)
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                 TextField("Description", text: $summary, axis: .vertical)
@@ -133,10 +168,7 @@ struct ProductFormView: View {
                 .buttonStyle(.plain)
                 .swipeActions(edge: .trailing) {
                     Button(role: .destructive) {
-                        if selectedCategory?.persistentModelID == category.persistentModelID {
-                            selectedCategory = nil
-                        }
-                        modelContext.delete(category)
+                        categoryToDelete = category
                     } label: {
                         Label("Delete", systemImage: "trash")
                     }
@@ -167,6 +199,24 @@ struct ProductFormView: View {
             Text("Category")
         } footer: {
             Text("Group products by category for easy filtering")
+        }
+        .confirmationDialog(
+            "Delete Category",
+            isPresented: Binding(
+                get: { categoryToDelete != nil },
+                set: { if !$0 { categoryToDelete = nil } }
+            ),
+            presenting: categoryToDelete
+        ) { category in
+            Button("Delete", role: .destructive) {
+                if selectedCategory?.persistentModelID == category.persistentModelID {
+                    selectedCategory = nil
+                }
+                modelContext.delete(category)
+                categoryToDelete = nil
+            }
+        } message: { category in
+            Text("Remove \"\(category.name)\"? Products in this category will become uncategorized but won't be deleted.")
         }
     }
 

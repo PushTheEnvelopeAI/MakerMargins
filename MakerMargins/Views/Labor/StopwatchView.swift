@@ -13,10 +13,12 @@ struct StopwatchView: View {
     let onSave: (TimeInterval) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var timerState: TimerState = .idle
     @State private var startDate: Date? = nil
     @State private var accumulatedTime: TimeInterval = 0
+    @State private var showingDiscardConfirmation = false
 
     private enum TimerState {
         case idle, running, paused
@@ -41,6 +43,14 @@ struct StopwatchView: View {
                 .padding(.bottom, AppTheme.Spacing.xl * 2)
         }
         .appBackground()
+        .confirmationDialog("Stop Timer?", isPresented: $showingDiscardConfirmation) {
+            Button("Stop and Discard", role: .destructive) {
+                dismiss()
+            }
+            Button("Keep Timing", role: .cancel) { }
+        } message: {
+            Text("The timer is still running. Your recorded time will not be saved.")
+        }
     }
 
     // MARK: - Toolbar
@@ -48,16 +58,19 @@ struct StopwatchView: View {
     private var toolbar: some View {
         HStack {
             Spacer()
-            if timerState != .running {
-                Button {
+            Button {
+                if timerState == .running {
+                    showingDiscardConfirmation = true
+                } else {
                     dismiss()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
                 }
-                .padding()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.secondary)
             }
+            .padding()
+            .accessibilityLabel("Close stopwatch")
         }
     }
 
@@ -68,13 +81,15 @@ struct StopwatchView: View {
         if timerState == .running {
             TimelineView(.periodic(from: .now, by: 0.1)) { context in
                 let live = accumulatedTime + (startDate.map { context.date.timeIntervalSince($0) } ?? 0)
-                Text(formatStopwatch(live))
+                Text(CostingEngine.formatStopwatchTime(live))
                     .font(AppTheme.Typography.timerDisplay)
-                    .contentTransition(.numericText())
+                    .contentTransition(reduceMotion ? .identity : .numericText())
+                    .accessibilityLabel(accessibleTime(live))
             }
         } else {
-            Text(formatStopwatch(accumulatedTime))
+            Text(CostingEngine.formatStopwatchTime(accumulatedTime))
                 .font(AppTheme.Typography.timerDisplay)
+                .accessibilityLabel(accessibleTime(accumulatedTime))
         }
     }
 
@@ -142,17 +157,18 @@ struct StopwatchView: View {
 
     // MARK: - Time Formatting
 
-    private func formatStopwatch(_ seconds: TimeInterval) -> String {
-        let total = max(0, seconds)
-        let h = Int(total) / 3600
-        let m = (Int(total) % 3600) / 60
-        let s = Int(total) % 60
-        let tenths = Int((total - Double(Int(total))) * 10)
-
+    private func accessibleTime(_ seconds: TimeInterval) -> String {
+        let total = max(0, Int(seconds))
+        let h = total / 3600
+        let m = (total % 3600) / 60
+        let s = total % 60
         if h > 0 {
-            return String(format: "%d:%02d:%02d.%d", h, m, s, tenths)
+            return "\(h) hour\(h == 1 ? "" : "s"), \(m) minute\(m == 1 ? "" : "s"), \(s) second\(s == 1 ? "" : "s")"
+        } else if m > 0 {
+            return "\(m) minute\(m == 1 ? "" : "s"), \(s) second\(s == 1 ? "" : "s")"
+        } else {
+            return "\(s) second\(s == 1 ? "" : "s")"
         }
-        return String(format: "%02d:%02d.%d", m, s, tenths)
     }
 
     // MARK: - Actions
