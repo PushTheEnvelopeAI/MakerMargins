@@ -43,5 +43,6 @@ struct ProductCostSummaryCard: View {
                 .foregroundStyle(bold ? AppTheme.Colors.accent : .secondary)
         }
         .padding(.vertical, AppTheme.Spacing.sm)
+        .accessibilityElement(children: .combine)
     }
 }

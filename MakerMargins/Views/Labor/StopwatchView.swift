@@ -13,6 +13,7 @@ struct StopwatchView: View {
     let onSave: (TimeInterval) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var timerState: TimerState = .idle
     @State private var startDate: Date? = nil
@@ -70,11 +71,13 @@ struct StopwatchView: View {
                 let live = accumulatedTime + (startDate.map { context.date.timeIntervalSince($0) } ?? 0)
                 Text(formatStopwatch(live))
                     .font(AppTheme.Typography.timerDisplay)
-                    .contentTransition(.numericText())
+                    .contentTransition(reduceMotion ? .identity : .numericText())
+                    .accessibilityLabel(accessibleTime(live))
             }
         } else {
             Text(formatStopwatch(accumulatedTime))
                 .font(AppTheme.Typography.timerDisplay)
+                .accessibilityLabel(accessibleTime(accumulatedTime))
         }
     }
 
@@ -141,6 +144,20 @@ struct StopwatchView: View {
     }
 
     // MARK: - Time Formatting
+
+    private func accessibleTime(_ seconds: TimeInterval) -> String {
+        let total = max(0, Int(seconds))
+        let h = total / 3600
+        let m = (total % 3600) / 60
+        let s = total % 60
+        if h > 0 {
+            return "\(h) hour\(h == 1 ? "" : "s"), \(m) minute\(m == 1 ? "" : "s"), \(s) second\(s == 1 ? "" : "s")"
+        } else if m > 0 {
+            return "\(m) minute\(m == 1 ? "" : "s"), \(s) second\(s == 1 ? "" : "s")"
+        } else {
+            return "\(s) second\(s == 1 ? "" : "s")"
+        }
+    }
 
     private func formatStopwatch(_ seconds: TimeInterval) -> String {
         let total = max(0, seconds)

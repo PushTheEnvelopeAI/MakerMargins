@@ -51,6 +51,7 @@ struct TemplatePickerView: View {
                     TemplateCardView(template: template)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("\(template.title): \(template.summary)")
             }
         }
         .padding()

@@ -157,7 +157,7 @@ enum AppTheme {
         static let heroPrice:     Font = .title2.weight(.bold)
         static let badge:         Font = .caption.weight(.medium)
         static let note:          Font = .caption2
-        static let timerDisplay:  Font = .system(size: 56, weight: .light, design: .monospaced)
+        static let timerDisplay:  Font = .system(.largeTitle, design: .monospaced).weight(.light)
     }
 
     // MARK: - Sizing

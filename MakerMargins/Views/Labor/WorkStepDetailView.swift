@@ -100,6 +100,7 @@ struct WorkStepDetailView: View {
                     } label: {
                         Image(systemName: "pencil")
                     }
+                    .accessibilityLabel("Edit \(step.title)")
                     if product == nil {
                         Menu {
                             Button("Delete Step", role: .destructive) {
@@ -108,6 +109,7 @@ struct WorkStepDetailView: View {
                         } label: {
                             Image(systemName: "ellipsis.circle")
                         }
+                        .accessibilityLabel("More options")
                     }
                 }
             }

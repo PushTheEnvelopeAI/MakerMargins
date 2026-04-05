@@ -19,6 +19,7 @@ struct WorkStepListView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.currencyFormatter) private var formatter
     @Environment(\.laborRateManager) private var laborRateManager
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var showingNewStepForm = false
     @State private var showingExistingStepPicker = false
@@ -120,7 +121,7 @@ struct WorkStepListView: View {
             Spacer()
             if !sortedLinks.isEmpty {
                 Button {
-                    withAnimation { isReordering.toggle() }
+                    if reduceMotion { isReordering.toggle() } else { withAnimation { isReordering.toggle() } }
                 } label: {
                     Text(isReordering ? "Done" : "Reorder")
                         .font(.caption.weight(.medium))
@@ -144,7 +145,9 @@ struct WorkStepListView: View {
                     Image(systemName: "plus.circle")
                         .font(.title3)
                         .foregroundStyle(.tint)
+                        .frame(minWidth: 44, minHeight: 44)
                 }
+                .accessibilityLabel("Add work step")
             }
         }
     }
@@ -215,6 +218,7 @@ struct WorkStepListView: View {
             Image(systemName: "chevron.right")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
         }
         .padding(.vertical, AppTheme.Spacing.sm)
         }
@@ -239,7 +243,9 @@ struct WorkStepListView: View {
                     .font(.caption.weight(.semibold))
             }
             .disabled(index == 0)
+            .frame(minWidth: 44, minHeight: 44)
             .buttonStyle(.bordered)
+            .accessibilityLabel("Move \(step.title) up")
 
             Button {
                 moveStep(at: index, direction: 1)
@@ -248,7 +254,9 @@ struct WorkStepListView: View {
                     .font(.caption.weight(.semibold))
             }
             .disabled(index == sortedLinks.count - 1)
+            .frame(minWidth: 44, minHeight: 44)
             .buttonStyle(.bordered)
+            .accessibilityLabel("Move \(step.title) down")
         }
         .padding(.vertical, AppTheme.Spacing.sm)
         }

@@ -76,6 +76,7 @@ struct ProductListView: View {
                 } label: {
                     Image(systemName: isGridMode ? "list.bullet" : "square.grid.2x2")
                 }
+                .accessibilityLabel(isGridMode ? "Switch to list view" : "Switch to grid view")
             }
         }
         .sheet(isPresented: $showingCreateForm, onDismiss: {
@@ -251,7 +252,7 @@ struct ProductListView: View {
             Text(label)
                 .font(isSelected ? AppTheme.Typography.sectionHeader : AppTheme.Typography.bodyText)
                 .padding(.horizontal, AppTheme.Spacing.lg)
-                .padding(.vertical, AppTheme.Spacing.sm)
+                .padding(.vertical, AppTheme.Spacing.md)
                 .background(
                     isSelected ? AppTheme.Colors.accent : AppTheme.Colors.chipBackground,
                     in: Capsule()
@@ -259,6 +260,7 @@ struct ProductListView: View {
                 .foregroundStyle(isSelected ? AppTheme.Colors.chipSelectedForeground : .primary)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(label) filter")
     }
 
     // MARK: - Empty state

@@ -332,7 +332,7 @@ struct PricingCalculatorView: View {
                     Image(systemName: "lock.fill")
                         .font(.caption2)
                         .foregroundStyle(.quaternary)
-                        .accessibilityLabel("Locked by platform")
+                        .accessibilityLabel("\(label), \(display), set by platform, not editable")
                 }
             }
             .padding(.vertical, AppTheme.Spacing.xs)
@@ -379,6 +379,7 @@ struct PricingCalculatorView: View {
                     .foregroundStyle(.red)
             }
         }
+        .accessibilityLabel(computedTargetPrice != nil ? "Target Price: \(formatter.format(computedTargetPrice!))" : "Target Price: fees too high")
         .heroCardStyle()
     }
 
@@ -606,6 +607,7 @@ struct PricingCalculatorView: View {
                     }
                 }
             }
+            .accessibilityLabel("Your Earnings per Sale: \(formatter.format(earnings))")
             .heroCardStyle()
 
             // Shipping absorbed callout

@@ -129,7 +129,9 @@ struct BatchForecastView: View {
                             .foregroundStyle(AppTheme.Colors.accent)
                     }
                     .disabled(batchSize <= 1)
+                    .frame(minWidth: 44, minHeight: 44)
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Decrease batch size")
 
                     TextField("", text: $batchSizeText)
                         .keyboardType(.numberPad)
@@ -146,7 +148,9 @@ struct BatchForecastView: View {
                             .font(.title2)
                             .foregroundStyle(AppTheme.Colors.accent)
                     }
+                    .frame(minWidth: 44, minHeight: 44)
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Increase batch size")
                 }
                 .frame(maxWidth: .infinity)
 
@@ -158,6 +162,7 @@ struct BatchForecastView: View {
                         }
                         .buttonStyle(.bordered)
                         .tint(batchSize == size ? AppTheme.Colors.accent : .secondary)
+                        .accessibilityLabel("Set batch size to \(size)")
                     }
                 }
             }
@@ -213,6 +218,7 @@ struct BatchForecastView: View {
                         .foregroundStyle(AppTheme.Colors.accent)
                         .frame(maxWidth: .infinity, alignment: .center)
                 }
+                .accessibilityLabel("Total Labor Time: \(CostingEngine.formatHoursReadable(totalBatchLaborHours))")
                 .heroCardStyle()
             }
         }
@@ -449,6 +455,7 @@ struct BatchForecastView: View {
                             .foregroundStyle(.tertiary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
+                    .accessibilityLabel("Batch Earnings: \(formatter.format(profit + batchLaborCostBuffered))")
                     .heroCardStyle()
                 }
             }

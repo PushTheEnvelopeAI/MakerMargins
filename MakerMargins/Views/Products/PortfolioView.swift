@@ -285,7 +285,7 @@ struct PortfolioView: View {
             }
             .frame(height: 12)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Cost: \(formatter.format(snap.productionCost))")
+            .accessibilityLabel("Cost breakdown: Labor \(formatter.format(snap.laborCostBuffered)), Materials \(formatter.format(snap.materialCostBuffered)), Shipping \(formatter.format(snap.shippingCost))")
 
             // Text breakdown
             HStack(spacing: AppTheme.Spacing.sm) {
@@ -313,6 +313,7 @@ struct PortfolioView: View {
         .foregroundStyle(.tertiary)
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.top, AppTheme.Spacing.xs)
+        .accessibilityHidden(true)
     }
 
     private func legendDot(color: Color, label: String) -> some View {
@@ -357,6 +358,7 @@ struct PortfolioView: View {
                     .font(AppTheme.Typography.heroPrice)
                     .foregroundStyle(avg.avgEarnings >= 0 ? AppTheme.Colors.accent : AppTheme.Colors.destructive)
             }
+            .accessibilityLabel("Average Earnings per Sale: \(formatter.format(avg.avgEarnings))")
 
             if let margin = avg.avgProfitMargin {
                 DetailRow(label: "Avg. Profit Margin", value: PercentageFormat.toDisplay(margin) + "%")

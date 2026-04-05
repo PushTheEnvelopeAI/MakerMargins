@@ -81,6 +81,7 @@ struct MaterialDetailView: View {
                     } label: {
                         Image(systemName: "pencil")
                     }
+                    .accessibilityLabel("Edit \(material.title)")
                     if product == nil {
                         Menu {
                             Button("Delete Material", role: .destructive) {
@@ -89,6 +90,7 @@ struct MaterialDetailView: View {
                         } label: {
                             Image(systemName: "ellipsis.circle")
                         }
+                        .accessibilityLabel("More options")
                     }
                 }
             }

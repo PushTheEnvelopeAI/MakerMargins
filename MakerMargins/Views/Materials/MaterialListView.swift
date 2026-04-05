@@ -18,6 +18,7 @@ struct MaterialListView: View {
     @Query(sort: \Material.title) private var allMaterials: [Material]
     @Environment(\.modelContext) private var modelContext
     @Environment(\.currencyFormatter) private var formatter
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var showingNewMaterialForm = false
     @State private var showingExistingMaterialPicker = false
@@ -119,7 +120,7 @@ struct MaterialListView: View {
             Spacer()
             if !sortedLinks.isEmpty {
                 Button {
-                    withAnimation { isReordering.toggle() }
+                    if reduceMotion { isReordering.toggle() } else { withAnimation { isReordering.toggle() } }
                 } label: {
                     Text(isReordering ? "Done" : "Reorder")
                         .font(.caption.weight(.medium))
@@ -143,7 +144,9 @@ struct MaterialListView: View {
                     Image(systemName: "plus.circle")
                         .font(.title3)
                         .foregroundStyle(.tint)
+                        .frame(minWidth: 44, minHeight: 44)
                 }
+                .accessibilityLabel("Add material")
             }
         }
     }
@@ -214,6 +217,7 @@ struct MaterialListView: View {
             Image(systemName: "chevron.right")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
         }
         .padding(.vertical, AppTheme.Spacing.sm)
         }
@@ -238,7 +242,9 @@ struct MaterialListView: View {
                     .font(.caption.weight(.semibold))
             }
             .disabled(index == 0)
+            .frame(minWidth: 44, minHeight: 44)
             .buttonStyle(.bordered)
+            .accessibilityLabel("Move \(material.title) up")
 
             Button {
                 moveMaterial(at: index, direction: 1)
@@ -247,7 +253,9 @@ struct MaterialListView: View {
                     .font(.caption.weight(.semibold))
             }
             .disabled(index == sortedLinks.count - 1)
+            .frame(minWidth: 44, minHeight: 44)
             .buttonStyle(.bordered)
+            .accessibilityLabel("Move \(material.title) down")
         }
         .padding(.vertical, AppTheme.Spacing.sm)
         }

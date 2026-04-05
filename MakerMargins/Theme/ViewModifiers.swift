@@ -57,6 +57,7 @@ struct WorkStepThumbnailView: View {
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
+                .accessibilityHidden(true)
         }
     }
 }
@@ -85,6 +86,7 @@ struct MaterialThumbnailView: View {
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
+                .accessibilityHidden(true)
         }
     }
 }
@@ -113,6 +115,7 @@ struct ProductThumbnailView: View {
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
+                .accessibilityHidden(true)
         }
     }
 }
@@ -226,6 +229,7 @@ extension View {
                 AppTheme.Colors.accentSubtle,
                 in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small)
             )
+            .accessibilityElement(children: .combine)
     }
 }
 
