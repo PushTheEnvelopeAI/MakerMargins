@@ -37,7 +37,10 @@ struct ProductFormView: View {
     @State private var isCreatingCategory = false
     @State private var newCategoryName: String = ""
     @State private var categoryToDelete: Category?
-    @FocusState private var isFieldFocused: Bool
+    enum FocusableField: Hashable {
+        case title, sku, summary
+    }
+    @FocusState private var focusedField: FocusableField?
     @State private var titleHasBeenTouched = false
 
     // MARK: - Init
@@ -80,7 +83,7 @@ struct ProductFormView: View {
                 }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
-                    Button("Done") { isFieldFocused = false }
+                    Button("Done") { focusedField = nil }
                 }
             }
             .onChange(of: photoItem) { _, newItem in
@@ -112,9 +115,9 @@ struct ProductFormView: View {
         Section {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                 TextField("Title", text: $title)
-                    .focused($isFieldFocused)
-                    .onChange(of: isFieldFocused) { _, focused in
-                        if focused { titleHasBeenTouched = true }
+                    .focused($focusedField, equals: .title)
+                    .onChange(of: focusedField) { _, newField in
+                        if newField == .title { titleHasBeenTouched = true }
                     }
                 if titleHasBeenTouched && title.trimmingCharacters(in: .whitespaces).isEmpty {
                     Text("Title is required")
@@ -123,8 +126,10 @@ struct ProductFormView: View {
                 }
             }
             TextField("SKU", text: $sku)
+                .focused($focusedField, equals: .sku)
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                 TextField("Description", text: $summary, axis: .vertical)
+                    .focused($focusedField, equals: .summary)
                     .lineLimit(3...6)
                 Text("A short summary to help identify this product")
                     .font(AppTheme.Typography.note)

@@ -37,6 +37,7 @@ struct MaterialFormView: View {
 
     // Focus tracking for select-on-tap behavior
     enum FocusableField: Hashable {
+        case title, summary, link
         case bulkCost, bulkQuantity, unitName
     }
     @FocusState private var focusedField: FocusableField?
@@ -137,6 +138,7 @@ struct MaterialFormView: View {
         Section("Details") {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                 TextField("Title", text: $title)
+                    .focused($focusedField, equals: .title)
                     .onTapGesture { titleHasBeenTouched = true }
                 if titleHasBeenTouched && title.trimmingCharacters(in: .whitespaces).isEmpty {
                     Text("Title is required")
@@ -145,9 +147,11 @@ struct MaterialFormView: View {
                 }
             }
             TextField("Description", text: $summary, axis: .vertical)
+                .focused($focusedField, equals: .summary)
                 .lineLimit(3...6)
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
                 TextField("Supplier Link", text: $link)
+                    .focused($focusedField, equals: .link)
                     .keyboardType(.URL)
                     .textContentType(.URL)
                     .autocorrectionDisabled()
