@@ -315,7 +315,7 @@ struct RefactorTests {
         let container = try makeContainer()
         let ctx = container.mainContext
 
-        let product = Product(title: "Test", laborBuffer: Decimal(string: "-0.50")!, materialBuffer: 0, shippingCost: 0)
+        let product = Product(title: "Test", shippingCost: 0, materialBuffer: 0, laborBuffer: Decimal(string: "-0.50")!)
         ctx.insert(product)
 
         let step = WorkStep(title: "Step", recordedTime: 3600, batchUnitsCompleted: 1)
@@ -455,7 +455,7 @@ struct RefactorTests {
         let container = try makeContainer()
         let ctx = container.mainContext
 
-        let product = Product(title: "Test", shippingCost: 10, laborBuffer: 0, materialBuffer: 0)
+        let product = Product(title: "Test", shippingCost: 10, materialBuffer: 0, laborBuffer: 0)
         ctx.insert(product)
         let step = WorkStep(title: "Step", recordedTime: 3600, batchUnitsCompleted: 1)
         ctx.insert(step)
