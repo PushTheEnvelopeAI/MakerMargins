@@ -877,6 +877,72 @@ SettingsView                              [ROOT — currency, appearance, labor 
 
 ---
 
+## Future Features (Ranked by Customer Value)
+
+### Tier 1 — Transformative (fills critical gaps)
+
+| Priority | Feature | Status |
+|----------|---------|--------|
+| 1 | Sales & Order Tracking | Planned |
+| 2 | Overhead & Fixed Cost Allocation | Planned |
+| 3 | Reports & Data Export | Planned |
+| 4 | Inventory & Stock Management | Planned |
+
+**1. Sales & Order Tracking**
+Log individual sales (product, platform, date, price, quantity). Dashboard with revenue over time, units sold, actual vs projected profit. Per-product sales history, sell-through rate, seasonal trends. Turns the app from a pricing calculator into a business operating system. Enables trend analysis, tax prep, and validates all pricing work. Every other feature becomes more valuable when grounded in real sales data.
+
+**2. Overhead & Fixed Cost Allocation**
+Track monthly fixed expenses (workshop rent, insurance, tool depreciation, subscriptions, listing fees, craft fair booth fees). Allocate overhead per-unit based on total monthly output. Show "true total cost" alongside direct production cost. Adjust target retail price to cover overhead. This is the #1 pricing blind spot that sinks small makers — they price on direct costs only and can't figure out why they're losing money.
+
+**3. Reports & Data Export**
+PDF product cost sheets (professional format for wholesale buyer conversations). CSV export of materials, costs, and sales for accountants. Monthly/quarterly P&L summaries. Tax-ready expense categorization (materials, shipping, platform fees). Unlocks value outside the app — tax season, wholesale negotiations, accountant handoff.
+
+**4. Inventory & Stock Management**
+Track current stock levels per material. Auto-deduct on production runs or sales. Low stock alerts. Shopping list adjusted for on-hand inventory ("Need 96 oz, have 64 oz, buy 1 × 32 oz"). Purchase history with price-per-unit trending. Closes the loop between batch forecast shopping lists and physical reality.
+
+### Tier 2 — High Value Enhancements
+
+| Priority | Feature | Status |
+|----------|---------|--------|
+| 5 | Custom Platform Profiles | Planned |
+| 6 | Revenue Goals & Projections | Planned |
+| 7 | Wholesale Pricing Tier | Planned |
+| 8 | Production Time Analytics | Planned |
+
+**5. Custom Platform Profiles**
+User-created platform profiles with custom name, fee structure, and icon. Presets for common platforms (Faire: 15%, Square POS: 2.6% + $0.10). Removes artificial 4-platform limitation — makers sell through Faire, local shops, Facebook Marketplace, art galleries, farmers markets with card readers.
+
+**6. Revenue Goals & Projections**
+Set monthly/quarterly income targets. Reverse-calculate: "Sell 47 candles + 12 cutting boards to hit $4,000." Progress tracking (with sales data from feature #1). Product mix optimization suggestions. Connects abstract pricing math to personal financial goals.
+
+**7. Wholesale Pricing Tier**
+"Minimum Wholesale Price" line in the pricing calculator. Wholesale margin analysis: "At 50% off retail, your hourly rate drops to $8/hr." Volume discount modeling for bulk material pricing. Clear go/no-go signal for wholesale inquiries that nearly every successful maker eventually receives.
+
+**8. Production Time Analytics**
+Log multiple stopwatch sessions per step (history, not just latest). Rolling average time per unit that improves accuracy over time. Trend visualization: "Your sanding time has decreased 22% over 15 sessions." More accurate time data flows into better pricing, forecasting, and portfolio comparisons.
+
+### Tier 3 — Polish & Differentiation
+
+| Priority | Feature | Status |
+|----------|---------|--------|
+| 9 | Multi-Device Sync (CloudKit) | Planned |
+| 10 | Craft Fair / POS Mode | Planned |
+| 11 | Widgets & Quick Actions | Planned |
+| 12 | Production Scheduling | Planned |
+| 13 | Material Price Alerts | Planned |
+
+**9. Multi-Device Sync (CloudKit)** — Time steps on iPhone in the workshop, analyze pricing on iPad at the desk.
+
+**10. Craft Fair / POS Mode** — Simplified sale logging for in-person events. Product lookup, quantity, payment method. Revenue per event.
+
+**11. Widgets & Quick Actions** — Home screen widget (monthly revenue, best seller, hourly rate). Lock screen stopwatch shortcut.
+
+**12. Production Scheduling** — "50 candles by Dec 1 = 25 hours, start by Nov 22." Calendar integration. Useful after sales tracking proves demand patterns.
+
+**13. Material Price Alerts** — Track supplier price changes. Recalculate affected products on cost increases. Early warning on margin erosion.
+
+---
+
 ## Build & Development Workflow
 
 **Development machine:** Windows 11. No local Mac. Xcode is not available locally.

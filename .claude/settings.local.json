@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \"deleteMaterial\\\\|deleteProductPreservesMaterial\\\\|deleteProductCascade\" \"c:\\\\Users\\\\aj100\\\\OneDrive\\\\Documents\\\\MakerMargins\\\\MakerMarginsTests\"/*.swift)"
+    ]
+  }
+}
