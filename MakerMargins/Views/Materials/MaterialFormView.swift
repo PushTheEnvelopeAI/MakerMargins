@@ -88,7 +88,6 @@ struct MaterialFormView: View {
                 purchaseSection
                 previewSection
             }
-            .scrollDismissesKeyboard(.interactively)
             .navigationTitle(material == nil ? "New Material" : "Edit Material")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -153,7 +152,6 @@ struct MaterialFormView: View {
                 TextField("Supplier Link", text: $link)
                     .focused($focusedField, equals: .link)
                     .keyboardType(.URL)
-                    .textContentType(.URL)
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
                 Text("Optional URL to the supplier or product page")
