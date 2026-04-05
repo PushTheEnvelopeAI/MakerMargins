@@ -45,7 +45,7 @@ struct PlatformPricingDefaultFormView: View {
                 )
 
                 PercentageInputField(
-                    label: "Payment Processing",
+                    label: "Transaction Fees",
                     text: $paymentProcessingFeeText,
                     field: FocusableField.paymentProcessingFee,
                     focusBinding: $focusedField,

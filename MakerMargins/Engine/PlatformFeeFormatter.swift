@@ -4,7 +4,7 @@
 // Display formatting for platform-specific locked fees.
 // Moved from PlatformFeeProfile model to keep models as pure data.
 
-import Foundation
+import SwiftUI
 
 extension PlatformType {
 
