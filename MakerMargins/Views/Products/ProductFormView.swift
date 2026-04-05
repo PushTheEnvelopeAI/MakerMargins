@@ -70,7 +70,6 @@ struct ProductFormView: View {
                 basicInfoSection
                 categorySection
             }
-            .scrollDismissesKeyboard(.interactively)
             .navigationTitle(product == nil ? "New Product" : "Edit Product")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

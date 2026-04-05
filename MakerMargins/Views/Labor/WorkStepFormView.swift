@@ -99,7 +99,6 @@ struct WorkStepFormView: View {
                 timeAndBatchSection
                 previewSection
             }
-            .scrollDismissesKeyboard(.interactively)
             .navigationTitle(step == nil ? "New Work Step" : "Edit Work Step")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
