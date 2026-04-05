@@ -81,6 +81,12 @@ struct SettingsView: View {
         .scrollContentBackground(.hidden)
         .appBackground()
         .navigationTitle("Settings")
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { laborRateFocused = false }
+            }
+        }
     }
 
     private func commitLaborRate() {

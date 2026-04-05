@@ -89,6 +89,12 @@ enum AppTheme {
 
         /// Unselected chip / filter background.
         static let chipBackground = Color(.secondarySystemFill)
+        /// Foreground for text on accent-colored chips — black in dark mode for contrast.
+        static let chipSelectedForeground = Color(
+            UIColor { traits in
+                traits.userInterfaceStyle == .dark ? .black : .white
+            }
+        )
 
         /// Editable input field background — subtle fill to indicate tappable/editable fields.
         static let inputBackground = Color(.tertiarySystemFill)

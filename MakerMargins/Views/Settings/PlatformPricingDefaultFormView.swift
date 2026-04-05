@@ -84,6 +84,12 @@ struct PlatformPricingDefaultFormView: View {
         .scrollContentBackground(.hidden)
         .appBackground()
         .navigationTitle("Pricing Defaults")
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { focusedField = nil }
+            }
+        }
         .onAppear { loadProfile() }
         .onChange(of: focusedField) { _, newField in
             handleFocusChange(newField)

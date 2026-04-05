@@ -72,6 +72,12 @@ struct WorkStepListView: View {
             }
         }
         .padding(.horizontal)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { bufferFocused = false }
+            }
+        }
         .sheet(isPresented: $showingNewStepForm, onDismiss: {
             if product.productWorkSteps.count > stepCountBeforeSheet,
                let newestLink = product.productWorkSteps
@@ -182,9 +188,10 @@ struct WorkStepListView: View {
         }
     }
 
+    @ViewBuilder
     private func stepRow(link: ProductWorkStep) -> some View {
-        let step = link.workStep!
-        return HStack(spacing: AppTheme.Spacing.md) {
+        if let step = link.workStep {
+        HStack(spacing: AppTheme.Spacing.md) {
             WorkStepThumbnailView(imageData: step.image)
 
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
@@ -210,11 +217,13 @@ struct WorkStepListView: View {
                 .foregroundStyle(.tertiary)
         }
         .padding(.vertical, AppTheme.Spacing.sm)
+        }
     }
 
+    @ViewBuilder
     private func reorderRow(link: ProductWorkStep, index: Int) -> some View {
-        let step = link.workStep!
-        return HStack(spacing: AppTheme.Spacing.md) {
+        if let step = link.workStep {
+        HStack(spacing: AppTheme.Spacing.md) {
             WorkStepThumbnailView(imageData: step.image)
 
             Text(step.title)
@@ -242,6 +251,7 @@ struct WorkStepListView: View {
             .buttonStyle(.bordered)
         }
         .padding(.vertical, AppTheme.Spacing.sm)
+        }
     }
 
     private var bufferSection: some View {

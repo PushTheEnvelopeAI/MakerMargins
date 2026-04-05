@@ -256,7 +256,7 @@ struct ProductListView: View {
                     isSelected ? AppTheme.Colors.accent : AppTheme.Colors.chipBackground,
                     in: Capsule()
                 )
-                .foregroundStyle(isSelected ? .white : .primary)
+                .foregroundStyle(isSelected ? AppTheme.Colors.chipSelectedForeground : .primary)
         }
         .buttonStyle(.plain)
     }

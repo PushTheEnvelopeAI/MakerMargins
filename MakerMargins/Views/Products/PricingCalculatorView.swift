@@ -168,6 +168,12 @@ struct PricingCalculatorView: View {
         .onChange(of: focusedField) { _, newField in
             handleFocusChange(newField)
         }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { focusedField = nil }
+            }
+        }
     }
 
     // MARK: - Sections

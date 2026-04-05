@@ -71,6 +71,12 @@ struct MaterialListView: View {
             }
         }
         .padding(.horizontal)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { bufferFocused = false }
+            }
+        }
         .sheet(isPresented: $showingNewMaterialForm, onDismiss: {
             if product.productMaterials.count > materialCountBeforeSheet,
                let newestLink = product.productMaterials
@@ -181,9 +187,10 @@ struct MaterialListView: View {
         }
     }
 
+    @ViewBuilder
     private func materialRow(link: ProductMaterial) -> some View {
-        let material = link.material!
-        return HStack(spacing: AppTheme.Spacing.md) {
+        if let material = link.material {
+        HStack(spacing: AppTheme.Spacing.md) {
             MaterialThumbnailView(imageData: material.image)
 
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
@@ -209,11 +216,13 @@ struct MaterialListView: View {
                 .foregroundStyle(.tertiary)
         }
         .padding(.vertical, AppTheme.Spacing.sm)
+        }
     }
 
+    @ViewBuilder
     private func reorderRow(link: ProductMaterial, index: Int) -> some View {
-        let material = link.material!
-        return HStack(spacing: AppTheme.Spacing.md) {
+        if let material = link.material {
+        HStack(spacing: AppTheme.Spacing.md) {
             MaterialThumbnailView(imageData: material.image)
 
             Text(material.title)
@@ -241,6 +250,7 @@ struct MaterialListView: View {
             .buttonStyle(.bordered)
         }
         .padding(.vertical, AppTheme.Spacing.sm)
+        }
     }
 
     private var bufferSection: some View {

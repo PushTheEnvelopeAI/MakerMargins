@@ -41,6 +41,7 @@ struct WorkStepFormView: View {
 
     // Stopwatch
     @State private var showingStopwatch = false
+    @State private var titleHasBeenTouched = false
 
     // Focus tracking for select-on-tap behavior
     enum FocusableField: Hashable {
@@ -107,6 +108,10 @@ struct WorkStepFormView: View {
                     Button("Save") { save() }
                         .disabled(isSaveDisabled)
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { focusedField = nil }
+                }
             }
             .onChange(of: photoItem) { _, newItem in
                 loadPhoto(from: newItem)
@@ -133,13 +138,44 @@ struct WorkStepFormView: View {
                 }
             }
         }
+        .interactiveDismissDisabled(hasUnsavedChanges)
+    }
+
+    private var hasUnsavedChanges: Bool {
+        if step != nil {
+            let total = Int(step?.recordedTime ?? 0)
+            let origH = total >= 3600 ? "\(total / 3600)" : ""
+            let origM = "\((total % 3600) / 60)"
+            let origS = "\(total % 60)"
+            return title != (step?.title ?? "")
+                || summary != (step?.summary ?? "")
+                || hoursText != origH
+                || minutesText != origM
+                || secondsText != origS
+                || batchUnitsText != "\(step?.batchUnitsCompleted ?? 1)"
+                || unitName != (step?.unitName ?? "unit")
+                || imageData != step?.image
+        } else {
+            return !title.trimmingCharacters(in: .whitespaces).isEmpty
+                || !summary.trimmingCharacters(in: .whitespaces).isEmpty
+                || recordedTime > 0
+                || imageData != nil
+        }
     }
 
     // MARK: - Sections
 
     private var detailsSection: some View {
         Section("Details") {
-            TextField("Title", text: $title)
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xxs) {
+                TextField("Title", text: $title)
+                    .onTapGesture { titleHasBeenTouched = true }
+                if titleHasBeenTouched && title.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Text("Title is required")
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.Colors.destructive)
+                }
+            }
             TextField("Description", text: $summary, axis: .vertical)
                 .lineLimit(3...6)
         }
