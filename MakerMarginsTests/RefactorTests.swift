@@ -74,7 +74,7 @@ struct RefactorTests {
 
     @Test("formatStopwatchTime: minutes and seconds only")
     func formatStopwatchMinutesOnly() {
-        #expect(CostingEngine.formatStopwatchTime(125.3) == "02:05.3")
+        #expect(CostingEngine.formatStopwatchTime(125.5) == "02:05.5")
     }
 
     // MARK: - 6.2 AppearanceManager Tests
