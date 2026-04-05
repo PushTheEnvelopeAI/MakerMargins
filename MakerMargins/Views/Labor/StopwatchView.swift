@@ -5,7 +5,7 @@
 // Presented as .fullScreenCover from WorkStepDetailView or WorkStepFormView.
 // Uses an onSave closure so the caller decides what to do with the elapsed time.
 // Supports pause/resume — accumulated time is tracked across multiple intervals.
-// After recording, prompts for batch units so Hours/Unit calculates correctly.
+// When paused, shows a batch units field. Save is disabled until units > 0.
 
 import SwiftUI
 
@@ -22,12 +22,15 @@ struct StopwatchView: View {
     @State private var startDate: Date? = nil
     @State private var accumulatedTime: TimeInterval = 0
     @State private var showingDiscardConfirmation = false
-    @State private var showingSaveConfirmation = false
     @State private var batchUnitsText: String = ""
     @FocusState private var batchUnitsFocused: Bool
 
     private enum TimerState {
         case idle, running, paused
+    }
+
+    private var parsedBatchUnits: Decimal {
+        Decimal(string: batchUnitsText) ?? 0
     }
 
     // MARK: - Body
@@ -49,9 +52,6 @@ struct StopwatchView: View {
                 .padding(.bottom, AppTheme.Spacing.xl * 2)
         }
         .appBackground()
-        .onAppear {
-            batchUnitsText = "\(currentBatchUnits)"
-        }
         .confirmationDialog("Stop Timer?", isPresented: $showingDiscardConfirmation) {
             Button("Stop and Discard", role: .destructive) {
                 dismiss()
@@ -70,9 +70,6 @@ struct StopwatchView: View {
             Button {
                 if timerState == .running {
                     showingDiscardConfirmation = true
-                } else if showingSaveConfirmation {
-                    showingSaveConfirmation = false
-                    timerState = .paused
                 } else {
                     dismiss()
                 }
@@ -109,85 +106,57 @@ struct StopwatchView: View {
 
     @ViewBuilder
     private var buttons: some View {
-        if showingSaveConfirmation {
-            batchUnitsConfirmation
-        } else {
-            switch timerState {
-            case .idle:
-                Button(action: start) {
-                    stopwatchButton(label: "Start", style: .accent)
+        switch timerState {
+        case .idle:
+            Button(action: start) {
+                stopwatchButton(label: "Start", style: .accent)
+            }
+
+        case .running:
+            Button(action: pause) {
+                stopwatchButton(label: "Pause", style: .destructive)
+            }
+
+        case .paused:
+            VStack(spacing: AppTheme.Spacing.lg) {
+                // Batch units input — visible immediately when paused
+                VStack(spacing: AppTheme.Spacing.xs) {
+                    Text("\(unitName.capitalized)s produced")
+                        .font(AppTheme.Typography.sectionHeader)
+                        .foregroundStyle(.secondary)
+
+                    TextField("0", text: $batchUnitsText)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.center)
+                        .font(AppTheme.Typography.heroPrice)
+                        .frame(width: 120)
+                        .padding(.vertical, AppTheme.Spacing.sm)
+                        .background(AppTheme.Colors.inputBackground, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small))
+                        .focused($batchUnitsFocused)
+                        .accessibilityLabel("\(unitName)s produced in this batch")
                 }
 
-            case .running:
-                Button(action: pause) {
-                    stopwatchButton(label: "Pause", style: .destructive)
+                HStack(spacing: AppTheme.Spacing.xl) {
+                    Button(action: resume) {
+                        stopwatchButton(label: "Resume", style: .accent)
+                    }
+                    Button(action: confirmSave) {
+                        stopwatchButton(label: "Save", style: .secondary)
+                    }
+                    .disabled(parsedBatchUnits <= 0)
                 }
-
-            case .paused:
-                VStack(spacing: AppTheme.Spacing.lg) {
-                    HStack(spacing: AppTheme.Spacing.xl) {
-                        Button(action: resume) {
-                            stopwatchButton(label: "Resume", style: .accent)
-                        }
-                        Button { showingSaveConfirmation = true } label: {
-                            stopwatchButton(label: "Save", style: .secondary)
-                        }
-                    }
-                    HStack(spacing: AppTheme.Spacing.xl) {
-                        Button("Discard", action: discard)
-                            .font(AppTheme.Typography.bodyText)
-                            .foregroundStyle(.secondary)
-                        Text("·")
-                            .foregroundStyle(.tertiary)
-                        Button("Re-record", action: rerecord)
-                            .font(AppTheme.Typography.bodyText)
-                            .foregroundStyle(.secondary)
-                    }
+                HStack(spacing: AppTheme.Spacing.xl) {
+                    Button("Discard", action: discard)
+                        .font(AppTheme.Typography.bodyText)
+                        .foregroundStyle(.secondary)
+                    Text("·")
+                        .foregroundStyle(.tertiary)
+                    Button("Re-record", action: rerecord)
+                        .font(AppTheme.Typography.bodyText)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
-    }
-
-    // MARK: - Batch Units Confirmation
-
-    private var batchUnitsConfirmation: some View {
-        VStack(spacing: AppTheme.Spacing.lg) {
-            VStack(spacing: AppTheme.Spacing.sm) {
-                Text("How many \(unitName)s were produced?")
-                    .font(AppTheme.Typography.sectionHeader)
-                    .foregroundStyle(.secondary)
-
-                TextField("Units", text: $batchUnitsText)
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.center)
-                    .font(AppTheme.Typography.heroPrice)
-                    .frame(width: 120)
-                    .padding(.vertical, AppTheme.Spacing.sm)
-                    .background(AppTheme.Colors.inputBackground, in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small))
-                    .focused($batchUnitsFocused)
-
-                Text("\(unitName)s in this batch")
-                    .font(AppTheme.Typography.note)
-                    .foregroundStyle(.tertiary)
-            }
-
-            HStack(spacing: AppTheme.Spacing.xl) {
-                Button {
-                    showingSaveConfirmation = false
-                } label: {
-                    stopwatchButton(label: "Back", style: .secondary)
-                }
-                Button(action: confirmSave) {
-                    stopwatchButton(label: "Save", style: .accent)
-                }
-                .disabled(parsedBatchUnits <= 0)
-            }
-        }
-        .onAppear { batchUnitsFocused = true }
-    }
-
-    private var parsedBatchUnits: Decimal {
-        Decimal(string: batchUnitsText) ?? 0
     }
 
     // MARK: - Button Style Helper
@@ -249,8 +218,8 @@ struct StopwatchView: View {
     private func rerecord() {
         accumulatedTime = 0
         startDate = nil
+        batchUnitsText = ""
         timerState = .idle
-        showingSaveConfirmation = false
         AccessibilityNotification.Announcement("Timer reset").post()
     }
 }

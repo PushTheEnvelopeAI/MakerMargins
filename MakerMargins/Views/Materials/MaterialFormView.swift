@@ -98,6 +98,10 @@ struct MaterialFormView: View {
                     Button("Save") { save() }
                         .disabled(isSaveDisabled)
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { focusedField = nil }
+                }
             }
             .onChange(of: photoItem) { _, newItem in
                 loadPhoto(from: newItem)

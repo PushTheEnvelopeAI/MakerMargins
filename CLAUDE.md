@@ -232,7 +232,7 @@ MakerMargins/                              <- repo root
 |       |   +-- WorkStepListView.swift     <- inline step list in ProductDetailView
 |       |   +-- WorkStepDetailView.swift   <- detail with stopwatch shortcut in toolbar
 |       |   +-- WorkStepFormView.swift     <- create/edit sheet
-|       |   +-- StopwatchView.swift        <- fullScreenCover, always-visible dismiss, prompts for batch units on save
+|       |   +-- StopwatchView.swift        <- fullScreenCover, always-visible dismiss, batch units input when paused
 |       +-- Materials/
 |       |   +-- MaterialsLibraryView.swift <- Tab 3, searchable material library, auto-navigate on create, multi-select delete
 |       |   +-- MaterialListView.swift     <- inline material list in ProductDetailView
@@ -369,7 +369,7 @@ Runs on every push: XcodeGen -> download iOS platform -> create iPhone 16 simula
 - **Template deduplication:** Shared WorkSteps and Materials matched by exact title string. Entity-level fields must be identical across templates sharing a title.
 - **`portfolioPricing` vs `activePricing`:** Portfolio uses strict per-platform lookup; batch forecast uses best-available with platform-specific preference.
 - **productSnapshot single-pass:** Traverses productWorkSteps and productMaterials once each, caching labor/material/hours. Uses raw-value `actualProfit` overload to avoid re-traversal.
-- **Stopwatch accessible from detail view toolbar:** Timer button in WorkStepDetailView presents StopwatchView directly (2 taps from Labor tab), bypassing the edit form. On save, prompts for batch units produced so Hours/Unit calculates correctly.
+- **Stopwatch accessible from detail view toolbar:** Timer button in WorkStepDetailView presents StopwatchView directly (2 taps from Labor tab), bypassing the edit form. When paused, shows batch units input inline — Save is disabled until units > 0.
 - **"Used By" products are tappable NavigationLinks** when viewed from library tabs (product == nil). Plain rows when viewed from product context.
 - **Auto-navigation after creation:** Products, steps, and materials auto-navigate to their detail view after creation from any context (list, library, or template).
 - **First-run experience:** Empty ProductListView shows prominent "Start from Template" CTA. After template application, lands on Build tab so users can customize steps and materials to their use case.

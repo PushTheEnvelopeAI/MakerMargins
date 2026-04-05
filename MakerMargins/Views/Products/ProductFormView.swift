@@ -78,6 +78,10 @@ struct ProductFormView: View {
                     Button("Save") { save() }
                         .disabled(isSaveDisabled)
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { isFieldFocused = false }
+                }
             }
             .onChange(of: photoItem) { _, newItem in
                 loadPhoto(from: newItem)
