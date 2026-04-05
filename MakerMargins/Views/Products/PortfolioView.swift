@@ -345,8 +345,7 @@ struct PortfolioView: View {
                         Text(platform.rawValue).tag(platform)
                     }
                 }
-                .pickerStyle(.menu)
-                .tint(AppTheme.Colors.accent)
+                .pickerStyle(.segmented)
             }
 
             DetailRow(label: "Products Priced", value: "\(avg.pricedCount) of \(avg.totalCount)")

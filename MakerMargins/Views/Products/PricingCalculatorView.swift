@@ -26,6 +26,7 @@ struct PricingCalculatorView: View {
     // MARK: - State
 
     @State private var selectedPlatform: PlatformType = .general
+    @State private var showTargetCalc = true
     @State private var currentPricing: ProductPricing?
 
     @State private var platformFeeText: String = ""
@@ -131,14 +132,17 @@ struct PricingCalculatorView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.sm) {
-            GroupBox("Target Price Calculator") {
-                VStack(spacing: AppTheme.Spacing.md) {
-                    platformPicker
-                    productionCostSection
-                    marketingAndFeesSection
-                    profitMarginSection
-                    targetPriceHero
+            GroupBox {
+                DisclosureGroup("Target Price Calculator", isExpanded: $showTargetCalc) {
+                    VStack(spacing: AppTheme.Spacing.md) {
+                        platformPicker
+                        productionCostSection
+                        marketingAndFeesSection
+                        profitMarginSection
+                        targetPriceHero
+                    }
                 }
+                .font(AppTheme.Typography.sectionHeader)
             }
             .backgroundStyle(AppTheme.Colors.pricingSurface)
 
@@ -198,15 +202,15 @@ struct PricingCalculatorView: View {
                 emptyCostHint
             } else {
                 VStack(spacing: 0) {
-                    DetailRow(
+                    DerivedRow(
                         label: "Material Cost",
                         value: formatter.format(CostingEngine.totalMaterialCostBuffered(product: product))
                     )
-                    DetailRow(
+                    DerivedRow(
                         label: "Labor Cost",
                         value: formatter.format(CostingEngine.totalLaborCostBuffered(product: product))
                     )
-                    DetailRow(
+                    DerivedRow(
                         label: "Shipping Cost",
                         value: formatter.format(product.shippingCost)
                     )
