@@ -675,6 +675,8 @@ struct PricingCalculatorView: View {
         if let existing = product.productPricings.first(where: { $0.platformType == selectedPlatform }) {
             currentPricing = existing
         } else {
+            assert(product.productPricings.filter { $0.platformType == selectedPlatform }.isEmpty,
+                   "Duplicate ProductPricing for \(selectedPlatform)")
             let defaults = fetchDefaults()
             let pricing = ProductPricing(
                 product: product,

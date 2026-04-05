@@ -130,29 +130,7 @@ struct MaterialDetailView: View {
     @ViewBuilder
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            if let data = material.image, let uiImage = UIImage(data: data) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(maxWidth: .infinity)
-                    .frame(height: AppTheme.Sizing.detailImageHeight)
-                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large))
-                    .padding(.horizontal)
-            } else {
-                PlaceholderImageView(
-                    height: AppTheme.Sizing.detailPlaceholderHeight,
-                    cornerRadius: AppTheme.CornerRadius.large,
-                    iconFont: .largeTitle
-                )
-                .padding(.horizontal)
-            }
-
-            if !material.summary.isEmpty {
-                Text(material.summary)
-                    .font(AppTheme.Typography.bodyText)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal)
-            }
+            ItemHeaderView(imageData: material.image, summary: material.summary)
 
             if !material.link.isEmpty {
                 Group {
@@ -237,76 +215,19 @@ struct MaterialDetailView: View {
     }
 
     private var usedBySection: some View {
-        GroupBox("Used By") {
-            if linkedProducts.isEmpty {
-                HStack {
-                    Text("This material is not linked to any products")
-                        .font(AppTheme.Typography.bodyText)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                }
-                .padding(.vertical, AppTheme.Spacing.xs)
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(linkedProducts, id: \.persistentModelID) { linkedProduct in
-                        if product == nil {
-                            NavigationLink(value: linkedProduct) {
-                                HStack(spacing: AppTheme.Spacing.md) {
-                                    ProductThumbnailView(imageData: linkedProduct.image)
-                                    Text(linkedProduct.title)
-                                        .font(AppTheme.Typography.rowTitle)
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(.tertiary)
-                                        .accessibilityHidden(true)
-                                }
-                                .padding(.vertical, AppTheme.Spacing.sm)
-                            }
-                            .buttonStyle(.plain)
-                        } else {
-                            HStack(spacing: AppTheme.Spacing.md) {
-                                ProductThumbnailView(imageData: linkedProduct.image)
-                                Text(linkedProduct.title)
-                                    .font(AppTheme.Typography.rowTitle)
-                                Spacer()
-                            }
-                            .padding(.vertical, AppTheme.Spacing.sm)
-                        }
-
-                        if linkedProduct.persistentModelID != linkedProducts.last?.persistentModelID {
-                            Divider()
-                        }
-                    }
-                }
-            }
-        }
-        .padding(.horizontal)
+        UsedBySection(
+            linkedProducts: linkedProducts,
+            product: product,
+            emptyText: "This material is not linked to any products"
+        )
     }
 
     @ViewBuilder
     private var removeFromProductSection: some View {
         if let product {
-            Button(role: .destructive) {
+            RemoveFromProductButton(productTitle: product.title) {
                 showingRemoveConfirmation = true
-            } label: {
-                HStack {
-                    Spacer()
-                    Label("Remove from \(product.title)", systemImage: "minus.circle")
-                        .font(AppTheme.Typography.bodyText)
-                    Spacer()
-                }
-                .padding(.vertical, AppTheme.Spacing.md)
-                .background(
-                    AppTheme.Colors.destructive.opacity(0.1),
-                    in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
-                        .strokeBorder(AppTheme.Colors.destructive.opacity(0.3), lineWidth: 0.5)
-                )
             }
-            .padding(.horizontal)
         }
     }
 
