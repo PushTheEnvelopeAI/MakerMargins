@@ -217,24 +217,24 @@ struct Epic4Tests {
     @Test("Display helpers format locked fees correctly")
     func displayHelpers() {
         // Etsy: all three display strings present
-        #expect(PlatformType.etsy.platformFeeDisplay == "6.5%")
-        #expect(PlatformType.etsy.paymentProcessingDisplay == "3% + $0.25")
-        #expect(PlatformType.etsy.marketingFeeDisplay == "15%")
+        #expect(PlatformType.etsy.platformFeeDisplay() == "6.5%")
+        #expect(PlatformType.etsy.paymentProcessingDisplay() == "3% + $0.25")
+        #expect(PlatformType.etsy.marketingFeeDisplay() == "15%")
 
         // Shopify: platform fee 0%, processing with fixed, no marketing display
-        #expect(PlatformType.shopify.platformFeeDisplay == "0%")
-        #expect(PlatformType.shopify.paymentProcessingDisplay == "2.9% + $0.30")
-        #expect(PlatformType.shopify.marketingFeeDisplay == nil)
+        #expect(PlatformType.shopify.platformFeeDisplay() == "0%")
+        #expect(PlatformType.shopify.paymentProcessingDisplay() == "2.9% + $0.30")
+        #expect(PlatformType.shopify.marketingFeeDisplay() == nil)
 
         // Amazon: platform fee 15%, processing 0%, no marketing display
-        #expect(PlatformType.amazon.platformFeeDisplay == "15%")
-        #expect(PlatformType.amazon.paymentProcessingDisplay == "0%")
-        #expect(PlatformType.amazon.marketingFeeDisplay == nil)
+        #expect(PlatformType.amazon.platformFeeDisplay() == "15%")
+        #expect(PlatformType.amazon.paymentProcessingDisplay() == "0%")
+        #expect(PlatformType.amazon.marketingFeeDisplay() == nil)
 
         // General: all nil (all editable)
-        #expect(PlatformType.general.platformFeeDisplay == nil)
-        #expect(PlatformType.general.paymentProcessingDisplay == nil)
-        #expect(PlatformType.general.marketingFeeDisplay == nil)
+        #expect(PlatformType.general.platformFeeDisplay() == nil)
+        #expect(PlatformType.general.paymentProcessingDisplay() == nil)
+        #expect(PlatformType.general.marketingFeeDisplay() == nil)
     }
 
     // MARK: - CostingEngine: effectiveMarketingRate

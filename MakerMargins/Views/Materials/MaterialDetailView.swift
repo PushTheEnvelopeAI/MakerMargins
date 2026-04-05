@@ -281,12 +281,12 @@ struct MaterialDetailView: View {
                 }
                 .padding(.vertical, AppTheme.Spacing.md)
                 .background(
-                    Color.red.opacity(0.1),
+                    AppTheme.Colors.destructive.opacity(0.1),
                     in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
-                        .strokeBorder(Color.red.opacity(0.3), lineWidth: 0.5)
+                        .strokeBorder(AppTheme.Colors.destructive.opacity(0.3), lineWidth: 0.5)
                 )
             }
             .padding(.horizontal)

@@ -54,7 +54,7 @@ struct WorkStepListView: View {
     }
 
     private var bufferFraction: Decimal {
-        (Decimal(string: bufferText) ?? 0) / 100
+        PercentageFormat.fromDisplay(bufferText)
     }
 
     // MARK: - Body

@@ -252,13 +252,14 @@ struct PortfolioView: View {
 
     @ViewBuilder
     private func costBreakdownRow(snap: CostingEngine.ProductSnapshot) -> some View {
-        let total = snap.productionCost
-        let lFrac = total > 0
-            ? CGFloat(NSDecimalNumber(decimal: snap.laborCostBuffered / total).doubleValue) : 0
-        let mFrac = total > 0
-            ? CGFloat(NSDecimalNumber(decimal: snap.materialCostBuffered / total).doubleValue) : 0
-        let sFrac = total > 0
-            ? CGFloat(NSDecimalNumber(decimal: snap.shippingCost / total).doubleValue) : 0
+        let fractions = CostingEngine.costBreakdownFractions(
+            laborCostBuffered: snap.laborCostBuffered,
+            materialCostBuffered: snap.materialCostBuffered,
+            shippingCost: snap.shippingCost
+        )
+        let lFrac = CGFloat(fractions.labor)
+        let mFrac = CGFloat(fractions.material)
+        let sFrac = CGFloat(fractions.shipping)
 
         VStack(alignment: .leading, spacing: AppTheme.Spacing.xs) {
             HStack(spacing: AppTheme.Spacing.md) {
@@ -281,9 +282,9 @@ struct PortfolioView: View {
                     Rectangle().fill(AppTheme.Colors.secondaryButton.opacity(0.3))
                         .frame(width: geo.size.width * sFrac)
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 3))
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.CornerRadius.xs))
             }
-            .frame(height: 12)
+            .frame(height: AppTheme.Sizing.progressBarHeight)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Cost breakdown: Labor \(formatter.format(snap.laborCostBuffered)), Materials \(formatter.format(snap.materialCostBuffered)), Shipping \(formatter.format(snap.shippingCost))")
 
@@ -318,7 +319,7 @@ struct PortfolioView: View {
 
     private func legendDot(color: Color, label: String) -> some View {
         HStack(spacing: AppTheme.Spacing.xs) {
-            Circle().fill(color).frame(width: 8, height: 8)
+            Circle().fill(color).frame(width: AppTheme.Sizing.legendDot, height: AppTheme.Sizing.legendDot)
             Text(label)
         }
     }
@@ -466,9 +467,9 @@ struct PortfolioView: View {
             GeometryReader { geo in
                 RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small)
                     .fill(barColor.opacity(0.3))
-                    .frame(width: max(geo.size.width * proportion, 2), height: 6)
+                    .frame(width: max(geo.size.width * proportion, AppTheme.Sizing.barMinWidth), height: AppTheme.Sizing.barHeight)
             }
-            .frame(height: 6)
+            .frame(height: AppTheme.Sizing.barHeight)
 
             if let subtitle {
                 Text(subtitle)

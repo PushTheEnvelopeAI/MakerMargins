@@ -69,13 +69,13 @@ struct StopwatchView: View {
         if timerState == .running {
             TimelineView(.periodic(from: .now, by: 0.1)) { context in
                 let live = accumulatedTime + (startDate.map { context.date.timeIntervalSince($0) } ?? 0)
-                Text(formatStopwatch(live))
+                Text(CostingEngine.formatStopwatchTime(live))
                     .font(AppTheme.Typography.timerDisplay)
                     .contentTransition(reduceMotion ? .identity : .numericText())
                     .accessibilityLabel(accessibleTime(live))
             }
         } else {
-            Text(formatStopwatch(accumulatedTime))
+            Text(CostingEngine.formatStopwatchTime(accumulatedTime))
                 .font(AppTheme.Typography.timerDisplay)
                 .accessibilityLabel(accessibleTime(accumulatedTime))
         }
@@ -157,19 +157,6 @@ struct StopwatchView: View {
         } else {
             return "\(s) second\(s == 1 ? "" : "s")"
         }
-    }
-
-    private func formatStopwatch(_ seconds: TimeInterval) -> String {
-        let total = max(0, seconds)
-        let h = Int(total) / 3600
-        let m = (Int(total) % 3600) / 60
-        let s = Int(total) % 60
-        let tenths = Int((total - Double(Int(total))) * 10)
-
-        if h > 0 {
-            return String(format: "%d:%02d:%02d.%d", h, m, s, tenths)
-        }
-        return String(format: "%02d:%02d.%d", m, s, tenths)
     }
 
     // MARK: - Actions

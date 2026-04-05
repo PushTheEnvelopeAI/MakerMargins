@@ -79,9 +79,9 @@ private struct TemplateCardView: View {
     var body: some View {
         VStack(spacing: AppTheme.Spacing.md) {
             Image(systemName: template.iconName)
-                .font(.system(size: 36))
+                .font(AppTheme.Typography.templateIcon)
                 .foregroundStyle(AppTheme.Colors.accent)
-                .frame(height: 60)
+                .frame(height: AppTheme.Sizing.templateIconHeight)
 
             VStack(spacing: AppTheme.Spacing.xs) {
                 Text(template.title)

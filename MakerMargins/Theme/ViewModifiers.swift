@@ -20,7 +20,7 @@ extension View {
                 RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
                     .strokeBorder(AppTheme.Colors.cardBorder, lineWidth: 0.5)
             )
-            .shadow(color: .black.opacity(0.06), radius: 3, x: 0, y: 1)
+            .shadow(color: AppTheme.Shadow.color, radius: AppTheme.Shadow.radius, x: AppTheme.Shadow.x, y: AppTheme.Shadow.y)
     }
 }
 

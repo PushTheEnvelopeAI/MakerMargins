@@ -36,15 +36,15 @@ struct BatchForecastView: View {
     }
 
     private var batchLaborCostBuffered: Decimal {
-        CostingEngine.totalLaborCostBuffered(product: product) * Decimal(batchSize)
+        CostingEngine.batchLaborCostBuffered(product: product, batchSize: batchSize)
     }
 
     private var batchMaterialCostBuffered: Decimal {
-        CostingEngine.totalMaterialCostBuffered(product: product) * Decimal(batchSize)
+        CostingEngine.batchMaterialCostBuffered(product: product, batchSize: batchSize)
     }
 
     private var batchShippingCost: Decimal {
-        product.shippingCost * Decimal(batchSize)
+        CostingEngine.batchShippingCost(product: product, batchSize: batchSize)
     }
 
     // MARK: - Revenue
@@ -344,7 +344,7 @@ struct BatchForecastView: View {
                 batchSize: batchSize
             )
 
-            let batchProductionExShipping = CostingEngine.productionCostExShipping(product: product) * Decimal(batchSize)
+            let batchProductionExShipping = CostingEngine.batchProductionCostExShipping(product: product, batchSize: batchSize)
 
             let profit = CostingEngine.batchProfit(
                 actualPrice: pricing.actualPrice,
@@ -381,7 +381,7 @@ struct BatchForecastView: View {
                     .sectionGroupStyle()
 
                     VStack(spacing: AppTheme.Spacing.sm) {
-                        let batchEarnings = profit + batchLaborCostBuffered
+                        let batchEarnings = CostingEngine.batchEarnings(batchProfit: profit, batchLaborCostBuffered: batchLaborCostBuffered)
                         let grossRevenue = CostingEngine.batchRevenue(
                             actualPrice: pricing.actualPrice,
                             actualShippingCharge: pricing.actualShippingCharge,
@@ -404,7 +404,7 @@ struct BatchForecastView: View {
                                     .font(AppTheme.Typography.bodyText)
                                     .foregroundStyle(.secondary)
                                 Spacer()
-                                Text(formatter.format(batchEarnings / Decimal(batchSize)))
+                                Text(formatter.format(CostingEngine.batchEarningsPerUnit(batchEarnings: batchEarnings, batchSize: batchSize) ?? 0))
                                     .font(AppTheme.Typography.sectionHeader)
                                     .foregroundStyle(.secondary)
                             }
@@ -412,7 +412,11 @@ struct BatchForecastView: View {
 
                         // Profit Margin
                         if grossRevenue > 0 {
-                            let margin = profit / grossRevenue
+                            let margin = CostingEngine.actualProfitMargin(
+                                profit: profit,
+                                actualPrice: pricing.actualPrice,
+                                actualShippingCharge: pricing.actualShippingCharge
+                            ) ?? 0
                             HStack {
                                 Text("Profit Margin")
                                     .font(AppTheme.Typography.bodyText)
