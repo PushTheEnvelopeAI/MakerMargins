@@ -69,15 +69,6 @@ struct MaterialsLibraryView: View {
                         EditButton()
                     }
                 }
-                ToolbarItem(placement: .bottomBar) {
-                    if editMode.isEditing && !selection.isEmpty {
-                        Button(role: .destructive) {
-                            showingDeleteConfirmation = true
-                        } label: {
-                            Text("Delete \(selection.count) Material\(selection.count == 1 ? "" : "s")")
-                        }
-                    }
-                }
             }
             .environment(\.editMode, $editMode)
             .onChange(of: editMode) { _, newValue in
@@ -143,6 +134,21 @@ struct MaterialsLibraryView: View {
         }
         .scrollContentBackground(.hidden)
         .appBackground()
+        .safeAreaInset(edge: .bottom) {
+            if editMode.isEditing && !selection.isEmpty {
+                Button(role: .destructive) {
+                    showingDeleteConfirmation = true
+                } label: {
+                    Text("Delete \(selection.count) Material\(selection.count == 1 ? "" : "s")")
+                        .font(AppTheme.Typography.sectionHeader)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, AppTheme.Spacing.md)
+                        .background(AppTheme.Colors.destructive.opacity(0.1), in: RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium))
+                }
+                .padding(.horizontal, AppTheme.Spacing.lg)
+                .padding(.bottom, AppTheme.Spacing.sm)
+            }
+        }
     }
 
     // MARK: - Actions
