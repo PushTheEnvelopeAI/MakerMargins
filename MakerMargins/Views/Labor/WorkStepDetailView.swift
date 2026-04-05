@@ -19,6 +19,7 @@ struct WorkStepDetailView: View {
     @Environment(\.laborRateManager) private var laborRateManager
 
     @State private var showingEditForm = false
+    @State private var showingStopwatch = false
     @State private var showingDeleteConfirmation = false
     @State private var showingRemoveConfirmation = false
 
@@ -96,6 +97,12 @@ struct WorkStepDetailView: View {
             ToolbarItem(placement: .primaryAction) {
                 HStack(spacing: AppTheme.Spacing.md) {
                     Button {
+                        showingStopwatch = true
+                    } label: {
+                        Image(systemName: "timer")
+                    }
+                    .accessibilityLabel("Start timing \(step.title)")
+                    Button {
                         showingEditForm = true
                     } label: {
                         Image(systemName: "pencil")
@@ -116,6 +123,11 @@ struct WorkStepDetailView: View {
         }
         .sheet(isPresented: $showingEditForm) {
             WorkStepFormView(step: step, product: editProduct)
+        }
+        .fullScreenCover(isPresented: $showingStopwatch) {
+            StopwatchView(stepTitle: step.title) { time in
+                step.recordedTime = time
+            }
         }
         .confirmationDialog(
             "Delete \"\(step.title)\"?",
@@ -184,13 +196,21 @@ struct WorkStepDetailView: View {
                 Divider()
                 DerivedRow(label: "Time per \(step.unitName)", value: CostingEngine.formatDuration(unitTimeSeconds))
                 Divider()
-                HStack {
-                    Text("Hours per \(step.unitName)")
-                        .font(AppTheme.Typography.bodyText)
-                    Spacer()
-                    Text(CostingEngine.formatHours(CostingEngine.unitTimeHours(step: step)))
-                        .font(.title2.weight(.semibold))
-                        .foregroundStyle(AppTheme.Colors.accent)
+                VStack(spacing: AppTheme.Spacing.xxs) {
+                    HStack {
+                        Text("Hours per \(step.unitName)")
+                            .font(AppTheme.Typography.bodyText)
+                        Spacer()
+                        Text(CostingEngine.formatHours(CostingEngine.unitTimeHours(step: step)))
+                            .font(.title2.weight(.semibold))
+                            .foregroundStyle(AppTheme.Colors.accent)
+                    }
+                    HStack {
+                        Spacer()
+                        Text("(\(CostingEngine.formatHoursReadable(CostingEngine.unitTimeHours(step: step))))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 .padding(.vertical, AppTheme.Spacing.sm)
             }
@@ -277,13 +297,30 @@ struct WorkStepDetailView: View {
             } else {
                 VStack(spacing: 0) {
                     ForEach(linkedProducts, id: \.persistentModelID) { linkedProduct in
-                        HStack(spacing: AppTheme.Spacing.md) {
-                            ProductThumbnailView(imageData: linkedProduct.image)
-                            Text(linkedProduct.title)
-                                .font(AppTheme.Typography.rowTitle)
-                            Spacer()
+                        if product == nil {
+                            NavigationLink(value: linkedProduct) {
+                                HStack(spacing: AppTheme.Spacing.md) {
+                                    ProductThumbnailView(imageData: linkedProduct.image)
+                                    Text(linkedProduct.title)
+                                        .font(AppTheme.Typography.rowTitle)
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.tertiary)
+                                        .accessibilityHidden(true)
+                                }
+                                .padding(.vertical, AppTheme.Spacing.sm)
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            HStack(spacing: AppTheme.Spacing.md) {
+                                ProductThumbnailView(imageData: linkedProduct.image)
+                                Text(linkedProduct.title)
+                                    .font(AppTheme.Typography.rowTitle)
+                                Spacer()
+                            }
+                            .padding(.vertical, AppTheme.Spacing.sm)
                         }
-                        .padding(.vertical, AppTheme.Spacing.sm)
 
                         if linkedProduct.persistentModelID != linkedProducts.last?.persistentModelID {
                             Divider()

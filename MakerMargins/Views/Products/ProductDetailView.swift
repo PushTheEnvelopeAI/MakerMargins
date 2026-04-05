@@ -59,6 +59,7 @@ struct ProductDetailView: View {
     @State private var laborExpanded = true
     @State private var materialsExpanded = true
     @State private var shippingExpanded = true
+    @State private var hasAutoSwitchedTab = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -68,6 +69,11 @@ struct ProductDetailView: View {
         .appBackground()
         .onAppear {
             shippingCostText = "\(product.shippingCost)"
+            if !hasAutoSwitchedTab,
+               product.productPricings.contains(where: { $0.actualPrice > 0 }) {
+                selectedTab = .price
+                hasAutoSwitchedTab = true
+            }
         }
         .navigationDestination(for: WorkStep.self) { step in
             WorkStepDetailView(step: step, product: product)

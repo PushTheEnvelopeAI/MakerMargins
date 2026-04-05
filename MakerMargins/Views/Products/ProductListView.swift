@@ -151,7 +151,8 @@ struct ProductListView: View {
                     }
                     .contextMenu {
                         Button {
-                            duplicateProduct(product)
+                            let copy = duplicateProduct(product)
+                            navigationPath.append(copy)
                         } label: {
                             Label("Duplicate", systemImage: "doc.on.doc")
                         }
@@ -207,7 +208,8 @@ struct ProductListView: View {
                         .buttonStyle(.plain)
                         .contextMenu {
                             Button {
-                                duplicateProduct(product)
+                                let copy = duplicateProduct(product)
+                                navigationPath.append(copy)
                             } label: {
                                 Label("Duplicate", systemImage: "doc.on.doc")
                             }
@@ -268,11 +270,16 @@ struct ProductListView: View {
     @ViewBuilder
     private var emptyState: some View {
         if products.isEmpty {
-            ContentUnavailableView(
-                "No Products Yet",
-                systemImage: "square.grid.2x2",
-                description: Text("Tap + to create a blank product or start from a template.")
-            )
+            ContentUnavailableView {
+                Label("No Products Yet", systemImage: "square.grid.2x2")
+            } description: {
+                Text("Track costs and calculate pricing for your products.")
+            } actions: {
+                Button("Start from Template") { showingTemplatePicker = true }
+                    .buttonStyle(.borderedProminent)
+                Button("Create Blank Product") { showingCreateForm = true }
+                    .buttonStyle(.bordered)
+            }
         } else {
             ContentUnavailableView.search(text: searchText)
         }
@@ -301,7 +308,7 @@ struct ProductListView: View {
 
     // MARK: - Actions
 
-    private func duplicateProduct(_ source: Product) {
+    @discardableResult private func duplicateProduct(_ source: Product) -> Product {
         let copy = Product(
             title: "\(source.title) (Copy)",
             sku: source.sku,
@@ -358,6 +365,8 @@ struct ProductListView: View {
             )
             modelContext.insert(newPricing)
         }
+
+        return copy
     }
 }
 

@@ -61,12 +61,16 @@ struct PlatformPricingDefaultFormView: View {
                 )
 
                 PercentageInputField(
-                    label: "% Sales from Ads",
+                    label: "% of Sales from Ads",
                     text: $percentSalesFromMarketingText,
                     field: FocusableField.percentSalesFromMarketing,
                     focusBinding: $focusedField,
                     writeBack: { profile?.percentSalesFromMarketing = $0 }
                 )
+
+                Text("What fraction of your sales come through paid advertising?")
+                    .font(AppTheme.Typography.note)
+                    .foregroundStyle(.tertiary)
 
                 PercentageInputField(
                     label: "Profit Margin",

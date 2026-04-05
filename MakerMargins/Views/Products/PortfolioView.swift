@@ -176,7 +176,7 @@ struct PortfolioView: View {
 
         return GroupBox {
             VStack(spacing: AppTheme.Spacing.xs) {
-                CalculatorSectionHeader(title: "Effective Hourly Rate", icon: "clock")
+                CalculatorSectionHeader(title: "Your Hourly Pay", icon: "clock")
 
                 if withRate.isEmpty && noHours.isEmpty {
                     noPricingHint

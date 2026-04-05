@@ -95,6 +95,10 @@ private struct TemplateCardView: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
+
+                Text("\(template.workSteps.count) steps, \(template.materials.count) materials, Etsy pricing")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
             }
         }
         .padding()

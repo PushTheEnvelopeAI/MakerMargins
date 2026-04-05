@@ -154,7 +154,7 @@ struct WorkStepListView: View {
 
     private var emptyState: some View {
         HStack {
-            Text("Add work steps to calculate labor costs")
+            Text("Tap + above to add labor steps and calculate costs")
                 .font(AppTheme.Typography.bodyText)
                 .foregroundStyle(.secondary)
             Spacer()
@@ -299,7 +299,7 @@ struct WorkStepListView: View {
             }
 
             HStack {
-                Text("Total Labor")
+                Text("Total Labor Cost")
                     .font(AppTheme.Typography.sectionHeader)
                 Spacer()
                 Text(formatter.format(CostingEngine.totalLaborCostBuffered(product: product)))

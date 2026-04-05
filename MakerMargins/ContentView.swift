@@ -21,16 +21,12 @@ struct ContentView: View {
                 Label("Products", systemImage: "square.grid.2x2")
             }
 
-            NavigationStack {
-                WorkshopView()
-            }
+            WorkshopView()
             .tabItem {
                 Label("Labor", systemImage: "hammer")
             }
 
-            NavigationStack {
-                MaterialsLibraryView()
-            }
+            MaterialsLibraryView()
             .tabItem {
                 Label("Materials", systemImage: "shippingbox")
             }

@@ -444,7 +444,7 @@ struct BatchForecastView: View {
                                 actualProfit: perUnitProfit
                             ) {
                                 HStack {
-                                    Text("Effective Hourly Rate")
+                                    Text("Your Hourly Pay")
                                         .font(AppTheme.Typography.bodyText)
                                     Spacer()
                                     Text("\(formatter.format(perHour)) / hr")

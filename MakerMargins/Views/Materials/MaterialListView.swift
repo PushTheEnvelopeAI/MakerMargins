@@ -153,7 +153,7 @@ struct MaterialListView: View {
 
     private var emptyState: some View {
         HStack {
-            Text("Add materials to calculate material costs")
+            Text("Tap + above to add materials and calculate costs")
                 .font(AppTheme.Typography.bodyText)
                 .foregroundStyle(.secondary)
             Spacer()
@@ -298,7 +298,7 @@ struct MaterialListView: View {
             }
 
             HStack {
-                Text("Total Materials")
+                Text("Total Material Cost")
                     .font(AppTheme.Typography.sectionHeader)
                 Spacer()
                 Text(formatter.format(CostingEngine.totalMaterialCostBuffered(product: product)))

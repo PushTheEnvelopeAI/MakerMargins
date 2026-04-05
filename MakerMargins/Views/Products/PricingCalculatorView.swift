@@ -192,7 +192,7 @@ struct PricingCalculatorView: View {
 
     private var productionCostSection: some View {
         VStack(spacing: AppTheme.Spacing.xs) {
-            CalculatorSectionHeader(title: "Production Costs", icon: "hammer")
+            CalculatorSectionHeader(title: "Cost Breakdown", icon: "hammer")
 
             if productionCost == 0 {
                 emptyCostHint
@@ -259,7 +259,7 @@ struct PricingCalculatorView: View {
                 )
 
                 feeRow(
-                    label: "Payment Processing",
+                    label: "Transaction Fees",
                     lockedDisplay: selectedPlatform.paymentProcessingDisplay(),
                     text: $paymentProcessingFeeText,
                     field: .paymentProcessingFee,
@@ -275,13 +275,18 @@ struct PricingCalculatorView: View {
                 )
 
                 PercentageInputField(
-                    label: "% Sales from Ads",
+                    label: "% of Sales from Ads",
                     text: $percentSalesFromMarketingText,
                     field: FocusableField.percentSalesFromMarketing,
                     focusBinding: $focusedField,
                     writeBack: { currentPricing?.percentSalesFromMarketing = $0 }
                 )
                 .padding(.vertical, AppTheme.Spacing.xs)
+
+                Text("What fraction of your sales come through paid advertising?")
+                    .font(AppTheme.Typography.note)
+                    .foregroundStyle(.tertiary)
+                    .padding(.bottom, AppTheme.Spacing.xs)
 
                 // Total Fees subtotal
                 let f = resolved
@@ -325,17 +330,23 @@ struct PricingCalculatorView: View {
                     .font(AppTheme.Typography.bodyText)
                     .foregroundStyle(.tertiary)
                 Spacer()
-                HStack(spacing: AppTheme.Spacing.xs) {
-                    Text(display)
-                        .font(AppTheme.Typography.bodyText)
-                        .foregroundStyle(.tertiary)
-                    Image(systemName: "lock.fill")
+                VStack(alignment: .trailing, spacing: AppTheme.Spacing.xxxs) {
+                    HStack(spacing: AppTheme.Spacing.xs) {
+                        Text(display)
+                            .font(AppTheme.Typography.bodyText)
+                            .foregroundStyle(.tertiary)
+                        Image(systemName: "lock.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                    Text("Set by \(selectedPlatform.rawValue)")
                         .font(.caption2)
-                        .foregroundStyle(.quaternary)
-                        .accessibilityLabel("\(label), \(display), set by platform, not editable")
+                        .foregroundStyle(.tertiary)
                 }
             }
             .padding(.vertical, AppTheme.Spacing.xs)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(label), \(display), set by \(selectedPlatform.rawValue), not editable")
         } else {
             PercentageInputField(
                 label: label,
@@ -374,9 +385,14 @@ struct PricingCalculatorView: View {
                     .font(AppTheme.Typography.heroPrice)
                     .foregroundStyle(AppTheme.Colors.accent)
             } else {
-                Text("— (fees too high)")
-                    .font(AppTheme.Typography.sectionHeader)
-                    .foregroundStyle(AppTheme.Colors.destructive)
+                VStack(alignment: .trailing, spacing: AppTheme.Spacing.xxs) {
+                    Text("— Fees + margin exceed 100%")
+                        .font(AppTheme.Typography.sectionHeader)
+                        .foregroundStyle(AppTheme.Colors.destructive)
+                    Text("Try lowering your profit margin or fee percentages")
+                        .font(AppTheme.Typography.note)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .accessibilityLabel(computedTargetPrice != nil ? "Target Price: \(formatter.format(computedTargetPrice!))" : "Target Price: fees too high")
@@ -395,6 +411,9 @@ struct PricingCalculatorView: View {
                     Divider()
                         .padding(.vertical, AppTheme.Spacing.xs)
                     profitHeroSection
+                    if computedTargetPrice != nil {
+                        resetToTargetPriceButton
+                    }
                 } else if computedTargetPrice != nil {
                     useTargetPriceButton
                 }
@@ -467,6 +486,22 @@ struct PricingCalculatorView: View {
             Spacer()
         }
         .padding(.vertical, AppTheme.Spacing.sm)
+    }
+
+    private var resetToTargetPriceButton: some View {
+        Button {
+            if var target = computedTargetPrice {
+                var rounded = Decimal()
+                NSDecimalRound(&rounded, &target, 2, .plain)
+                actualPriceText = "\(rounded)"
+                currentPricing?.actualPrice = rounded
+            }
+        } label: {
+            Text("Reset to Target Price")
+                .font(AppTheme.Typography.note)
+        }
+        .buttonStyle(.bordered)
+        .tint(.secondary)
     }
 
     private var profitBreakdownSection: some View {
@@ -563,7 +598,7 @@ struct PricingCalculatorView: View {
                 // Breakdown: Margin After Costs + Your Labor (hidden when no labor — would be redundant with hero)
                 if hasLabor {
                     HStack {
-                        Text("Margin After Costs")
+                        Text("Profit (Excl. Labor)")
                             .font(AppTheme.Typography.bodyText)
                             .foregroundStyle(.secondary)
                         Spacer()
@@ -598,7 +633,7 @@ struct PricingCalculatorView: View {
                 // Effective Hourly Rate — only when labor hours exist
                 if let perHour = computedTakeHomePerHour {
                     HStack {
-                        Text("Effective Hourly Rate")
+                        Text("Your Hourly Pay")
                             .font(AppTheme.Typography.bodyText)
                         Spacer()
                         Text("\(formatter.format(perHour)) / hr")

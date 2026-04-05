@@ -249,13 +249,30 @@ struct MaterialDetailView: View {
             } else {
                 VStack(spacing: 0) {
                     ForEach(linkedProducts, id: \.persistentModelID) { linkedProduct in
-                        HStack(spacing: AppTheme.Spacing.md) {
-                            ProductThumbnailView(imageData: linkedProduct.image)
-                            Text(linkedProduct.title)
-                                .font(AppTheme.Typography.rowTitle)
-                            Spacer()
+                        if product == nil {
+                            NavigationLink(value: linkedProduct) {
+                                HStack(spacing: AppTheme.Spacing.md) {
+                                    ProductThumbnailView(imageData: linkedProduct.image)
+                                    Text(linkedProduct.title)
+                                        .font(AppTheme.Typography.rowTitle)
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.tertiary)
+                                        .accessibilityHidden(true)
+                                }
+                                .padding(.vertical, AppTheme.Spacing.sm)
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            HStack(spacing: AppTheme.Spacing.md) {
+                                ProductThumbnailView(imageData: linkedProduct.image)
+                                Text(linkedProduct.title)
+                                    .font(AppTheme.Typography.rowTitle)
+                                Spacer()
+                            }
+                            .padding(.vertical, AppTheme.Spacing.sm)
                         }
-                        .padding(.vertical, AppTheme.Spacing.sm)
 
                         if linkedProduct.persistentModelID != linkedProducts.last?.persistentModelID {
                             Divider()

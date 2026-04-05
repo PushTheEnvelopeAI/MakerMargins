@@ -18,6 +18,7 @@ struct StopwatchView: View {
     @State private var timerState: TimerState = .idle
     @State private var startDate: Date? = nil
     @State private var accumulatedTime: TimeInterval = 0
+    @State private var showingDiscardConfirmation = false
 
     private enum TimerState {
         case idle, running, paused
@@ -42,6 +43,14 @@ struct StopwatchView: View {
                 .padding(.bottom, AppTheme.Spacing.xl * 2)
         }
         .appBackground()
+        .confirmationDialog("Stop Timer?", isPresented: $showingDiscardConfirmation) {
+            Button("Stop and Discard", role: .destructive) {
+                dismiss()
+            }
+            Button("Keep Timing", role: .cancel) { }
+        } message: {
+            Text("The timer is still running. Your recorded time will not be saved.")
+        }
     }
 
     // MARK: - Toolbar
@@ -49,16 +58,19 @@ struct StopwatchView: View {
     private var toolbar: some View {
         HStack {
             Spacer()
-            if timerState != .running {
-                Button {
+            Button {
+                if timerState == .running {
+                    showingDiscardConfirmation = true
+                } else {
                     dismiss()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(.secondary)
                 }
-                .padding()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.secondary)
             }
+            .padding()
+            .accessibilityLabel("Close stopwatch")
         }
     }
 
