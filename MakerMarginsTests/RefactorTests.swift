@@ -490,8 +490,8 @@ struct RefactorTests {
     func formatPerUnitTimeMinutes() {
         // 0.5 hours = 30 minutes
         #expect(CostingEngine.formatPerUnitTime(hours: Decimal(string: "0.5")!) == "30m/ea")
-        // 0.3833 hours ≈ 23 minutes
-        let hrs = Decimal(string: "0.3833")!
+        // 23 minutes exactly
+        let hrs = Decimal(23) / Decimal(60)
         #expect(CostingEngine.formatPerUnitTime(hours: hrs) == "23m/ea")
     }
 
