@@ -17,6 +17,12 @@ struct MakerMarginsApp: App {
     @State private var appearanceManager = AppearanceManager()
     @State private var laborRateManager = LaborRateManager()
 
+    // Repositories (writes-only — reads stay on @Query)
+    @State private var productRepository: SwiftDataProductRepository
+    @State private var workStepRepository: SwiftDataWorkStepRepository
+    @State private var materialRepository: SwiftDataMaterialRepository
+    @State private var categoryRepository: SwiftDataCategoryRepository
+
     init() {
         let schema = Schema([
             Product.self,
@@ -54,6 +60,13 @@ struct MakerMarginsApp: App {
                 _showStoreCorruptionAlert = State(initialValue: true)
             }
         }
+
+        // Initialize repositories with the container's main context
+        let mainContext = container.mainContext
+        _productRepository = State(initialValue: SwiftDataProductRepository(context: mainContext))
+        _workStepRepository = State(initialValue: SwiftDataWorkStepRepository(context: mainContext))
+        _materialRepository = State(initialValue: SwiftDataMaterialRepository(context: mainContext))
+        _categoryRepository = State(initialValue: SwiftDataCategoryRepository(context: mainContext))
     }
 
     var body: some Scene {
@@ -62,6 +75,10 @@ struct MakerMarginsApp: App {
                 .environment(\.currencyFormatter, currencyFormatter)
                 .environment(\.appearanceManager, appearanceManager)
                 .environment(\.laborRateManager, laborRateManager)
+                .environment(\.productRepository, productRepository)
+                .environment(\.workStepRepository, workStepRepository)
+                .environment(\.materialRepository, materialRepository)
+                .environment(\.categoryRepository, categoryRepository)
                 .preferredColorScheme(appearanceManager.resolvedColorScheme)
                 .tint(AppTheme.Colors.accent)
                 .alert("Data Recovery", isPresented: $showStoreCorruptionAlert) {

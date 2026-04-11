@@ -13,10 +13,11 @@ struct WorkStepDetailView: View {
     let step: WorkStep
     var product: Product?
 
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Environment(\.currencyFormatter) private var formatter
     @Environment(\.laborRateManager) private var laborRateManager
+    @Environment(\.workStepRepository) private var workStepRepository
+    @Environment(\.productRepository) private var productRepository
 
     @State private var showingEditForm = false
     @State private var showingStopwatch = false
@@ -88,10 +89,12 @@ struct WorkStepDetailView: View {
         .onChange(of: laborRateText) { _, _ in
             guard let link = activeLink else { return }
             link.laborRate = editableLaborRate >= 0 ? editableLaborRate : 0
+            if let product { productRepository.touch(product) }
         }
         .onChange(of: unitsPerProductText) { _, _ in
             guard let link = activeLink else { return }
             link.unitsRequiredPerProduct = editableUnitsPerProduct > 0 ? editableUnitsPerProduct : 1
+            if let product { productRepository.touch(product) }
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -133,6 +136,7 @@ struct WorkStepDetailView: View {
             ) { time, units in
                 step.recordedTime = time
                 step.batchUnitsCompleted = units
+                workStepRepository.touch(step)
             }
         }
         .confirmationDialog(
@@ -141,7 +145,7 @@ struct WorkStepDetailView: View {
             titleVisibility: .visible
         ) {
             Button("Delete Step", role: .destructive) {
-                modelContext.delete(step)
+                workStepRepository.delete(step)
                 dismiss()
             }
             Button("Cancel", role: .cancel) {}
@@ -287,15 +291,13 @@ struct WorkStepDetailView: View {
     private func removeFromProduct() {
         guard let link = activeLink, let product else { return }
         let linkID = link.persistentModelID
-        modelContext.delete(link)
+        workStepRepository.removeFromProduct(link)
 
         // Reindex remaining links
         let remaining = product.productWorkSteps
             .filter { $0.persistentModelID != linkID }
             .sorted { $0.sortOrder < $1.sortOrder }
-        for (index, remainingLink) in remaining.enumerated() {
-            remainingLink.sortOrder = index
-        }
+        workStepRepository.reorder(remaining)
         dismiss()
     }
 

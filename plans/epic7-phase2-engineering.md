@@ -3,7 +3,7 @@
 > **Parent:** [epic7-production-launch.md](epic7-production-launch.md)
 > **Goal:** Ship all the code that Epic 7 requires. Runs **in parallel** with [Phase 3 (assets)](epic7-phase3-assets.md).
 
-**Status:** Planned — starts after Phase 1 gate passes.
+**Status:** In Progress — Sub-phase 2a complete.
 **Estimated duration:** ~2 weeks.
 
 ---

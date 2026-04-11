@@ -13,10 +13,10 @@ import SwiftData
 import PhotosUI
 
 struct WorkStepFormView: View {
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Environment(\.laborRateManager) private var laborRateManager
     @Environment(\.currencyFormatter) private var currencyFormatter
+    @Environment(\.workStepRepository) private var workStepRepository
 
     let step: WorkStep?
     let product: Product?
@@ -359,29 +359,28 @@ struct WorkStepFormView: View {
             step.recordedTime = recordedTime
             step.batchUnitsCompleted = safeBatchUnits
             step.unitName = unitName.trimmingCharacters(in: .whitespaces).isEmpty ? "unit" : unitName.trimmingCharacters(in: .whitespaces)
+            workStepRepository.touch(step)
         } else {
             // Create new step + link to product
-            let newStep = WorkStep(
+            let safeUnitName = unitName.trimmingCharacters(in: .whitespaces).isEmpty ? "unit" : unitName.trimmingCharacters(in: .whitespaces)
+            let newStep = workStepRepository.create(
                 title: trimmedTitle,
                 summary: trimmedSummary,
                 image: imageData,
                 recordedTime: recordedTime,
                 batchUnitsCompleted: safeBatchUnits,
-                unitName: unitName.trimmingCharacters(in: .whitespaces).isEmpty ? "unit" : unitName.trimmingCharacters(in: .whitespaces)
+                unitName: safeUnitName,
+                defaultUnitsPerProduct: 1
             )
-            modelContext.insert(newStep)
 
             if let product {
-                let link = ProductWorkStep(
+                workStepRepository.addToProduct(
+                    newStep,
                     product: product,
-                    workStep: newStep,
-                    sortOrder: product.productWorkSteps.count,
-                    unitsRequiredPerProduct: newStep.defaultUnitsPerProduct,
-                    laborRate: laborRateManager.defaultRate
+                    laborRate: laborRateManager.defaultRate,
+                    unitsRequired: newStep.defaultUnitsPerProduct,
+                    sortOrder: product.productWorkSteps.count
                 )
-                modelContext.insert(link)
-                product.productWorkSteps.append(link)
-                newStep.productWorkSteps.append(link)
             }
         }
         dismiss()

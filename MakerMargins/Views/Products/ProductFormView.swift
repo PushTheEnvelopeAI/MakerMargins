@@ -14,7 +14,8 @@ import SwiftData
 import PhotosUI
 
 struct ProductFormView: View {
-    @Environment(\.modelContext) private var modelContext
+    @Environment(\.productRepository) private var productRepository
+    @Environment(\.categoryRepository) private var categoryRepository
     @Environment(\.dismiss) private var dismiss
 
     @Query(sort: \Category.name) private var categories: [Category]
@@ -217,7 +218,7 @@ struct ProductFormView: View {
                 if selectedCategory?.persistentModelID == category.persistentModelID {
                     selectedCategory = nil
                 }
-                modelContext.delete(category)
+                categoryRepository.delete(category)
                 categoryToDelete = nil
             }
         } message: { category in
@@ -228,8 +229,7 @@ struct ProductFormView: View {
     private func createCategory() {
         let name = newCategoryName.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { return }
-        let category = Category(name: name)
-        modelContext.insert(category)
+        let category = categoryRepository.create(name: name)
         selectedCategory = category
         newCategoryName = ""
         isCreatingCategory = false
@@ -248,15 +248,18 @@ struct ProductFormView: View {
             product.summary = trimmedSummary
             product.category = selectedCategory
             product.image = imageData
+            productRepository.touch(product)
         } else {
-            let newProduct = Product(
+            let newProduct = productRepository.create(
                 title: trimmedTitle,
                 sku: trimmedSku,
                 summary: trimmedSummary,
                 image: imageData,
+                shippingCost: 0,
+                materialBuffer: 0,
+                laborBuffer: 0,
                 category: selectedCategory
             )
-            modelContext.insert(newProduct)
             onCreate?(newProduct)
         }
         dismiss()

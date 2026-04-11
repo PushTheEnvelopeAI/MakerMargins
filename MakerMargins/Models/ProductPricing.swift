@@ -15,6 +15,11 @@ final class ProductPricing {
     /// The product this pricing belongs to.
     var product: Product?
 
+    // MARK: Sync-readiness (Epic 7)
+    var remoteID: UUID? = nil
+    var createdAt: Date = .now
+    var updatedAt: Date = .now
+
     /// Which platform these pricing overrides are for.
     var platformType: PlatformType
 

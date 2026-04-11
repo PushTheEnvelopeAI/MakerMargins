@@ -13,9 +13,9 @@ import SwiftData
 import PhotosUI
 
 struct MaterialFormView: View {
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Environment(\.currencyFormatter) private var currencyFormatter
+    @Environment(\.materialRepository) private var materialRepository
 
     let material: Material?
     let product: Product?
@@ -271,29 +271,27 @@ struct MaterialFormView: View {
             material.bulkCost = safeCost
             material.bulkQuantity = safeQuantity
             material.unitName = safeUnitName
+            materialRepository.touch(material)
         } else {
             // Create new material + link to product
-            let newMaterial = Material(
+            let newMaterial = materialRepository.create(
                 title: trimmedTitle,
                 summary: trimmedSummary,
                 image: imageData,
                 link: trimmedLink,
                 bulkCost: safeCost,
                 bulkQuantity: safeQuantity,
-                unitName: safeUnitName
+                unitName: safeUnitName,
+                defaultUnitsPerProduct: 1
             )
-            modelContext.insert(newMaterial)
 
             if let product {
-                let matLink = ProductMaterial(
+                materialRepository.addToProduct(
+                    newMaterial,
                     product: product,
-                    material: newMaterial,
-                    sortOrder: product.productMaterials.count,
-                    unitsRequiredPerProduct: newMaterial.defaultUnitsPerProduct
+                    unitsRequired: newMaterial.defaultUnitsPerProduct,
+                    sortOrder: product.productMaterials.count
                 )
-                modelContext.insert(matLink)
-                product.productMaterials.append(matLink)
-                newMaterial.productMaterials.append(matLink)
             }
         }
         dismiss()

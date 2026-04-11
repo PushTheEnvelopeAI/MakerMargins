@@ -25,6 +25,14 @@ final class Product {
     /// Overhead buffer applied to labour costs. Stored as a fraction: 0.05 = 5%.
     var laborBuffer: Decimal
 
+    // MARK: Sync-readiness (Epic 7)
+
+    /// Server-side identifier for future cross-platform sync. Not a primary key —
+    /// SwiftData's persistentModelID remains the local PK. Populated by future sync layer.
+    var remoteID: UUID? = nil
+    var createdAt: Date = .now
+    var updatedAt: Date = .now
+
     // MARK: Relationships
 
     /// The category this product belongs to. Optional — products can be uncategorised.

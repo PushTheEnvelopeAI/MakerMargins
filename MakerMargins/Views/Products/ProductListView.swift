@@ -11,7 +11,7 @@ import SwiftData
 struct ProductListView: View {
     @Query(sort: \Product.title) private var products: [Product]
     @Query(sort: \Category.name) private var categories: [Category]
-    @Environment(\.modelContext) private var modelContext
+    @Environment(\.productRepository) private var productRepository
 
     @State private var searchText = ""
     @State private var selectedCategory: Category? = nil
@@ -116,7 +116,7 @@ struct ProductListView: View {
         ) {
             Button("Delete Product", role: .destructive) {
                 if let product = productToDelete {
-                    modelContext.delete(product)
+                    productRepository.delete(product)
                     productToDelete = nil
                 }
             }
@@ -313,64 +313,7 @@ struct ProductListView: View {
     // MARK: - Actions
 
     @discardableResult private func duplicateProduct(_ source: Product) -> Product {
-        let copy = Product(
-            title: "\(source.title) (Copy)",
-            sku: source.sku,
-            summary: source.summary,
-            image: source.image,
-            shippingCost: source.shippingCost,
-            materialBuffer: source.materialBuffer,
-            laborBuffer: source.laborBuffer,
-            category: source.category
-        )
-        modelContext.insert(copy)
-
-        // Re-link shared WorkSteps via new ProductWorkStep associations
-        for link in source.productWorkSteps {
-            guard let step = link.workStep else { continue }
-            let newLink = ProductWorkStep(
-                product: copy,
-                workStep: step,
-                sortOrder: link.sortOrder,
-                unitsRequiredPerProduct: link.unitsRequiredPerProduct,
-                laborRate: link.laborRate
-            )
-            modelContext.insert(newLink)
-            copy.productWorkSteps.append(newLink)
-            step.productWorkSteps.append(newLink)
-        }
-
-        // Re-link shared Materials via new ProductMaterial associations
-        for srcLink in source.productMaterials {
-            guard let mat = srcLink.material else { continue }
-            let newLink = ProductMaterial(
-                product: copy,
-                material: mat,
-                sortOrder: srcLink.sortOrder,
-                unitsRequiredPerProduct: srcLink.unitsRequiredPerProduct
-            )
-            modelContext.insert(newLink)
-            copy.productMaterials.append(newLink)
-            mat.productMaterials.append(newLink)
-        }
-
-        // Copy per-product pricing overrides
-        for srcPricing in source.productPricings {
-            let newPricing = ProductPricing(
-                product: copy,
-                platformType: srcPricing.platformType,
-                platformFee: srcPricing.platformFee,
-                paymentProcessingFee: srcPricing.paymentProcessingFee,
-                marketingFee: srcPricing.marketingFee,
-                percentSalesFromMarketing: srcPricing.percentSalesFromMarketing,
-                profitMargin: srcPricing.profitMargin,
-                actualPrice: srcPricing.actualPrice,
-                actualShippingCharge: srcPricing.actualShippingCharge
-            )
-            modelContext.insert(newPricing)
-        }
-
-        return copy
+        productRepository.duplicate(source)
     }
 }
 

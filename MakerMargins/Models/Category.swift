@@ -12,6 +12,11 @@ import SwiftData
 final class Category {
     var name: String
 
+    // MARK: Sync-readiness (Epic 7)
+    var remoteID: UUID? = nil
+    var createdAt: Date = .now
+    var updatedAt: Date = .now
+
     // Inverse of Product.category. Delete rule: .nullify (default) —
     // orphaned products keep their data, their category becomes nil.
     var products: [Product] = []

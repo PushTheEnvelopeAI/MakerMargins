@@ -16,10 +16,11 @@ struct WorkStepListView: View {
     @Binding var isExpanded: Bool
 
     @Query(sort: \WorkStep.title) private var allSteps: [WorkStep]
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.currencyFormatter) private var formatter
     @Environment(\.laborRateManager) private var laborRateManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.workStepRepository) private var workStepRepository
+    @Environment(\.productRepository) private var productRepository
 
     @State private var showingNewStepForm = false
     @State private var showingExistingStepPicker = false
@@ -225,7 +226,7 @@ struct WorkStepListView: View {
             totalValue: CostingEngine.totalLaborCostBuffered(product: product),
             bufferText: $bufferText,
             focusBinding: $bufferFocused,
-            onBufferChanged: { product.laborBuffer = $0 }
+            onBufferChanged: { product.laborBuffer = $0; productRepository.touch(product) }
         )
     }
 
@@ -308,16 +309,13 @@ struct WorkStepListView: View {
     }
 
     private func addExistingStep(_ step: WorkStep) {
-        let link = ProductWorkStep(
+        workStepRepository.addToProduct(
+            step,
             product: product,
-            workStep: step,
-            sortOrder: product.productWorkSteps.count,
-            unitsRequiredPerProduct: step.defaultUnitsPerProduct,
-            laborRate: laborRateManager.defaultRate
+            laborRate: laborRateManager.defaultRate,
+            unitsRequired: step.defaultUnitsPerProduct,
+            sortOrder: product.productWorkSteps.count
         )
-        modelContext.insert(link)
-        product.productWorkSteps.append(link)
-        step.productWorkSteps.append(link)
     }
 
     private func moveStep(at index: Int, direction: Int) {
@@ -325,22 +323,18 @@ struct WorkStepListView: View {
         var links = sortedLinks
         guard targetIndex >= 0, targetIndex < links.count else { return }
         links.swapAt(index, targetIndex)
-        for (i, link) in links.enumerated() {
-            link.sortOrder = i
-        }
+        workStepRepository.reorder(links)
     }
 
     private func removeLink(_ link: ProductWorkStep) {
         let linkID = link.persistentModelID
-        modelContext.delete(link)
+        workStepRepository.removeFromProduct(link)
         linkToRemove = nil
 
         // Reindex remaining links, excluding the just-deleted one
         let remaining = product.productWorkSteps
             .filter { $0.persistentModelID != linkID }
             .sorted { $0.sortOrder < $1.sortOrder }
-        for (index, remainingLink) in remaining.enumerated() {
-            remainingLink.sortOrder = index
-        }
+        workStepRepository.reorder(remaining)
     }
 }

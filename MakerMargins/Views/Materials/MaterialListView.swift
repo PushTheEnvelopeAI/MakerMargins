@@ -16,9 +16,10 @@ struct MaterialListView: View {
     @Binding var isExpanded: Bool
 
     @Query(sort: \Material.title) private var allMaterials: [Material]
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.currencyFormatter) private var formatter
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.materialRepository) private var materialRepository
+    @Environment(\.productRepository) private var productRepository
 
     @State private var showingNewMaterialForm = false
     @State private var showingExistingMaterialPicker = false
@@ -224,7 +225,7 @@ struct MaterialListView: View {
             totalValue: CostingEngine.totalMaterialCostBuffered(product: product),
             bufferText: $bufferText,
             focusBinding: $bufferFocused,
-            onBufferChanged: { product.materialBuffer = $0 }
+            onBufferChanged: { product.materialBuffer = $0; productRepository.touch(product) }
         )
     }
 
@@ -307,15 +308,12 @@ struct MaterialListView: View {
     }
 
     private func addExistingMaterial(_ material: Material) {
-        let link = ProductMaterial(
+        materialRepository.addToProduct(
+            material,
             product: product,
-            material: material,
-            sortOrder: product.productMaterials.count,
-            unitsRequiredPerProduct: material.defaultUnitsPerProduct
+            unitsRequired: material.defaultUnitsPerProduct,
+            sortOrder: product.productMaterials.count
         )
-        modelContext.insert(link)
-        product.productMaterials.append(link)
-        material.productMaterials.append(link)
     }
 
     private func moveMaterial(at index: Int, direction: Int) {
@@ -323,21 +321,17 @@ struct MaterialListView: View {
         var links = sortedLinks
         guard targetIndex >= 0, targetIndex < links.count else { return }
         links.swapAt(index, targetIndex)
-        for (i, link) in links.enumerated() {
-            link.sortOrder = i
-        }
+        materialRepository.reorder(links)
     }
 
     private func removeLink(_ link: ProductMaterial) {
         let linkID = link.persistentModelID
-        modelContext.delete(link)
+        materialRepository.removeFromProduct(link)
         linkToRemove = nil
 
         let remaining = product.productMaterials
             .filter { $0.persistentModelID != linkID }
             .sorted { $0.sortOrder < $1.sortOrder }
-        for (index, remainingLink) in remaining.enumerated() {
-            remainingLink.sortOrder = index
-        }
+        materialRepository.reorder(remaining)
     }
 }

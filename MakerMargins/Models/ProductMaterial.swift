@@ -24,6 +24,11 @@ final class ProductMaterial {
     /// Display order of this material within the product's material list. Zero-based.
     var sortOrder: Int
 
+    // MARK: Sync-readiness (Epic 7)
+    var remoteID: UUID? = nil
+    var createdAt: Date = .now
+    var updatedAt: Date = .now
+
     /// How many units of this material are consumed per finished product.
     /// Per-product override — pre-filled from Material.defaultUnitsPerProduct on creation.
     var unitsRequiredPerProduct: Decimal = 1

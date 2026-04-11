@@ -14,7 +14,7 @@ import SwiftData
 struct MaterialsLibraryView: View {
     @Query(sort: \Material.title) private var allMaterials: [Material]
     @Environment(\.currencyFormatter) private var formatter
-    @Environment(\.modelContext) private var modelContext
+    @Environment(\.materialRepository) private var materialRepository
 
     @State private var searchText = ""
     @State private var showingCreateForm = false
@@ -158,7 +158,7 @@ struct MaterialsLibraryView: View {
     private func deleteSelected() {
         let materialsToDelete = allMaterials.filter { selection.contains($0.persistentModelID) }
         for material in materialsToDelete {
-            modelContext.delete(material)
+            materialRepository.delete(material)
         }
         selection.removeAll()
         editMode = .inactive

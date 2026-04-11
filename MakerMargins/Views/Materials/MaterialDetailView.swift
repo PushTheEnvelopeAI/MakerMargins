@@ -13,9 +13,10 @@ struct MaterialDetailView: View {
     let material: Material
     var product: Product?
 
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Environment(\.currencyFormatter) private var formatter
+    @Environment(\.materialRepository) private var materialRepository
+    @Environment(\.productRepository) private var productRepository
 
     @State private var showingEditForm = false
     @State private var showingDeleteConfirmation = false
@@ -72,6 +73,7 @@ struct MaterialDetailView: View {
         .onChange(of: unitsPerProductText) { _, _ in
             guard let link = activeLink else { return }
             link.unitsRequiredPerProduct = editableUnitsPerProduct > 0 ? editableUnitsPerProduct : 1
+            if let product { productRepository.touch(product) }
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -104,7 +106,7 @@ struct MaterialDetailView: View {
             titleVisibility: .visible
         ) {
             Button("Delete Material", role: .destructive) {
-                modelContext.delete(material)
+                materialRepository.delete(material)
                 dismiss()
             }
             Button("Cancel", role: .cancel) {}
@@ -236,15 +238,13 @@ struct MaterialDetailView: View {
     private func removeFromProduct() {
         guard let link = activeLink, let product else { return }
         let linkID = link.persistentModelID
-        modelContext.delete(link)
+        materialRepository.removeFromProduct(link)
 
         // Reindex remaining links
         let remaining = product.productMaterials
             .filter { $0.persistentModelID != linkID }
             .sorted { $0.sortOrder < $1.sortOrder }
-        for (index, remainingLink) in remaining.enumerated() {
-            remainingLink.sortOrder = index
-        }
+        materialRepository.reorder(remaining)
         dismiss()
     }
 

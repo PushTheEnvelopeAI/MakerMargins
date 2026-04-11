@@ -14,7 +14,7 @@ import SwiftData
 struct WorkshopView: View {
     @Query(sort: \WorkStep.title) private var allSteps: [WorkStep]
     @Environment(\.currencyFormatter) private var formatter
-    @Environment(\.modelContext) private var modelContext
+    @Environment(\.workStepRepository) private var workStepRepository
 
     @State private var searchText = ""
     @State private var showingCreateForm = false
@@ -158,7 +158,7 @@ struct WorkshopView: View {
     private func deleteSelected() {
         let stepsToDelete = allSteps.filter { selection.contains($0.persistentModelID) }
         for step in stepsToDelete {
-            modelContext.delete(step)
+            workStepRepository.delete(step)
         }
         selection.removeAll()
         editMode = .inactive

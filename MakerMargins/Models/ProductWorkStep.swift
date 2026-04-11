@@ -24,6 +24,11 @@ final class ProductWorkStep {
     /// Display order of this step within the product's workflow. Zero-based.
     var sortOrder: Int
 
+    // MARK: Sync-readiness (Epic 7)
+    var remoteID: UUID? = nil
+    var createdAt: Date = .now
+    var updatedAt: Date = .now
+
     /// How many units of this step are required per finished product.
     /// Per-product override — pre-filled from WorkStep.defaultUnitsPerProduct on creation.
     var unitsRequiredPerProduct: Decimal = 1

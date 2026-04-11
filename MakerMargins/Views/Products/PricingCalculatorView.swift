@@ -21,6 +21,7 @@ struct PricingCalculatorView: View {
     let product: Product
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.productRepository) private var productRepository
     @Environment(\.currencyFormatter) private var formatter
 
     // MARK: - State
@@ -259,7 +260,7 @@ struct PricingCalculatorView: View {
                     lockedDisplay: selectedPlatform.platformFeeDisplay(),
                     text: $platformFeeText,
                     field: .platformFee,
-                    writeBack: { currentPricing?.platformFee = $0 }
+                    writeBack: { currentPricing?.platformFee = $0; productRepository.touch(product) }
                 )
 
                 feeRow(
@@ -267,7 +268,7 @@ struct PricingCalculatorView: View {
                     lockedDisplay: selectedPlatform.paymentProcessingDisplay(),
                     text: $paymentProcessingFeeText,
                     field: .paymentProcessingFee,
-                    writeBack: { currentPricing?.paymentProcessingFee = $0 }
+                    writeBack: { currentPricing?.paymentProcessingFee = $0; productRepository.touch(product) }
                 )
 
                 feeRow(
@@ -275,7 +276,7 @@ struct PricingCalculatorView: View {
                     lockedDisplay: selectedPlatform.marketingFeeDisplay(),
                     text: $marketingFeeText,
                     field: .marketingFee,
-                    writeBack: { currentPricing?.marketingFee = $0 }
+                    writeBack: { currentPricing?.marketingFee = $0; productRepository.touch(product) }
                 )
 
                 PercentageInputField(
@@ -283,7 +284,7 @@ struct PricingCalculatorView: View {
                     text: $percentSalesFromMarketingText,
                     field: FocusableField.percentSalesFromMarketing,
                     focusBinding: $focusedField,
-                    writeBack: { currentPricing?.percentSalesFromMarketing = $0 }
+                    writeBack: { currentPricing?.percentSalesFromMarketing = $0; productRepository.touch(product) }
                 )
                 .padding(.vertical, AppTheme.Spacing.xs)
 
@@ -371,7 +372,7 @@ struct PricingCalculatorView: View {
             text: $profitMarginText,
             field: FocusableField.profitMargin,
             focusBinding: $focusedField,
-            writeBack: { currentPricing?.profitMargin = $0 }
+            writeBack: { currentPricing?.profitMargin = $0; productRepository.touch(product) }
         )
         .padding(.vertical, AppTheme.Spacing.xs)
         .sectionGroupStyle()
@@ -427,10 +428,12 @@ struct PricingCalculatorView: View {
         .onChange(of: actualPriceText) { _, newValue in
             let value = Decimal(string: newValue) ?? 0
             currentPricing?.actualPrice = value >= 0 ? value : 0
+            productRepository.touch(product)
         }
         .onChange(of: actualShippingChargeText) { _, newValue in
             let value = Decimal(string: newValue) ?? 0
             currentPricing?.actualShippingCharge = value >= 0 ? value : 0
+            productRepository.touch(product)
         }
     }
 

@@ -40,6 +40,11 @@ final class Material {
     @Attribute(originalName: "unitsRequiredPerProduct")
     var defaultUnitsPerProduct: Decimal
 
+    // MARK: Sync-readiness (Epic 7)
+    var remoteID: UUID? = nil
+    var createdAt: Date = .now
+    var updatedAt: Date = .now
+
     // MARK: Relationship
 
     /// Join entries linking this material to products. Cascade-deleted when the material is deleted
