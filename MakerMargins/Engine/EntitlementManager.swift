@@ -4,8 +4,8 @@
 // Wraps RevenueCat to manage Pro entitlements (annual subscription + lifetime purchase).
 // @Observable, injected via @Environment. Follows the existing manager pattern.
 //
-// Trial state is delegated to RevenueCat — their backend tracks trial start and
-// expiration accurately across devices. No manual UserDefaults tracking needed.
+// No free trial — the free tier (3 products, General + Etsy tabs) IS the trial.
+// Users hit the paywall at product #4 or when tapping Shopify/Amazon tabs.
 //
 // Cross-platform: when Android/web ship, the same RevenueCat project handles
 // Google Play Billing / Stripe entitlements with the same isPro check.
@@ -21,14 +21,11 @@ final class EntitlementManager {
     // MARK: - Published State
 
     private(set) var isPro: Bool = false
-    private(set) var isInTrial: Bool = false
-    private(set) var trialDaysRemaining: Int = 0
     private(set) var activeEntitlement: EntitlementState = .none
     private(set) var availablePackages: [Package] = []
     private(set) var isLoading: Bool = true
 
     enum EntitlementState: Equatable {
-        case trial
         case annual
         case lifetime
         case none
@@ -81,18 +78,6 @@ final class EntitlementManager {
         }
     }
 
-    /// Check whether the user is eligible for the intro offer (free trial) on a given package.
-    /// Used to dynamically show/hide the "14-day free trial" badge on the paywall.
-    func introOfferEligible(for package: Package) async -> Bool {
-        do {
-            let eligibility = try await Purchases.shared.checkTrialOrIntroDiscountEligibility(packages: [package])
-            return eligibility[package.identifier]?.status == .eligible
-        } catch {
-            AppLogger.storeKit.error("Intro offer eligibility check failed: \(error.localizedDescription, privacy: .public)")
-            return false
-        }
-    }
-
     // MARK: - Private
 
     private func loadOfferings() async {
@@ -119,21 +104,10 @@ final class EntitlementManager {
         let isActive = proEntitlement?.isActive == true
 
         isPro = isActive
-        isInTrial = proEntitlement?.periodType == .trial
-
-        // Compute trial days remaining
-        if isInTrial, let expirationDate = proEntitlement?.expirationDate {
-            let days = Calendar.current.dateComponents([.day], from: .now, to: expirationDate).day ?? 0
-            trialDaysRemaining = max(0, days)
-        } else {
-            trialDaysRemaining = 0
-        }
 
         // Determine active entitlement type
         if !isActive {
             activeEntitlement = .none
-        } else if isInTrial {
-            activeEntitlement = .trial
         } else if proEntitlement?.expirationDate == nil {
             // Non-consumable (lifetime) has no expiration
             activeEntitlement = .lifetime
@@ -147,7 +121,7 @@ final class EntitlementManager {
 
 // MARK: - Environment Key
 
-struct EntitlementManagerKey: EnvironmentKey {
+struct EntitlementManagerKey: @preconcurrency EnvironmentKey {
     @MainActor static let defaultValue = EntitlementManager()
 }
 

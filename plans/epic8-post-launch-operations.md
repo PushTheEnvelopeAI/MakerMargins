@@ -17,7 +17,7 @@ Keep MakerMargins healthy, growing, and sustainable after launch. Cover monitori
 ### Dashboards
 - [ ] **PostHog dashboard** for core product metrics:
   - Activation funnel (install → templateApplied → firstProductCreated → firstPricingCalculated → portfolioViewed)
-  - Monetization funnel (trialStarted → paywallShown → purchaseAttempted → purchaseSucceeded)
+  - Monetization funnel (paywallShown → purchaseAttempted → purchaseSucceeded)
   - Feature usage heatmap (which tabs, which templates, which calculations get used)
   - Retention cohorts (D1, D7, D30 by install week)
 - [ ] **Sentry dashboard** for stability:
@@ -25,8 +25,7 @@ Keep MakerMargins healthy, growing, and sustainable after launch. Cover monitori
   - Top errors by frequency and affected users
   - Performance: cold launch time, hangs, slow frames
 - [ ] **RevenueCat dashboard** for monetization:
-  - Active trials
-  - Trial-to-paid conversion rate
+  - Free-to-paid conversion rate
   - MRR, churn, refund rate
   - Annual vs lifetime mix
 
@@ -38,7 +37,7 @@ Keep MakerMargins healthy, growing, and sustainable after launch. Cover monitori
 - [ ] **PostHog alerts:**
   - Activation funnel drop >20% week-over-week
   - Purchase rate drops to zero (possible StoreKit regression)
-- [ ] **RevenueCat alerts:** unusual refund spike, trial-start volume anomaly
+- [ ] **RevenueCat alerts:** unusual refund spike, purchase volume anomaly
 
 ### Cadence
 - [ ] **Daily (first 2 weeks):** quick 5-min dashboard check + Sentry triage
@@ -85,7 +84,7 @@ The first 50–100 reviews disproportionately shape your star rating for the lif
 Draft 5–6 reusable templates in a `plans/review-response-templates.md` file:
 - [ ] **Bug report reply** — thank, acknowledge, ask for reproduction details via support email, promise fix
 - [ ] **Feature request reply** — thank, note it for roadmap, explain Tier 1 priorities
-- [ ] **Pricing complaint** — thank, explain free tier, point to trial, reference lifetime option
+- [ ] **Pricing complaint** — thank, explain free tier value, reference lifetime option as one-time alternative
 - [ ] **Confused new user** — thank, point to templates, offer direct support
 - [ ] **Generic positive** — thank, invite follow-up feedback
 - [ ] **Misleading negative** — factually correct with dignity, no defensiveness
@@ -111,7 +110,7 @@ Draft 5–6 reusable templates in a `plans/review-response-templates.md` file:
 - [ ] Build [plans/faq.md](plans/faq.md) from real support questions over the first month
 - [ ] Promote frequent questions to the landing page or in-app help
 - [ ] Candidate early FAQs:
-  - "How do I start a free trial?"
+  - "What can I do on the free tier?"
   - "How do I restore my purchase on a new device?"
   - "Why is the Shopify tab locked?"
   - "Can I export my data?"
@@ -295,7 +294,7 @@ PostHog feature flags are available on the free tier and were installed in Epic 
 ### Launch Experiments
 - [ ] **Paywall copy A/B test** — variant headlines, feature bullet ordering, pricing layout
 - [ ] **Free tier product cap** — test 3 vs. 2 vs. 5 products to find the conversion sweet spot
-- [ ] **Trial length** — test 14-day vs. 7-day vs. 30-day (StoreKit intro offer can be changed per cohort)
+- [ ] **Free tier product cap** — test 3 vs. 2 vs. 5 products to find the conversion sweet spot
 - [ ] **Onboarding variations** — template picker auto-open vs. dismissible vs. full-screen
 
 ### Staged Rollouts for Risky Features

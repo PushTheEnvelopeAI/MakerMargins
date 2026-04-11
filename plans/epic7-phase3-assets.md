@@ -36,7 +36,7 @@ The placeholder from Phase 1 becomes a real landing page.
 - [ ] **Hero section:** headline, subheadline, App Store badge (official badges at [developer.apple.com/app-store/marketing/guidelines](https://developer.apple.com/app-store/marketing/guidelines/)), one hero screenshot (same as App Store screenshot #1)
 - [ ] **Problem statement:** "Most makers underprice their work. Here's why." — 2–3 sentences on the pain point
 - [ ] **Features section:** 3–6 short feature bullets with small screenshots (stopwatch, pricing calculator, portfolio, templates)
-- [ ] **Pricing section:** Free tier summary + Pro (Annual $19.99 / Lifetime $49.99) with "Try free for 14 days" CTA leading to App Store
+- [ ] **Pricing section:** Free tier summary ("Free for up to 3 products") + Pro (Annual $19.99 / Lifetime $49.99) with download CTA leading to App Store
 - [ ] **Footer links:**
   - Privacy Policy (`/privacy`)
   - Terms of Use (`/terms`)
@@ -238,11 +238,13 @@ Include the full 60-second path + context:
 ```
 The app has no login. Functionality is immediately available on launch.
 
-A 14-day free trial starts on first launch (managed by RevenueCat / StoreKit).
-No payment card required during trial.
+There is no free trial. The free tier (up to 3 products, General + Etsy
+pricing tabs) is fully functional and not time-limited. The paywall appears
+only when the user tries to create a 4th product or taps the Shopify/Amazon
+pricing tabs.
 
 === Reviewer's 60-Second Path ===
-1. Launch the app — trial status is visible in Settings ("14 days of Pro unlocked")
+1. Launch the app
 2. Empty Products tab shows a prominent "Start from Template" CTA
 3. Tap the CTA, pick any template (e.g. "Candles")
 4. The app auto-navigates to the new Product's Build tab with pre-populated
@@ -254,12 +256,8 @@ No payment card required during trial.
 === Pro Features ===
 - Unlimited products (free tier limited to 3)
 - Shopify and Amazon platform tabs in the Pricing Calculator (free has General + Etsy)
-- These Pro features are unlocked automatically during the 14-day trial.
-
-=== To Test Post-Trial Gating ===
-Use a sandbox account that has already consumed the trial intro offer. The
-paywall will then show annual pricing without the "14-day free trial" badge
-(we handle this consumed-trial case dynamically).
+- To see the paywall: create 3 products, then try to create a 4th, OR tap the
+  Shopify or Amazon tab in the Pricing Calculator.
 
 === Non-Obvious Flows ===
 - Stopwatch: Labor tab → tap any step → timer icon in toolbar → StopwatchView

@@ -53,7 +53,6 @@
 |--------|---------|-------|
 | `paywallShown` | `reason` | productLimit/platformLocked/manual |
 | `paywallDismissed` | none | |
-| `trialStarted` | none | |
 | `purchaseAttempted` | `productId` | mm_pro_annual/mm_pro_lifetime |
 | `purchaseSucceeded` | `productId` | mm_pro_annual/mm_pro_lifetime |
 | `purchaseFailed` | `errorCode` | Vendor error code string |

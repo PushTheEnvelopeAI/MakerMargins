@@ -45,7 +45,6 @@ enum AnalyticsSignal: String {
 
     case paywallShown                   // payload: reason (productLimit/platformLocked/manual)
     case paywallDismissed               // no payload
-    case trialStarted                   // no payload
     case purchaseAttempted              // payload: productId (mm_pro_annual/mm_pro_lifetime)
     case purchaseSucceeded              // payload: productId
     case purchaseFailed                 // payload: errorCode

@@ -16,7 +16,7 @@ By the end of Phase 2, the MakerMargins codebase should have:
 - All vendor SDKs integrated: PostHog, Sentry, MetricKit, RevenueCat
 - `AppLogger` facade wrapping OSLog with cross-platform semantics
 - Defensive, ordered init in `MakerMarginsApp` that survives network/cert/store failures
-- A functional paywall with dynamic trial eligibility handling
+- A functional paywall (no free trial — free tier IS the trial)
 - Product count + platform tab gating for the free tier
 - A Pro section and Privacy section in Settings
 - Full analytics instrumentation at the specified sites
@@ -36,7 +36,7 @@ Execute in order — later sub-phases depend on earlier ones.
 | 2b | Vendor SDK wiring (Sentry, MetricKit, PostHog, RevenueCat) | Managers must exist before views can use them |
 | 2c | Monetization UI (PaywallView, gating, Settings Pro section) | Depends on EntitlementManager from 2b |
 | 2d | Telemetry wiring (Settings Privacy section + instrumentation sites) | Depends on AnalyticsManager from 2b and PaywallView from 2c |
-| 2e | Edge cases + conventions (consumed trial, localization scaffolding, CostingEngine banner) | Cleanup after main code lands |
+| 2e | Edge cases + conventions (localization scaffolding, CostingEngine banner) | Cleanup after main code lands |
 | 2f | Tests | Written alongside each sub-phase, finalized at the end |
 
 ---
@@ -229,7 +229,6 @@ enum AnalyticsSignal: String {
     // Monetization funnel
     case paywallShown              // payload: reason
     case paywallDismissed
-    case trialStarted
     case purchaseAttempted         // payload: productId
     case purchaseSucceeded         // payload: productId
     case purchaseFailed            // payload: errorCode
@@ -308,12 +307,10 @@ import RevenueCat
 @Observable
 final class EntitlementManager {
     private(set) var isPro: Bool = false
-    private(set) var isInTrial: Bool = false
-    private(set) var trialDaysRemaining: Int = 0
-    private(set) var activeEntitlement: Entitlement?
+    private(set) var activeEntitlement: EntitlementState = .none
     private(set) var availablePackages: [Package] = []
 
-    enum Entitlement { case trial, annual, lifetime, none }
+    enum EntitlementState: Equatable { case annual, lifetime, none }
 
     init() {
         Purchases.logLevel = .warn
@@ -325,7 +322,6 @@ final class EntitlementManager {
     func purchase(package: Package) async throws { /* ... */ }
     func restorePurchases() async throws { /* ... */ }
     func refreshCustomerInfo() async { /* ... */ }
-    func introOfferEligible(for package: Package) async -> Bool { /* ... */ }
 
     private func loadOfferings() async { /* ... */ }
     private func observeCustomerInfo() async { /* ... */ }
@@ -335,12 +331,10 @@ final class EntitlementManager {
 
 **Properties derived from `customerInfo.entitlements["pro"]`:**
 - `isPro` — `.isActive == true`
-- `isInTrial` — `periodType == .trial`
-- `trialDaysRemaining` — computed from `expirationDate` when in trial
-- `activeEntitlement` — `.trial | .annual | .lifetime | .none`
+- `activeEntitlement` — `.annual | .lifetime | .none`
 - `availablePackages` — loaded from `Purchases.shared.offerings()`
 
-**Trial state is delegated to RevenueCat.** Their backend tracks trial start + expiration accurately across devices. No manual `UserDefaults.firstLaunchDate` tracking.
+**No free trial.** The free tier (3 products, General + Etsy) IS the trial. No trial state tracking needed.
 
 - `EnvironmentKey` + `EnvironmentValues` extension for injection
 - Follows the existing manager pattern (`LaborRateManager`, `AppearanceManager`, `CurrencyFormatter`)
@@ -427,7 +421,7 @@ struct MakerMarginsApp: App {
   - `.manual` → generic "Upgrade to Pro"
 - Layout:
   - Hero: Pro features list with SF Symbols
-  - Two purchase buttons side-by-side: **Annual $19.99/yr** (with dynamic trial badge) and **Lifetime $49.99** (with "Best value" badge)
+  - Two purchase buttons side-by-side: **Annual $19.99/yr** and **Lifetime $49.99** (with "Best value" badge)
   - Restore Purchases link
   - Terms of Use + Privacy Policy links (required by Apple Guideline 3.1.2)
 - Button actions call `EntitlementManager.purchase(package:)`
@@ -435,31 +429,7 @@ struct MakerMarginsApp: App {
 - Follows [AppTheme.swift](MakerMargins/Theme/AppTheme.swift) tokens and shared components (`.heroCardStyle()`, `.cardStyle()`)
 - Fires analytics signals: `paywallShown` on appear with reason payload, `paywallDismissed` on dismiss, `purchaseAttempted` / `purchaseSucceeded` / `purchaseFailed` around the purchase call
 
-### 2c.2 Dynamic Trial Eligibility (Consumed-Trial Edge Case)
-
-**Critical reviewer edge case:** Apple reviewers often use sandbox accounts that have already consumed intro offers on other apps. RevenueCat's behavior: the `mm_pro_annual` offering is still purchasable, but **without** the 14-day trial. If the paywall unconditionally shows "14 days free," it's visually misleading and can trigger Guideline 3.1.2 rejection.
-
-**Fix in EntitlementManager + PaywallView:**
-```swift
-// In EntitlementManager
-func introOfferEligible(for package: Package) async -> Bool {
-    let result = await Purchases.shared.checkTrialOrIntroDiscountEligibility(packages: [package])
-    return result[package.identifier] == .eligible
-}
-
-// In PaywallView
-var annualPriceDisplay: String {
-    if eligibleForTrial {
-        return "14-day free trial, then \(annualPackage.localizedPriceString)/year"
-    } else {
-        return "\(annualPackage.localizedPriceString)/year"
-    }
-}
-```
-
-Hide the "14-day free trial" badge if ineligible. Purchase flow must still work, just without the trial.
-
-### 2c.3 Gating Layer
+### 2c.2 Gating Layer
 
 **[ProductListView.swift](MakerMargins/Views/Products/ProductListView.swift):**
 ```swift
@@ -486,12 +456,11 @@ if !entitlementManager.isPro && products.count >= 3 {
 - Tapping a locked tab presents the paywall sheet with `reason: .platformLocked(.shopify)` instead of switching
 - General and Etsy tabs behave unchanged for free users
 
-### 2c.4 Settings Pro Section
+### 2c.3 Settings Pro Section
 
 **[SettingsView.swift](MakerMargins/Views/Settings/SettingsView.swift):** new "MakerMargins Pro" section at top:
 
 - **If Pro:** show active entitlement (`Annual — renews [date]` or `Lifetime — thanks!`) + Manage Subscription link (opens system sheet via `showManageSubscriptions`)
-- **If Trial:** show trial days remaining + "Upgrade now" button
 - **If Free:** show "Upgrade to Pro" button → presents `PaywallView(reason: .manual)`
 - **Always visible:** "Restore Purchases" row calling `entitlementManager.restorePurchases()`
 - **Always visible:** Terms of Use + Privacy Policy links
@@ -506,7 +475,7 @@ if !entitlementManager.isPro && products.count >= 3 {
 
 - **Share anonymous usage data** — toggle bound to `analytics.isEnabled`, defaults ON
 - **What we collect** — disclosure sheet with plain-English bullet list of exactly what is and isn't sent:
-  - "We send: anonymous crash reports, anonymous usage events (which screens, which features), trial/purchase events."
+  - "We send: anonymous crash reports, anonymous usage events (which screens, which features), purchase events."
   - "We never send: your product names, costs, labor times, supplier info, or any data you've entered."
 - **Privacy Policy link** — same URL as the Paywall (Phase 3 hosts it)
 
@@ -572,7 +541,7 @@ For Epic 7 work **only**: wrap user-facing strings in `String(localized: "key", 
 
 Apple reviewers land on a fresh install and decide in ~60 seconds whether the app meets "minimum functionality" (Guideline 2.1). Engineering work to support this:
 
-- **Trial status indicator** in Settings (and optionally as a dismissible banner on first launch) — so reviewers know they're in trial mode
+- **Pro status indicator** in Settings showing whether user is on Free or Pro
 - **Empty `ProductListView` → "Start from Template" CTA** is a hero element, not a small button (verify existing implementation)
 - **First template application lands on Build tab**, not the edit form, so the reviewer sees the cost breakdown immediately
 - **No modal interruptions** on first launch (no "Welcome" sheet, no "Please rate us," no "Allow notifications")
@@ -591,12 +560,10 @@ Write tests alongside the sub-phases. By the end of Phase 2:
 ### `EntitlementTests.swift`
 - Mock `CustomerInfo` with `.active` entitlement → `isPro == true`
 - Mock `CustomerInfo` with expired entitlement → `isPro == false`
-- Mock `CustomerInfo` with trial period type → `isInTrial == true`, `trialDaysRemaining` computed correctly
 - Mock lifetime non-consumable entitlement → `isPro == true`, `activeEntitlement == .lifetime`
 - Gating logic: free user with 3 products → paywall triggers; Pro user with 3 products → no paywall
 - Platform tab gating: `shouldGate(.etsy) == false`, `shouldGate(.shopify) == true` for free
 - Restore flow updates `isPro` correctly
-- **Consumed-trial case:** paywall display logic hides trial badge when ineligible
 
 **RevenueCat mocking:** use a test double conforming to a thin protocol around `Purchases.shared` so tests inject fake `CustomerInfo` without network calls.
 
@@ -639,8 +606,8 @@ Phase 4 cannot begin until:
 - [ ] ✅ `MetricsSubscriber.swift` + MetricKit integrated, crash counts forwarded to PostHog
 - [ ] ✅ `AnalyticsManager.swift` + PostHog SDK integrated with opt-out toggle
 - [ ] ✅ `AnalyticsSignal.swift` enum defined and used everywhere
-- [ ] ✅ `EntitlementManager.swift` + RevenueCat SDK integrated, including consumed-trial handling
-- [ ] ✅ `PaywallView.swift` exists with all 3 `PaywallReason` variants, dynamic trial eligibility, analytics signals
+- [ ] ✅ `EntitlementManager.swift` + RevenueCat SDK integrated
+- [ ] ✅ `PaywallView.swift` exists with all 3 `PaywallReason` variants, analytics signals
 - [ ] ✅ Product cap gating in `ProductListView` (create + duplicate + template)
 - [ ] ✅ Shopify + Amazon tab gating in `PricingCalculatorView`
 - [ ] ✅ Settings Pro section + Privacy section

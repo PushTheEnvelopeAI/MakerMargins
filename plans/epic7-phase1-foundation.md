@@ -110,7 +110,7 @@ EU sales require this or Apple removes the app from EU storefronts.
   - Type: auto-renewing subscription
   - Duration: 1 year
   - Price: $19.99 USD base (Apple auto-fills EU prices via price tier system)
-  - **14-day free trial intro offer** for new subscribers
+  - **No intro offer / free trial** — the free tier (3 products, General + Etsy) IS the trial
   - Localized display name + description (English)
   - Review screenshot (can use a placeholder until Phase 3 generates the real paywall screenshot)
 - [ ] Create `mm_pro_lifetime`:

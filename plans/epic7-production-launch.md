@@ -25,7 +25,7 @@ These are locked and drive the rest of the work. Do not revisit without cause.
 | Publishing entity | LLC as Organization | Tax cleanliness, liability separation, Apple is merchant-of-record for EU VAT |
 | Device scope | iPhone only (iPad deferred to v1.1+) | ~1-2 weeks of iPad layout work not justified at launch |
 | Storefronts | US + Europe | Small paperwork cost (DSA + GDPR), big market |
-| Monetization | Freemium, $19.99/yr + $49.99 lifetime, 14-day trial, no monthly | Bursty usage pattern mismatches monthly subs |
+| Monetization | Freemium, $19.99/yr + $49.99 lifetime, no trial, no monthly | Free tier IS the trial. 3-product cap converts at the natural growth moment. |
 | App name | MakerMargins | Final |
 | Marketing landing page | Yes — Carrd + custom domain | Required for LLC Dev Program enrollment anyway |
 | iOS deployment target | iOS 26 (unless revisited in Phase 1 decision) | Current CLAUDE.md default |
@@ -42,7 +42,7 @@ Full monetization analysis archived at `C:\Users\aj100\.claude\plans\fizzy-explo
 
 **Free:** 3 products, unlimited WorkSteps and Materials, General + Etsy pricing tabs, Batch Forecasting, Portfolio Metrics, all templates, USD + EUR, all settings.
 
-**Pro ($19.99/yr or $49.99 lifetime, 14-day trial):** unlimited products, Shopify + Amazon pricing tabs, all future Tier-1 roadmap features.
+**Pro ($19.99/yr or $49.99 lifetime):** unlimited products, Shopify + Amazon pricing tabs, all future Tier-1 roadmap features.
 
 **Two paywalls:** 3-product cap (scale wall) + Shopify/Amazon tabs (breadth wall).
 
@@ -141,7 +141,7 @@ Phase 4 cannot begin until both Phase 2 and Phase 3 are feature-complete:
 Epic 7 is complete when:
 1. ✅ External TestFlight beta has run ≥5 days with ≥3 real testers
 2. ✅ Sentry reports ≥48 consecutive hours crash-free before submission
-3. ✅ All sandbox purchase flows verified: trial start, trial expiry, annual purchase, lifetime purchase, refund, restore, consumed-trial paywall display
+3. ✅ All sandbox purchase flows verified: annual purchase, lifetime purchase, refund, restore
 4. ✅ Privacy audit complete: no PII in analytics, no user content in error reports, Privacy Nutrition Label matches reality
 5. ✅ App Store Connect ready-for-review checklist is 100% green
 6. ✅ Build has been **approved** by Apple Review

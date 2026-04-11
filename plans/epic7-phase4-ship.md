@@ -56,7 +56,7 @@ Apple rejects apps with missing empty states, broken error paths, or crashes on 
 - [ ] RevenueCat offering fetch fails on paywall open — shows retry button, not blank paywall
 - [ ] Purchase failure — shows specific error from RevenueCat, not generic
 - [ ] Restore purchases with no history — friendly "nothing to restore" message, not silent fail
-- [ ] Trial expiry during active use — graceful downgrade, doesn't crash mid-action
+- [ ] Subscription expiry during active use — graceful downgrade, doesn't crash mid-action
 
 **Loading states to verify:**
 - [ ] RevenueCat offerings initial fetch — skeleton or spinner, not flash of empty paywall
@@ -72,7 +72,7 @@ Apple rejects apps with missing empty states, broken error paths, or crashes on 
 Simulate the reviewer's path exactly as documented in the App Review notes.
 
 - [ ] Fresh install on a clean simulator (delete + reinstall)
-- [ ] Launch → verify trial status indicator is visible in Settings
+- [ ] Launch → verify Pro/Free status is visible in Settings
 - [ ] Empty `ProductListView` → "Start from Template" CTA is prominent (not a small button)
 - [ ] Tap CTA → `TemplatePickerView` opens
 - [ ] Tap any template → auto-navigates to Build tab (not the edit form)
@@ -131,7 +131,7 @@ Quick manual check before submission:
 - [ ] **No references to other platforms** in marketing text (grep `Android`, `Google Play`, `web version`, `web app`)
 - [ ] **No mentions of "beta," "test," or "preview"** in the 1.0 submission copy or UI
 - [ ] **All links in the app and metadata work** — manually click every URL
-- [ ] **Subscription UX rules** on paywall: trial clearly labeled, length prominent, post-trial price visible before subscribe tap, Restore Purchases in Settings, user can manage/cancel subscription via system UI
+- [ ] **Subscription UX rules** on paywall: price and duration clearly labeled, Restore Purchases in Settings, user can manage/cancel subscription via system UI
 
 ---
 
@@ -139,15 +139,13 @@ Quick manual check before submission:
 
 Required by the Phase 4 → Epic Complete gate.
 
-- [ ] **Fresh install → trial starts:** new sandbox account, first launch, verify `isPro == true` during trial, `trialDaysRemaining` displays correctly
-- [ ] **Trial expiry → free tier:** sandbox accelerates trial time; verify `isPro` drops to false, 4th product blocked, Shopify/Amazon tabs locked
+- [ ] **Fresh install → free tier:** new sandbox account, first launch, verify `isPro == false`, can create up to 3 products, 4th product blocked, Shopify/Amazon tabs locked
 - [ ] **Purchase annual:** paywall → tap annual → StoreKit sheet → confirm → `isPro == true`, Settings shows "Annual — renews [date]", RevenueCat dashboard reflects the customer
 - [ ] **Purchase lifetime:** new sandbox account, paywall → tap lifetime → confirm → `isPro == true`, Settings shows "Lifetime"
 - [ ] **Refund flow:** request a sandbox refund, verify `isPro` drops to false after customer info refresh
 - [ ] **Restore on second device:** clean install on second device with same Apple ID → Settings → Restore Purchases → `isPro == true`
-- [ ] **Consumed trial paywall display:** sandbox account that has consumed the intro offer on another app → paywall shows annual price WITHOUT "14-day free trial" badge; purchase still works
 - [ ] **Manage Subscription link:** Settings → Manage Subscription → opens system sheet successfully
-- [ ] **Manual test:** tap Shopify tab during trial → works fine; force trial expiry → tap Shopify tab → paywall appears with `.platformLocked(.shopify)` reason
+- [ ] **Manual test:** tap Shopify tab on free tier → paywall appears with `.platformLocked(.shopify)` reason; purchase Pro → Shopify tab unlocks
 
 ---
 
@@ -256,7 +254,7 @@ Before hitting submit:
 
 ### Common Rejection Reasons (Proactive Mitigations)
 - **Guideline 2.1 — App Completeness:** Prevented by 4a QA sweep and TestFlight beta
-- **Guideline 3.1.2 — Subscription disclosure:** Prevented by Phase 2 paywall implementation + consumed-trial handling
+- **Guideline 3.1.2 — Subscription disclosure:** Prevented by Phase 2 paywall implementation (price and duration clearly visible)
 - **Guideline 5.1.1 — Privacy Policy:** Prevented by Phase 3 privacy policy hosting
 - **Guideline 4.0 — Design:** Non-issue given Liquid Glass / iOS 26 native patterns
 - **Guideline 2.3.10 — Other platform mentions:** Prevented by 4a.8 content scrub
@@ -270,8 +268,8 @@ Before hitting submit:
 - [ ] **On approval:** manually release the build in App Store Connect
 - [ ] **Phased Release starts automatically** (1% → 2% → 5% → 10% → 20% → 50% → 100% over 7 days)
 - [ ] **Monitor Sentry** for crashes in the first 24 hours — be ready to pause phased release if a P0 appears
-- [ ] **Monitor PostHog** for installs, trial starts, activation funnel — verify real-world data shape matches what you tested
-- [ ] **Monitor RevenueCat** for trial-start events — confirms the IAP pipeline is working in production
+- [ ] **Monitor PostHog** for installs, activation funnel — verify real-world data shape matches what you tested
+- [ ] **Monitor RevenueCat** for purchase events — confirms the IAP pipeline is working in production
 - [ ] **Update CLAUDE.md** with any architectural decisions or implementation notes worth persisting
 - [ ] **Mark Epic 7 as Complete** in CLAUDE.md roadmap table
 
@@ -283,7 +281,7 @@ Epic 7 is complete when all of the following are true:
 
 1. ✅ Solo beta has run ≥5 days with real business data (real products, labor, materials, pricing)
 2. ✅ Sentry reports ≥48 consecutive hours crash-free before submission
-3. ✅ All sandbox purchase flows verified end-to-end
+3. ✅ All sandbox purchase flows verified: annual purchase, lifetime purchase, refund, restore
 4. ✅ Privacy audit complete: no PII in analytics, no user content in error reports, Privacy Nutrition Label matches reality
 5. ✅ App Store Connect ready-for-review checklist is 100% green
 6. ✅ Build has been **approved** by Apple Review

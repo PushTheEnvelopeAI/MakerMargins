@@ -14,7 +14,7 @@ import MetricKit
 final class MetricsSubscriber: NSObject, MXMetricManagerSubscriber, @unchecked Sendable {
 
     /// Shared instance — kept alive for the app's lifetime.
-    private static var shared: MetricsSubscriber?
+    nonisolated(unsafe) private static var shared: MetricsSubscriber?
 
     /// Weak reference to analytics manager for forwarding crash signals.
     /// Set during registration so MetricsSubscriber doesn't own the manager.
