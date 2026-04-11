@@ -222,7 +222,7 @@ struct PricingCalculatorView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
                     .background(isSelected ? AppTheme.Colors.accent.opacity(0.2) : Color.clear)
-                    .foregroundStyle(isSelected ? AppTheme.Colors.accent : isLocked ? .tertiary : .primary)
+                    .foregroundColor(isSelected ? AppTheme.Colors.accent : isLocked ? Color.secondary.opacity(0.5) : Color.primary)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
                 .buttonStyle(.plain)

@@ -7,6 +7,12 @@
 // Model-based functions accept WorkStep/Product/Material objects for use in views.
 // Raw-value overloads accept primitives for real-time form previews
 // before a model is saved.
+//
+// ⚠️  CROSS-PLATFORM PORT TARGET
+// CostingEngine is the designated port target for Android (Kotlin) and web (TypeScript).
+// It imports only Foundation. It has no dependencies on SwiftData, SwiftUI, or any
+// platform APIs. Keep it this way — all cross-platform math must remain here.
+// When Android ships, CostingEngine.kt will be a line-by-line port.
 
 import Foundation
 
