@@ -23,12 +23,16 @@ struct PricingCalculatorView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.productRepository) private var productRepository
     @Environment(\.currencyFormatter) private var formatter
+    @Environment(\.entitlementManager) private var entitlementManager
 
     // MARK: - State
 
     @State private var selectedPlatform: PlatformType = .general
     @State private var showTargetCalc = true
     @State private var currentPricing: ProductPricing?
+
+    @State private var showPaywall = false
+    @State private var paywallReason: PaywallReason = .manual
 
     @State private var platformFeeText: String = ""
     @State private var paymentProcessingFeeText: String = ""
@@ -173,6 +177,14 @@ struct PricingCalculatorView: View {
         .onChange(of: focusedField) { _, newField in
             handleFocusChange(newField)
         }
+        .onChange(of: entitlementManager.isPro) { _, isPro in
+            if !isPro && (selectedPlatform == .shopify || selectedPlatform == .amazon) {
+                selectedPlatform = .general
+            }
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView(reason: paywallReason)
+        }
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
@@ -184,12 +196,39 @@ struct PricingCalculatorView: View {
     // MARK: - Sections
 
     private var platformPicker: some View {
-        Picker("Platform", selection: $selectedPlatform) {
+        HStack(spacing: 2) {
             ForEach(PlatformType.allCases, id: \.self) { platform in
-                Text(platform.rawValue).tag(platform)
+                let isLocked = !entitlementManager.isPro && (platform == .shopify || platform == .amazon)
+                let isSelected = selectedPlatform == platform
+
+                Button {
+                    if isLocked {
+                        paywallReason = .platformLocked(platform)
+                        showPaywall = true
+                    } else {
+                        selectedPlatform = platform
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(platform.rawValue)
+                            .font(.caption.weight(isSelected ? .semibold : .regular))
+                        if isLocked {
+                            Image(systemName: "lock.fill")
+                                .font(.caption2)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(isSelected ? AppTheme.Colors.accent.opacity(0.2) : Color.clear)
+                    .foregroundStyle(isSelected ? AppTheme.Colors.accent : isLocked ? .tertiary : .primary)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
             }
         }
-        .pickerStyle(.segmented)
+        .padding(2)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
         .padding(.vertical, AppTheme.Spacing.sm)
     }
 

@@ -12,6 +12,7 @@ struct ProductListView: View {
     @Query(sort: \Product.title) private var products: [Product]
     @Query(sort: \Category.name) private var categories: [Category]
     @Environment(\.productRepository) private var productRepository
+    @Environment(\.entitlementManager) private var entitlementManager
 
     @State private var searchText = ""
     @State private var selectedCategory: Category? = nil
@@ -22,6 +23,8 @@ struct ProductListView: View {
     @State private var navigationPath = NavigationPath()
     @State private var newlyCreatedProduct: Product?
     @State private var navigatingFromTemplate = false
+    @State private var showPaywall = false
+    @State private var paywallReason: PaywallReason = .manual
 
     // MARK: - Filtering
 
@@ -58,12 +61,22 @@ struct ProductListView: View {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
                     Button {
-                        showingCreateForm = true
+                        if !entitlementManager.isPro && products.count >= 3 {
+                            paywallReason = .productLimit
+                            showPaywall = true
+                        } else {
+                            showingCreateForm = true
+                        }
                     } label: {
                         Label("Blank Product", systemImage: "doc")
                     }
                     Button {
-                        showingTemplatePicker = true
+                        if !entitlementManager.isPro && products.count >= 3 {
+                            paywallReason = .productLimit
+                            showPaywall = true
+                        } else {
+                            showingTemplatePicker = true
+                        }
                     } label: {
                         Label("From Template", systemImage: "doc.on.doc.fill")
                     }
@@ -124,6 +137,9 @@ struct ProductListView: View {
         } message: {
             Text("This will permanently delete this product. Work steps and materials will remain in their libraries. This action cannot be undone.")
         }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView(reason: paywallReason)
+        }
     }
 
     // MARK: - List
@@ -155,8 +171,13 @@ struct ProductListView: View {
                     }
                     .contextMenu {
                         Button {
-                            let copy = duplicateProduct(product)
-                            navigationPath.append(copy)
+                            if !entitlementManager.isPro && products.count >= 3 {
+                                paywallReason = .productLimit
+                                showPaywall = true
+                            } else {
+                                let copy = duplicateProduct(product)
+                                navigationPath.append(copy)
+                            }
                         } label: {
                             Label("Duplicate", systemImage: "doc.on.doc")
                         }
@@ -212,8 +233,13 @@ struct ProductListView: View {
                         .buttonStyle(.plain)
                         .contextMenu {
                             Button {
-                                let copy = duplicateProduct(product)
-                                navigationPath.append(copy)
+                                if !entitlementManager.isPro && products.count >= 3 {
+                                    paywallReason = .productLimit
+                                    showPaywall = true
+                                } else {
+                                    let copy = duplicateProduct(product)
+                                    navigationPath.append(copy)
+                                }
                             } label: {
                                 Label("Duplicate", systemImage: "doc.on.doc")
                             }
@@ -279,9 +305,23 @@ struct ProductListView: View {
             } description: {
                 Text("Track costs and calculate pricing for your products.")
             } actions: {
-                Button("Start from Template") { showingTemplatePicker = true }
+                Button("Start from Template") {
+                    if !entitlementManager.isPro && products.count >= 3 {
+                        paywallReason = .productLimit
+                        showPaywall = true
+                    } else {
+                        showingTemplatePicker = true
+                    }
+                }
                     .buttonStyle(.borderedProminent)
-                Button("Create Blank Product") { showingCreateForm = true }
+                Button("Create Blank Product") {
+                    if !entitlementManager.isPro && products.count >= 3 {
+                        paywallReason = .productLimit
+                        showPaywall = true
+                    } else {
+                        showingCreateForm = true
+                    }
+                }
                     .buttonStyle(.bordered)
             }
         } else {

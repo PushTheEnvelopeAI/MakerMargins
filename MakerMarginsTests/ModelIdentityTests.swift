@@ -80,7 +80,7 @@ struct ModelIdentityTests {
 
     @Test("Category: sync fields initialized correctly")
     func categorySyncFields() throws {
-        let category = Category(name: "Cutting Boards")
+        let category = MakerMargins.Category(name: "Cutting Boards")
         #expect(category.remoteID == nil)
         #expect(category.createdAt <= .now)
         #expect(category.updatedAt <= .now)

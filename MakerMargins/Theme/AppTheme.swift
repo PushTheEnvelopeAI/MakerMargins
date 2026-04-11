@@ -143,6 +143,7 @@ enum AppTheme {
         static let small:  CGFloat = 8
         static let medium: CGFloat = 12
         static let large:  CGFloat = 16
+        static let card:   CGFloat = 12
     }
 
     // MARK: - Typography
@@ -162,6 +163,12 @@ enum AppTheme {
         static let formSectionValue: Font = .title3
         static let timerDisplay:  Font = .system(.largeTitle, design: .monospaced).weight(.light)
         static let templateIcon:  Font = .system(.title, design: .default)
+
+        // Paywall / general purpose
+        static let title:         Font = .title2.weight(.semibold)
+        static let body:          Font = .body
+        static let bodyBold:      Font = .body.weight(.semibold)
+        static let caption:       Font = .caption
     }
 
     // MARK: - Shadow

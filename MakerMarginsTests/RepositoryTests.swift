@@ -259,7 +259,7 @@ struct RepositoryTests {
         repo.delete(category)
         try context.save()
 
-        let remaining = try context.fetch(FetchDescriptor<Category>())
+        let remaining = try context.fetch(FetchDescriptor<MakerMargins.Category>())
         #expect(remaining.isEmpty)
     }
 }
