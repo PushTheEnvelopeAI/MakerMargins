@@ -42,8 +42,8 @@ final class Material {
 
     // MARK: Sync-readiness (Epic 7)
     var remoteID: UUID? = nil
-    var createdAt: Date = .now
-    var updatedAt: Date = .now
+    var createdAt: Date = Date.now
+    var updatedAt: Date = Date.now
 
     // MARK: Relationship
 

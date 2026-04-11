@@ -118,7 +118,7 @@ final class SwiftDataMaterialRepository: MaterialRepository {
 // MARK: - Environment Key
 
 struct MaterialRepositoryKey: EnvironmentKey {
-    static let defaultValue: any MaterialRepository = PlaceholderMaterialRepository()
+    nonisolated(unsafe) static let defaultValue: any MaterialRepository = PlaceholderMaterialRepository()
 }
 
 extension EnvironmentValues {

@@ -118,7 +118,7 @@ final class SwiftDataWorkStepRepository: WorkStepRepository {
 // MARK: - Environment Key
 
 struct WorkStepRepositoryKey: EnvironmentKey {
-    static let defaultValue: any WorkStepRepository = PlaceholderWorkStepRepository()
+    nonisolated(unsafe) static let defaultValue: any WorkStepRepository = PlaceholderWorkStepRepository()
 }
 
 extension EnvironmentValues {

@@ -17,6 +17,10 @@ struct MakerMarginsApp: App {
     @State private var appearanceManager = AppearanceManager()
     @State private var laborRateManager = LaborRateManager()
 
+    // Vendor SDK managers
+    @State private var analyticsManager = AnalyticsManager()
+    @State private var entitlementManager = EntitlementManager()
+
     // Repositories (writes-only — reads stay on @Query)
     @State private var productRepository: SwiftDataProductRepository
     @State private var workStepRepository: SwiftDataWorkStepRepository
@@ -67,6 +71,20 @@ struct MakerMarginsApp: App {
         _workStepRepository = State(initialValue: SwiftDataWorkStepRepository(context: mainContext))
         _materialRepository = State(initialValue: SwiftDataMaterialRepository(context: mainContext))
         _categoryRepository = State(initialValue: SwiftDataCategoryRepository(context: mainContext))
+
+        // --- Vendor SDK initialization (defensive — log and continue on failure) ---
+
+        // 1. Lifecycle marker — any crash after this point is easier to diagnose
+        AppLogger.lifecycle.info("MakerMargins launching")
+
+        // 2. Sentry (crash reporting) — start early to capture any init crashes downstream
+        ErrorReporter.start()
+
+        // 3. MetricKit (supplemental device diagnostics) — cannot fail
+        MetricsSubscriber.register(analyticsManager: analyticsManager)
+
+        // 4. PostHog (analytics) and RevenueCat (entitlements) are init-safe —
+        //    they queue offline and retry. Initialized via @State property defaults above.
     }
 
     var body: some Scene {
@@ -79,6 +97,8 @@ struct MakerMarginsApp: App {
                 .environment(\.workStepRepository, workStepRepository)
                 .environment(\.materialRepository, materialRepository)
                 .environment(\.categoryRepository, categoryRepository)
+                .environment(\.analyticsManager, analyticsManager)
+                .environment(\.entitlementManager, entitlementManager)
                 .preferredColorScheme(appearanceManager.resolvedColorScheme)
                 .tint(AppTheme.Colors.accent)
                 .alert("Data Recovery", isPresented: $showStoreCorruptionAlert) {

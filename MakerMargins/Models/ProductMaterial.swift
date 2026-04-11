@@ -26,8 +26,8 @@ final class ProductMaterial {
 
     // MARK: Sync-readiness (Epic 7)
     var remoteID: UUID? = nil
-    var createdAt: Date = .now
-    var updatedAt: Date = .now
+    var createdAt: Date = Date.now
+    var updatedAt: Date = Date.now
 
     /// How many units of this material are consumed per finished product.
     /// Per-product override — pre-filled from Material.defaultUnitsPerProduct on creation.

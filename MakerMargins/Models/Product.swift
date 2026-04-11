@@ -30,8 +30,8 @@ final class Product {
     /// Server-side identifier for future cross-platform sync. Not a primary key —
     /// SwiftData's persistentModelID remains the local PK. Populated by future sync layer.
     var remoteID: UUID? = nil
-    var createdAt: Date = .now
-    var updatedAt: Date = .now
+    var createdAt: Date = Date.now
+    var updatedAt: Date = Date.now
 
     // MARK: Relationships
 

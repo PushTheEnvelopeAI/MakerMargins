@@ -14,8 +14,8 @@ final class Category {
 
     // MARK: Sync-readiness (Epic 7)
     var remoteID: UUID? = nil
-    var createdAt: Date = .now
-    var updatedAt: Date = .now
+    var createdAt: Date = Date.now
+    var updatedAt: Date = Date.now
 
     // Inverse of Product.category. Delete rule: .nullify (default) —
     // orphaned products keep their data, their category becomes nil.

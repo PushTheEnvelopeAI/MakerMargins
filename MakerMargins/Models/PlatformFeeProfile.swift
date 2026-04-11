@@ -26,8 +26,8 @@ enum PlatformType: String, Codable, CaseIterable {
 final class PlatformFeeProfile {
     // MARK: Sync-readiness (Epic 7)
     var remoteID: UUID? = nil
-    var createdAt: Date = .now
-    var updatedAt: Date = .now
+    var createdAt: Date = Date.now
+    var updatedAt: Date = Date.now
 
     /// Default platform fee percentage (fraction, e.g. 0.05 = 5%).
     var platformFee: Decimal

@@ -39,7 +39,7 @@ final class SwiftDataCategoryRepository: CategoryRepository {
 // MARK: - Environment Key
 
 struct CategoryRepositoryKey: EnvironmentKey {
-    static let defaultValue: any CategoryRepository = PlaceholderCategoryRepository()
+    nonisolated(unsafe) static let defaultValue: any CategoryRepository = PlaceholderCategoryRepository()
 }
 
 extension EnvironmentValues {

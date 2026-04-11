@@ -129,7 +129,7 @@ final class SwiftDataProductRepository: ProductRepository {
 // MARK: - Environment Key
 
 struct ProductRepositoryKey: EnvironmentKey {
-    static let defaultValue: any ProductRepository = PlaceholderProductRepository()
+    nonisolated(unsafe) static let defaultValue: any ProductRepository = PlaceholderProductRepository()
 }
 
 extension EnvironmentValues {
