@@ -133,6 +133,13 @@ struct SettingsView: View {
         }
         .onAppear {
             laborRateText = "\(laborRateManager.defaultRate)"
+            analyticsManager.signal(.settingsOpened)
+        }
+        .onChange(of: currencyFormatter.selected) { _, newValue in
+            analyticsManager.signal(.currencyChanged, payload: ["currency": newValue.rawValue.lowercased()])
+        }
+        .onChange(of: appearanceManager.setting) { _, newValue in
+            analyticsManager.signal(.appearanceChanged, payload: ["mode": newValue.rawValue.lowercased()])
         }
         .scrollContentBackground(.hidden)
         .appBackground()

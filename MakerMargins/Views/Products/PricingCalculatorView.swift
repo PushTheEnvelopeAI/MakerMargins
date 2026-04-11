@@ -24,6 +24,7 @@ struct PricingCalculatorView: View {
     @Environment(\.productRepository) private var productRepository
     @Environment(\.currencyFormatter) private var formatter
     @Environment(\.entitlementManager) private var entitlementManager
+    @Environment(\.analyticsManager) private var analyticsManager
 
     // MARK: - State
 
@@ -207,6 +208,7 @@ struct PricingCalculatorView: View {
                         showPaywall = true
                     } else {
                         selectedPlatform = platform
+                        analyticsManager.signal(.platformTabViewed, payload: ["platformType": platform.rawValue.lowercased()])
                     }
                 } label: {
                     HStack(spacing: 4) {
@@ -466,8 +468,16 @@ struct PricingCalculatorView: View {
         .backgroundStyle(AppTheme.Colors.pricingSurface)
         .onChange(of: actualPriceText) { _, newValue in
             let value = Decimal(string: newValue) ?? 0
-            currentPricing?.actualPrice = value >= 0 ? value : 0
+            let actualPrice = value >= 0 ? value : Decimal(0)
+            currentPricing?.actualPrice = actualPrice
             productRepository.touch(product)
+            if actualPrice > 0 {
+                let key = "hasSignaled_firstPricingCalculated"
+                if !UserDefaults.standard.bool(forKey: key) {
+                    UserDefaults.standard.set(true, forKey: key)
+                    analyticsManager.signal(.firstPricingCalculated)
+                }
+            }
         }
         .onChange(of: actualShippingChargeText) { _, newValue in
             let value = Decimal(string: newValue) ?? 0

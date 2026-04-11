@@ -13,6 +13,7 @@ struct ProductListView: View {
     @Query(sort: \Category.name) private var categories: [Category]
     @Environment(\.productRepository) private var productRepository
     @Environment(\.entitlementManager) private var entitlementManager
+    @Environment(\.analyticsManager) private var analyticsManager
 
     @State private var searchText = ""
     @State private var selectedCategory: Category? = nil
@@ -102,6 +103,12 @@ struct ProductListView: View {
         }) {
             ProductFormView(product: nil, onCreate: { product in
                 newlyCreatedProduct = product
+                analyticsManager.signal(.productCreated)
+                let key = "hasSignaled_firstProductCreated"
+                if !UserDefaults.standard.bool(forKey: key) {
+                    UserDefaults.standard.set(true, forKey: key)
+                    analyticsManager.signal(.firstProductCreated)
+                }
             })
         }
         .sheet(isPresented: $showingTemplatePicker, onDismiss: {
@@ -113,6 +120,7 @@ struct ProductListView: View {
         }) {
             TemplatePickerView(onProductCreated: { product in
                 newlyCreatedProduct = product
+                analyticsManager.signal(.productCreated)
             })
         }
         .navigationDestination(for: Product.self) { product in
@@ -353,7 +361,9 @@ struct ProductListView: View {
     // MARK: - Actions
 
     @discardableResult private func duplicateProduct(_ source: Product) -> Product {
-        productRepository.duplicate(source)
+        let copy = productRepository.duplicate(source)
+        analyticsManager.signal(.productDuplicated)
+        return copy
     }
 }
 

@@ -15,6 +15,7 @@ struct BatchForecastView: View {
     @State private var batchSizeText: String = "10"
     @FocusState private var batchSizeFocused: Bool
     @Environment(\.currencyFormatter) private var formatter
+    @Environment(\.analyticsManager) private var analyticsManager
 
     // MARK: - Convenience
 
@@ -85,6 +86,9 @@ struct BatchForecastView: View {
             }
         }
         .padding(.horizontal)
+        .onAppear {
+            analyticsManager.signal(.batchForecastUsed)
+        }
         .onChange(of: batchSizeText) { _, newValue in
             if let parsed = Int(newValue), parsed >= 1 {
                 batchSize = parsed

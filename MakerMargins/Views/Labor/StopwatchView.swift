@@ -17,6 +17,7 @@ struct StopwatchView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.analyticsManager) private var analyticsManager
 
     @State private var timerState: TimerState = .idle
     @State private var startDate: Date? = nil
@@ -214,6 +215,24 @@ struct StopwatchView: View {
     private func confirmSave() {
         let units = parsedBatchUnits > 0 ? parsedBatchUnits : 1
         onSave(accumulatedTime, units)
+
+        // Bucket the batch size for privacy
+        let batchBucket: String
+        let bucketUnits = Int(truncating: units as NSDecimalNumber)
+        switch bucketUnits {
+        case 1: batchBucket = "1"
+        case 2...5: batchBucket = "2-5"
+        case 6...20: batchBucket = "6-20"
+        default: batchBucket = "20+"
+        }
+        analyticsManager.signal(.stopwatchCompleted, payload: ["batchSizeBucket": batchBucket])
+
+        let key = "hasSignaled_firstStopwatchUsed"
+        if !UserDefaults.standard.bool(forKey: key) {
+            UserDefaults.standard.set(true, forKey: key)
+            analyticsManager.signal(.firstStopwatchUsed)
+        }
+
         dismiss()
     }
 

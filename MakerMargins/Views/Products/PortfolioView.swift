@@ -14,6 +14,7 @@ import SwiftData
 struct PortfolioView: View {
     @Query(sort: \Product.title) private var products: [Product]
     @Environment(\.currencyFormatter) private var formatter
+    @Environment(\.analyticsManager) private var analyticsManager
 
     // MARK: - State
 
@@ -43,6 +44,9 @@ struct PortfolioView: View {
         }
         .navigationTitle("Portfolio")
         .appBackground()
+        .onAppear {
+            analyticsManager.signal(.portfolioViewed)
+        }
     }
 
     /// Main scrollable content. Computes snapshots once and threads the array

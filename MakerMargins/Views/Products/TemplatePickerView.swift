@@ -12,6 +12,7 @@ import SwiftData
 struct TemplatePickerView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.analyticsManager) private var analyticsManager
 
     /// Called with the newly created Product after template application.
     var onProductCreated: ((Product) -> Void)?
@@ -63,6 +64,7 @@ struct TemplatePickerView: View {
     private func applyTemplate(_ template: ProductTemplate) {
         do {
             let product = try TemplateApplier.apply(template, to: modelContext)
+            analyticsManager.signal(.templateApplied, payload: ["templateId": template.id])
             onProductCreated?(product)
             dismiss()
         } catch {

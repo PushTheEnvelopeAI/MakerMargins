@@ -85,6 +85,13 @@ struct MakerMarginsApp: App {
 
         // 4. PostHog (analytics) and RevenueCat (entitlements) are init-safe —
         //    they queue offline and retry. Initialized via @State property defaults above.
+
+        // 5. Lifecycle analytics
+        analyticsManager.signal(.appLaunched)
+        if !UserDefaults.standard.bool(forKey: "hasLaunchedBefore") {
+            UserDefaults.standard.set(true, forKey: "hasLaunchedBefore")
+            analyticsManager.signal(.firstLaunch)
+        }
     }
 
     var body: some Scene {
