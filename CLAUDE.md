@@ -16,7 +16,7 @@ This file is the source of truth for Claude Code across all sessions. Update it 
 - Database: SwiftData
 - Testing: Swift Testing framework (`import Testing`, `@Test` macros) — NOT XCTest/XCTestCase
 - Target Platform: iOS
-- Minimum Deployment Target: **iOS 26**
+- Minimum Deployment Target: **iOS 26** (confirmed for 1.0 — entire UI uses Liquid Glass; dropping target would require full backwards-compatibility audit. Wider device reach deferred to a post-launch update if adoption data justifies it.)
 - Distribution: Single-user, local SwiftData only (no CloudKit sync)
 - Currency: USD by default; EUR available via user setting. Format all monetary `Decimal` values through a shared `CurrencyFormatter` that respects the user's selection.
 
@@ -36,6 +36,7 @@ This file is the source of truth for Claude Code across all sessions. Update it 
 | 5 | Batch Forecasting Calculator + E2E Tests | **Complete** |
 | 6 | Portfolio Metrics & Product Comparison + E2E Tests | **Complete** |
 | 7 | Production Readiness & App Store Launch | **In Progress** |
+| 8 | Post-Launch Operations, Marketing & Growth | Planned (blocked on Epic 7) |
 
 Detailed acceptance criteria for Epics 1–6 are archived in `plans/epic-acceptance-criteria.md`.
 
@@ -409,8 +410,67 @@ Runs on every push: XcodeGen -> download iOS platform -> create iPhone 16 simula
 
 | Priority | Feature | Status |
 |----------|---------|--------|
-| 9 | Multi-Device Sync (CloudKit) | Planned |
+| 9 | Multi-Device Sync (Supabase — see below, NOT CloudKit) | Planned |
 | 10 | Craft Fair / POS Mode | Planned |
 | 11 | Widgets & Quick Actions | Planned |
 | 12 | Production Scheduling | Planned |
 | 13 | Material Price Alerts | Planned |
+
+---
+
+## Cross-Platform & Cloud Future (Deferred, Captured So We Don't Forget)
+
+**Context:** MakerMargins 1.0 ships iOS-only, local SwiftData, no cloud. The roadmap contemplates eventual Android and web versions. To avoid painting ourselves into a corner, Epic 7 makes vendor choices and introduces architectural seams now that keep those future ports cheap. Nothing in this section is being built in 1.0 — it's captured here so nothing gets lost.
+
+Entry point: [plans/epic7-production-launch.md](plans/epic7-production-launch.md). Vendor decisions + architectural seams detailed in [plans/epic7-phase1-foundation.md](plans/epic7-phase1-foundation.md) and [plans/epic7-phase2-engineering.md](plans/epic7-phase2-engineering.md).
+
+### Committed Future Vendors
+- **Supabase** — chosen future cloud backend (Postgres + Auth + Storage + Realtime + Row-Level Security). Cross-platform SDKs. Open source + self-hostable. **Not integrated in 1.0.**
+- **PostHog** — product analytics. Installed in 1.0. SDK is already cross-platform so Android/web reuse it directly.
+- **Sentry** — errors + crashes. Installed in 1.0. SDK is already cross-platform.
+- **RevenueCat** (wrapping StoreKit 2) — subscriptions. Installed in 1.0 specifically so Android (Google Play Billing) and web (Stripe) can reuse the same entitlement layer without rewriting.
+
+### Rejected Vendors (Do Not Reconsider Casually)
+- **CloudKit** — Apple-only, disqualified by cross-platform roadmap. The original "no CloudKit" rule in Key Decisions stands, now with a stronger reason.
+- **Firebase** — Google-owned, privacy-hostile for a financial tool, schema-less document model is painful for relational costing data.
+- **TelemetryDeck** — Apple-only. Great tool, wrong platform fit.
+- **Custom backend** — not worth building when Supabase gives us auth + DB + storage + realtime for free.
+
+### Architectural Seams Landing in Epic 7 (Future-Proofing)
+
+These will be implemented as part of Epic 7 and should be treated as ongoing conventions once they land:
+
+1. **Every `@Model` gains `remoteID: UUID? = nil`, `createdAt: Date = .now`, `updatedAt: Date = .now`.** The existing "no explicit `id: UUID`" rule **still holds** — `remoteID` is a separate nullable sync field, not a primary key. `persistentModelID` remains the local primary key. `updatedAt` must be updated on every write (enforced by the repository layer).
+
+2. **Writes-only repository layer.** Views stop mutating SwiftData directly and go through `ProductRepository`, `WorkStepRepository`, `MaterialRepository`, `CategoryRepository` protocols. Reads continue to use `@Query` — the repository pattern is not applied to reads (idiomatic SwiftUI wins there). The future `SyncingProductRepository` will wrap the local implementation without changing call sites.
+
+3. **CostingEngine purity is load-bearing.** [Engine/CostingEngine.swift](MakerMargins/Engine/CostingEngine.swift) is the designated port target for Android (Kotlin) and web (TypeScript). It imports only `Foundation`. Nothing platform-specific may leak in. When Android ships, `CostingEngine.kt` will be a line-by-line port.
+
+4. **`AppLogger` is a facade, not a convenience.** The call-site API (`AppLogger.swiftData.error(...)`) is designed so future Android/web implementations can swap in Timber/Logcat or console+Sentry without changing business logic.
+
+5. **Analytics signal vocabulary is a cross-platform event contract.** `AnalyticsSignal` enum names and payload keys are the same on iOS, Android, and web. Documented in [plans/analytics-signals.md](plans/analytics-signals.md).
+
+6. **Canonical schema document.** [plans/schema-canonical.md](plans/schema-canonical.md) is the language-agnostic source of truth for the data model. Future Kotlin models, TypeScript types, and Supabase Postgres schema all derive from it. Update this file whenever SwiftData models change.
+
+### Deferred Work (Explicit Non-Goals for 1.0)
+
+None of these are being built in 1.0. They're listed so they don't get lost:
+
+- **Supabase integration** — client setup, schema mirroring, sync coordinator
+- **Authentication** — Sign in with Apple + Google + email via Supabase Auth. Required before sync is possible.
+- **Cross-device sync** — optimistic local writes + background sync, conflict resolution strategy, offline queue
+- **Image migration** — product/step/material images currently stored as `Data?` blobs in SwiftData. For sync, these must move to Supabase Storage with `imageURL: String?` fields and a local cache. One-time upload migration required. **Until then, do not add new blob fields.**
+- **Decimal-over-the-wire discipline** — when CSV/PDF export or any API serialization is added, `Decimal` must serialize as **string** (e.g. `"19.99"`), never as `Double`. JSON has no decimal type and float conversion loses precision on money.
+- **Android port** — Kotlin + Jetpack Compose + Room (local) + Supabase (sync). `CostingEngine.kt` line-by-line port. Same `AnalyticsSignal` vocabulary. Same RevenueCat entitlements via Android SDK.
+- **Web port** — TypeScript + (framework TBD) + IndexedDB (local) + Supabase (sync). `costingEngine.ts` line-by-line port. Same `AnalyticsSignal` vocabulary. Same RevenueCat entitlements via JS SDK.
+- **Feature flags in active use** — PostHog SDK provides them free, but no flags are defined in 1.0. Reserved for staging future Android/web rollouts and for post-launch pricing A/B tests.
+- **Repository layer for reads** — only writes are abstracted in 1.0. Reads stay on `@Query`. If sync requires it later, reads can optionally migrate, but don't preemptively refactor.
+
+### Updated Stance on "No CloudKit, no authentication, no sync"
+
+The existing Key Decision "No CloudKit, no authentication, no sync. Single-user, local-only." **remains accurate for 1.0 shipping behavior**, but the reasoning evolves:
+
+- **No CloudKit** — permanent. CloudKit is Apple-only; we're planning for cross-platform.
+- **No authentication in 1.0** — temporary. Will arrive with cloud sync via Supabase Auth.
+- **No sync in 1.0** — temporary. Will arrive via Supabase when cross-device or multi-platform use cases are prioritized.
+- **Single-user, local-only in 1.0** — temporary. The app will always remain offline-first; cloud is additive sync on top, never required for core functionality.

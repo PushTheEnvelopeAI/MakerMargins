@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MakerMargins — True Cost & Pricing for Makers</title>
+  <meta name="description" content="MakerMargins helps makers track real labor and material costs, see the true cost of goods sold, and price their handmade products with confidence. Coming soon to iOS.">
+  <meta name="theme-color" content="#0a0a0a">
+
+  <meta property="og:title" content="MakerMargins">
+  <meta property="og:description" content="True cost & pricing for makers. Coming soon to iOS.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://makermargins.app">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="MakerMargins">
+  <meta name="twitter:description" content="True cost & pricing for makers. Coming soon to iOS.">
+
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%94%A8%3C/text%3E%3C/svg%3E">
+
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #0a0a0a;
+      --fg: #f5f5f5;
+      --muted: #8a8a8a;
+      --accent: #d4a574;
+      --border: #222222;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #fafafa;
+        --fg: #111111;
+        --muted: #666666;
+        --accent: #8b5a2b;
+        --border: #e5e5e5;
+      }
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 1.5rem;
+    }
+
+    .container {
+      max-width: 560px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .logo {
+      font-size: 2.75rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.5rem;
+      line-height: 1.1;
+    }
+
+    .logo span {
+      color: var(--accent);
+    }
+
+    .tagline {
+      font-size: 1.25rem;
+      color: var(--muted);
+      margin-bottom: 2.5rem;
+      font-weight: 400;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.5rem 1.25rem;
+      background: var(--border);
+      border-radius: 999px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 2.5rem;
+    }
+
+    .description {
+      font-size: 1.05rem;
+      color: var(--fg);
+      margin-bottom: 2.5rem;
+      line-height: 1.7;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .description strong {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .contact {
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .contact a {
+      color: var(--accent);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.15s ease;
+    }
+
+    .contact a:hover {
+      border-bottom-color: var(--accent);
+    }
+
+    footer {
+      padding: 1.5rem;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 480px) {
+      .logo {
+        font-size: 2.25rem;
+      }
+
+      .tagline {
+        font-size: 1.1rem;
+      }
+
+      .description {
+        font-size: 1rem;
+      }
+
+      main {
+        padding: 2rem 1.25rem;
+      }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .container {
+        animation: fadeIn 0.6s ease-out;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="container">
+      <h1 class="logo">Maker<span>Margins</span></h1>
+      <p class="tagline">True cost &amp; pricing for makers.</p>
+
+      <div class="badge">Coming soon to iOS</div>
+
+      <p class="description">
+        Track real labor and material costs, see the <strong>true cost of goods sold</strong>,
+        and price your handmade products with confidence. Built for woodworkers, crafters,
+        and small-scale makers who are tired of guessing.
+      </p>
+
+      <p class="contact">
+        Questions? <a href="mailto:support@makermargins.app">support@makermargins.app</a>
+      </p>
+    </div>
+  </main>
+
+  <footer>
+    &copy; 2026 MakerMargins. All rights reserved.
+  </footer>
+</body>
+</html>
